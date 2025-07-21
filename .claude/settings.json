@@ -1,0 +1,51 @@
+{
+  "tools": {
+    "Task": {
+      "enabled": true,
+      "permissions": ["read", "write", "execute"]
+    },
+    "Bash": {
+      "enabled": true,
+      "permissions": ["read", "write", "execute"]
+    },
+    "Read": {
+      "enabled": true,
+      "permissions": ["read"]
+    },
+    "Edit": {
+      "enabled": true,
+      "permissions": ["read", "write"]
+    },
+    "MultiEdit": {
+      "enabled": true,
+      "permissions": ["read", "write"]
+    },
+    "Write": {
+      "enabled": true,
+      "permissions": ["read", "write"]
+    },
+    "Grep": {
+      "enabled": true,
+      "permissions": ["read"]
+    },
+    "Glob": {
+      "enabled": true,
+      "permissions": ["read"]
+    },
+    "LS": {
+      "enabled": true,
+      "permissions": ["read"]
+    },
+    "WebFetch": {
+      "enabled": true,
+      "permissions": ["read"]
+    },
+    "WebSearch": {
+      "enabled": true,
+      "permissions": ["read"]
+    }
+  },
+  "model": "claude-3-5-sonnet-20241022",
+  "temperature": 0.7,
+  "max_tokens": 4000
+}

@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  .font-roboto {
+    font-family: 'Roboto', sans-serif;
+  }
+}
+
+@layer components {
+  .container {
+    @apply mx-auto px-10 lg:px-4 max-w-full md:max-w-[112.5rem];
+  }
+}

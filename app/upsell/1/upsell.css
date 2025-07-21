@@ -1,0 +1,96 @@
+/* Import external CSS files - Let them handle most styling */
+@import url('https://getretinaclear.com/options-bg/1/1/lib/css/main.css');
+@import url('https://getretinaclear.com/options-bg/1/1/lib/css/webfont.css');
+@import url('https://getretinaclear.com/options-bg/1/1/lib/css/upsell-1-sugar-balance-24-b06bd43dfb63b.webflow.css');
+
+/* Next.js Image optimization fixes */
+.has-text-centered span img,
+.has-text-centered div img {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Minimal custom overrides - Only what's absolutely necessary */
+
+/* Ensure FAQ content is hidden by default and shows when toggled */
+.innerfaq {
+  background-color: white;
+  border-top: 1px solid #ddd;
+}
+
+.ifpad {
+  padding: 1rem;
+  color: #333;
+  line-height: 1.5;
+}
+
+/* Exit pop styles */
+.exit-pop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.exit-pop #loadModal-exitpage,
+.exit-pop #loadModal-lastchance,
+.exit-pop #loadModal-lastchance2 {
+  background: white;
+  padding: 40px;
+  border-radius: 10px;
+  max-width: 600px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .exit-pop #loadModal-exitpage,
+  .exit-pop #loadModal-lastchance,
+  .exit-pop #loadModal-lastchance2 {
+    padding: 20px;
+    width: 95%;
+    max-width: 400px;
+  }
+}
+
+/* Product image centering fixes */
+.has-text-centered picture {
+  display: block;
+  margin: 0 auto;
+}
+
+.has-text-centered img {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Fixed body class for modal */
+body.fixed {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* Fix Next.js Image component aspect ratio warnings */
+img[src*="signature.png"] {
+  width: auto !important;
+  height: auto !important;
+}
+
+img[src*="arrow-down.png"] {
+  width: auto !important;
+  height: auto !important;
+}
+
+.faqicon {
+  width: auto !important;
+  height: auto !important;
+}
