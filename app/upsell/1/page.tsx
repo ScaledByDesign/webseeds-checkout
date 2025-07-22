@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
+import CardUpdateModal from '../../../components/CardUpdateModal';
 import './upsell.css';
 
 export default function Upsell1() {
@@ -18,6 +19,16 @@ export default function Upsell1() {
   const [countdown, setCountdown] = useState(900); // 15:00 in seconds
   const [faqOpenStates, setFaqOpenStates] = useState<{ [key: number]: boolean }>({});
   const [loading, setLoading] = useState(false);
+  
+    // Error handling states
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorType, setErrorType] = useState<'payment' | 'card' | 'network' | 'general'>('general');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [originalErrorMessage, setOriginalErrorMessage] = useState('');
+  const [showCardUpdateModal, setShowCardUpdateModal] = useState(false);
+  const [retryProductCode, setRetryProductCode] = useState('');
+  const [retryAmount, setRetryAmount] = useState(0);
+  const [retryBottles, setRetryBottles] = useState(0);
 
   // Countdown timer
   useEffect(() => {
@@ -69,6 +80,107 @@ export default function Upsell1() {
     }
   }, [sessionId, router]);
 
+  // Handle upsell errors with user-friendly messages
+  const handleUpsellError = (result: any, productCode: string, amount: number, bottles: number) => {
+    const errorMsg = result.error || result.message || 'Payment processing failed';
+    
+    console.log('🔍 DEBUG - Original error message:', errorMsg);
+    console.log('🔍 DEBUG - Error message lowercase:', errorMsg.toLowerCase());
+    
+    // Store retry information
+    setRetryProductCode(productCode);
+    setRetryAmount(amount);
+    setRetryBottles(bottles);
+    
+    // Store the original error message
+    setOriginalErrorMessage(errorMsg);
+    
+    // Determine error type based on error message
+    if (errorMsg.toLowerCase().includes('card') || 
+        errorMsg.toLowerCase().includes('payment method') ||
+        errorMsg.toLowerCase().includes('declined') ||
+        errorMsg.toLowerCase().includes('expired') ||
+        errorMsg.toLowerCase().includes('insufficient') ||
+        errorMsg.toLowerCase().includes('processing') ||
+        errorMsg.toLowerCase().includes('upgrade') ||
+        errorMsg.toLowerCase().includes('duplicate') ||
+        errorMsg.toLowerCase().includes('transaction') ||
+        errorMsg.toLowerCase().includes('refid')) {
+      setErrorType('card');
+      console.log('🔍 DEBUG - Set error type to: CARD - Going directly to card update modal');
+      // Skip the error modal and go directly to card update modal
+      setShowCardUpdateModal(true);
+    } else if (errorMsg.toLowerCase().includes('vault') || 
+               errorMsg.toLowerCase().includes('session')) {
+      setErrorType('payment');
+      setErrorMessage('Your payment session has expired.');
+      console.log('🔍 DEBUG - Set error type to: PAYMENT');
+      setShowErrorModal(true);
+    } else {
+      // Default to card error for better user experience
+      setErrorType('card');
+      console.log('🔍 DEBUG - Set error type to: CARD (default) - Going directly to card update modal');
+      // Skip the error modal and go directly to card update modal
+      setShowCardUpdateModal(true);
+    }
+  };
+
+  // Handle retry after error
+  const handleRetryPayment = () => {
+    setShowErrorModal(false);
+    if (retryProductCode) {
+      handleUpsellPurchase(retryProductCode, retryAmount, retryBottles);
+    }
+  };
+
+  // Card update states
+  const [cardUpdateLoading, setCardUpdateLoading] = useState(false);
+  const [collectJSLoaded, setCollectJSLoaded] = useState(false);
+  const [cardUpdateFormData, setCardUpdateFormData] = useState({
+    nameOnCard: ''
+  });
+
+  // Handle card update request
+  const handleUpdateCard = () => {
+    setShowErrorModal(false);
+    setShowCardUpdateModal(true);
+  };
+
+  // Handle successful card update
+  const handleCardUpdateSuccess = () => {
+    console.log('✅ Card update successful! Preparing to retry upsell...');
+    console.log('🔄 Retry details:', {
+      productCode: retryProductCode,
+      amount: retryAmount,
+      bottles: retryBottles,
+      sessionId: sessionId
+    });
+    
+    setShowCardUpdateModal(false);
+    
+    // Retry the original upsell purchase with a small delay to ensure new vault info is ready
+    if (retryProductCode) {
+      console.log('⏳ Waiting 1 second before retry to ensure vault update is propagated...');
+      setTimeout(() => {
+        console.log('🚀 Now retrying upsell purchase with updated payment method');
+        handleUpsellPurchase(retryProductCode, retryAmount, retryBottles);
+      }, 1000);
+    } else {
+      console.warn('⚠️ No retry product code available - cannot retry purchase');
+    }
+  };
+
+  // Handle card update error
+  const handleCardUpdateError = (message: string) => {
+    console.error('❌ Card update failed:', message);
+    // Keep the modal open and show the error
+  };
+
+  // Handle new checkout (go back to main checkout)
+  const handleNewCheckout = () => {
+    router.push('/checkout');
+  };
+
   // Handle upsell purchase
   const handleUpsellPurchase = async (productCode: string, amount: number, bottles: number) => {
     if (!sessionId) {
@@ -100,12 +212,16 @@ export default function Upsell1() {
         router.push(`/upsell/2?session=${sessionId}&upsell1=${result.transactionId}`);
       } else {
         console.error('Upsell failed:', result.error);
-        // Could show an error message here
-        alert('There was an error processing your upgrade. Please try again.');
+        handleUpsellError(result, productCode, amount, bottles);
       }
     } catch (error) {
       console.error('Upsell error:', error);
-      alert('Network error. Please try again.');
+      setErrorType('network');
+      setErrorMessage('We encountered a network issue while processing your upgrade.');
+      setRetryProductCode(productCode);
+      setRetryAmount(amount);
+      setRetryBottles(bottles);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -1021,6 +1137,166 @@ export default function Upsell1() {
           </div>
         </div>
       )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="exit-pop" style={{ zIndex: 10000 }}>
+          {console.log('🔍 DEBUG - Rendering error modal with errorType:', errorType)}
+          <div id="loadModal-error" style={{ maxWidth: '500px', margin: '0 auto', backgroundColor: 'white', borderRadius: '12px', padding: '30px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+            {/* Header with error icon */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ width: '60px', height: '60px', backgroundColor: '#fee2e2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px' }}>
+                <svg style={{ width: '30px', height: '30px', color: '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '10px' }}>
+                {errorType === 'card' ? 'Payment Method Issue' : 
+                 errorType === 'payment' ? 'Session Expired' : 
+                 errorType === 'network' ? 'Connection Issue' : 
+                 'Processing Error'}
+              </h3>
+              <p style={{ fontSize: '16px', color: '#6b7280', lineHeight: '1.5' }}>
+                {errorMessage}
+              </p>
+            </div>
+
+            {/* Error-specific content */}
+            <div style={{ marginBottom: '25px' }}>
+              {errorType === 'card' && (
+                <div style={{ backgroundColor: '#fef3f2', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
+                  <p style={{ fontSize: '14px', color: '#991b1b', fontWeight: '500', marginBottom: '10px' }}>
+                    Possible reasons:
+                  </p>
+                  <ul style={{ fontSize: '14px', color: '#991b1b', paddingLeft: '20px', margin: 0 }}>
+                    <li>Card was declined by your bank</li>
+                    <li>Insufficient funds available</li>
+                    <li>Card has expired or been deactivated</li>
+                    <li>Security hold placed by card issuer</li>
+                  </ul>
+                </div>
+              )}
+
+              {errorType === 'payment' && (
+                <div style={{ backgroundColor: '#fef3f2', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
+                  <p style={{ fontSize: '14px', color: '#991b1b' }}>
+                    Your secure payment session has expired for security reasons. You'll need to start a new checkout process.
+                  </p>
+                </div>
+              )}
+
+              {errorType === 'network' && (
+                <div style={{ backgroundColor: '#fef3f2', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
+                  <p style={{ fontSize: '14px', color: '#991b1b' }}>
+                    Please check your internet connection and try again. If the problem persists, the issue may be on our end.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons - Combined for all error types */}
+            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+              {/* Primary action - Update Payment Method for card errors, Try Again for others */}
+              <button
+                onClick={errorType === 'card' ? handleUpdateCard : handleRetryPayment}
+                style={{
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '12px 20px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#2563eb'}
+              >
+                {errorType === 'card' ? 'Update Payment Method' : 'Try Again'}
+              </button>
+              
+              {/* Secondary action - Try Again for card errors, or alternative actions */}
+              {errorType === 'card' && (
+                <button
+                  onClick={handleRetryPayment}
+                  style={{
+                    backgroundColor: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '12px 20px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Try Again with Same Card
+                </button>
+              )}
+              
+              {errorType === 'payment' && (
+                <button
+                  onClick={handleNewCheckout}
+                  style={{
+                    backgroundColor: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '12px 20px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Start New Checkout
+                </button>
+              )}
+
+              {/* Continue Shopping option for all error types */}
+              <button
+                onClick={() => setShowErrorModal(false)}
+                style={{
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  padding: '12px 20px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Continue Shopping
+              </button>
+            </div>
+
+            {/* Support section */}
+            <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#eff6ff', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                <svg style={{ width: '16px', height: '16px', color: '#2563eb' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af' }}>Need Help?</span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#1e40af', margin: 0 }}>
+                Contact our support team at <strong>support@fitspresso.com</strong><br />
+                or call <strong>1-800-XXX-XXXX</strong> for immediate assistance
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Card Update Modal */}
+      <CardUpdateModal
+        isOpen={showCardUpdateModal}
+        onClose={() => setShowCardUpdateModal(false)}
+        sessionId={sessionId}
+        onSuccess={handleCardUpdateSuccess}
+        onError={handleCardUpdateError}
+        errorMessage={originalErrorMessage}
+      />
     </>
   );
 }

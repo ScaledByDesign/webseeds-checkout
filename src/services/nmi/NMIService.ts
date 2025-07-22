@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { capturePaymentError } from '@/lib/sentry';
+import { capturePaymentError } from '@/src/lib/sentry';
 import {
   PaymentParams,
   PaymentResult,

@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 interface TestCheckoutFormProps {
   order: any
   onPaymentSuccess: (result: any) => void
-  onPaymentError: (error: string) => void
+  onPaymentError: (error: string, validationErrors?: Record<string, string>) => void
   apiEndpoint?: string
 }
 
@@ -145,8 +145,56 @@ export function TestCheckoutForm({
     })
   }
 
+  // Client-side validation - use current form data ref for most up-to-date values
+  const validateForm = (): Record<string, string> | null => {
+    const errors: Record<string, string> = {}
+    const currentData = formDataRef.current
+    
+    // Check required fields
+    if (!currentData.firstName?.trim()) {
+      errors.firstName = 'First name is required'
+    }
+    if (!currentData.lastName?.trim()) {
+      errors.lastName = 'Last name is required'
+    }
+    if (!currentData.email?.trim()) {
+      errors.email = 'Email address is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentData.email)) {
+      errors.email = 'Please enter a valid email address'
+    }
+    if (!currentData.phone?.trim()) {
+      errors.phone = 'Phone number is required'
+    } else if (!/^\+?[\d\s\-\(\)]+$/.test(currentData.phone.replace(/\s/g, ''))) {
+      errors.phone = 'Please enter a valid phone number'
+    }
+    if (!currentData.billingAddress?.trim()) {
+      errors.billingAddress = 'Billing address is required'
+    }
+    if (!currentData.billingCity?.trim()) {
+      errors.billingCity = 'City is required'
+    }
+    if (!currentData.billingState?.trim()) {
+      errors.billingState = 'State is required'
+    }
+    if (!currentData.billingZipCode?.trim()) {
+      errors.billingZipCode = 'ZIP code is required'
+    } else if (!/^\d{5}(-\d{4})?$/.test(currentData.billingZipCode)) {
+      errors.billingZipCode = 'Please enter a valid ZIP code (e.g., 12345 or 12345-6789)'
+    }
+
+    return Object.keys(errors).length > 0 ? errors : null
+  }
+
   const handleFormSubmission = async (token: string) => {
     try {
+      // Run client-side validation first
+      const validationErrors = validateForm()
+      if (validationErrors) {
+        console.log('❌ Client-side validation failed:', validationErrors)
+        onPaymentError('Please fix the form errors below', validationErrors)
+        return
+      }
+      
       setLoading(true)
       
       // Use the ref to get the latest form data
@@ -228,11 +276,8 @@ export function TestCheckoutForm({
             console.log(`  - ${field}: ${error}`)
           })
           
-          // Show detailed error message
-          const errorList = Object.entries(result.errors)
-            .map(([field, error]) => `${field}: ${error}`)
-            .join('\n')
-          onPaymentError(`Validation errors:\n${errorList}`)
+          // Pass structured validation errors to parent
+          onPaymentError(result.message || 'Please fix the validation errors below', result.errors)
         } else {
           onPaymentError(result.message || result.error || 'Payment processing failed.')
         }
@@ -261,7 +306,20 @@ export function TestCheckoutForm({
     const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData])
     
     if (missingFields.length > 0) {
-      onPaymentError(`Please fill in all required fields: ${missingFields.join(', ')}`)
+      // Convert missing fields to validation errors format
+      const validationErrors: Record<string, string> = {}
+      missingFields.forEach(field => {
+        validationErrors[field] = `${field} is required`
+      })
+      onPaymentError('Please fill in all required fields', validationErrors)
+      return
+    }
+    
+    // Run comprehensive client-side validation
+    const validationErrors = validateForm()
+    if (validationErrors) {
+      console.log('❌ Client-side validation failed:', validationErrors)
+      onPaymentError('Please fix the form errors below', validationErrors)
       return
     }
     

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { NMIService } from '@/services/nmi/NMIService';
-import { capturePaymentError } from '@/lib/sentry';
+import { NMIService } from '@/src/services/nmi/NMIService';
+import { capturePaymentError } from '@/src/lib/sentry';
 
 // Schema for CollectJS token validation
 const tokenValidationSchema = z.object({

@@ -22,7 +22,6 @@
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "typescript": "^5.8.3",
     "web-vitals": "^5.0.3",
     "zod": "^3.22.4"
   },
@@ -40,6 +39,7 @@
     "postcss": "^8.5.3",
     "sharp": "^0.34.3",
     "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
     "webpack-bundle-analyzer": "^4.10.2"
   },
   "name": "webseed",
@@ -62,7 +62,9 @@
     "test:e2e:ui": "playwright test --ui",
     "browserstack:local": "browserstack-local --key $BROWSERSTACK_ACCESS_KEY",
     "report:show": "playwright show-report",
-    "tsc": "tsc",
+    "typecheck": "npm run build",
+    "tsc": "npm run typecheck",
+    "tsc:standalone": "tsc --noEmit --skipLibCheck",
     "test:checkout": "node test-checkout-flow.js",
     "test:checkout:playwright": "playwright test tests/checkout-transaction.spec.ts --headed",
     "test:upsell": "node test-checkout-upsell-flow.js"

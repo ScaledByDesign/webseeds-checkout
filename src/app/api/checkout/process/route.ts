@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { inngest } from '@/lib/inngest';
-import { funnelSessionManager } from '@/lib/funnel-session';
-import { captureCheckoutEvent } from '@/lib/sentry';
+import { inngest } from '@/src/lib/inngest';
+import { funnelSessionManager } from '@/src/lib/funnel-session';
+import { captureCheckoutEvent } from '@/src/lib/sentry';
 
 // Validation schemas
 const customerInfoSchema = z.object({

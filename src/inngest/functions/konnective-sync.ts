@@ -1,7 +1,7 @@
-import { inngest } from '@/lib/inngest';
-import { KonnectiveService } from '@/services/konnective/KonnectiveService';
-import { funnelSessionManager } from '@/lib/funnel-session';
-import { captureIntegrationError } from '@/lib/sentry';
+import { inngest } from '@/src/lib/inngest';
+import { KonnectiveService } from '@/src/services/konnective/KonnectiveService';
+import { funnelSessionManager } from '@/src/lib/funnel-session';
+import { captureIntegrationError } from '@/src/lib/sentry';
 import * as Sentry from '@sentry/nextjs';
 
 export const konnectiveSync = inngest.createFunction(

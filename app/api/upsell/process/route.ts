@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession, getSessionById } from '@/src/lib/cookie-session'
+import { funnelSessionManager } from '@/src/lib/funnel-session'
 
 // NMI API Configuration
 const NMI_API_URL = process.env.NMI_API_URL || 'https://secure.networkmerchants.com/api/transact.php'
@@ -130,10 +131,10 @@ export async function POST(request: NextRequest) {
       tax: tax.toFixed(2),
       shipping: shipping.toFixed(2),
       
-      // Order details
-      orderid: `UPSELL${body.step}-${Date.now()}`,
+      // Order details - add random component to prevent duplicates
+      orderid: `UPSELL${body.step}-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       order_description: `${body.productCode} - ${body.bottles} bottles`,
-      ponumber: `UPO-${Date.now()}`,
+      ponumber: `UPO-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       
       // Customer info (from session)
       first_name: session.firstName,
@@ -193,6 +194,17 @@ export async function POST(request: NextRequest) {
       
       // Store upsell details for thank you page
       try {
+        // Store in funnel session manager
+        funnelSessionManager.addUpsellDetails(session.id, {
+          step: body.step,
+          productCode: body.productCode,
+          amount: total,
+          bottles: body.bottles,
+          transactionId: responseData.transactionid
+        })
+        console.log('🎯 Upsell details stored in funnel session')
+        
+        // Also store in order details API for backward compatibility
         const baseUrl = new URL(request.url).origin
         const response = await fetch(`${baseUrl}/api/order/details`, {
           method: 'POST',
@@ -207,7 +219,7 @@ export async function POST(request: NextRequest) {
           })
         })
         const result = await response.json()
-        console.log('🎯 Upsell details stored:', result.success ? 'Success' : result.error)
+        console.log('🎯 Upsell details stored in order cache:', result.success ? 'Success' : result.error)
       } catch (error) {
         console.error('⚠️ Failed to store upsell details:', error)
         // Don't fail the whole transaction for this

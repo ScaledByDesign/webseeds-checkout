@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { captureIntegrationError } from '@/lib/sentry';
+import { captureIntegrationError } from '@/src/lib/sentry';
 import {
   KonnectiveConfig,
   KonnectiveCustomer,

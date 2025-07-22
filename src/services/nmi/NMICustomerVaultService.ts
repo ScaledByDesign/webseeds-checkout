@@ -1,7 +1,7 @@
 import { NMIService } from './NMIService';
 import { VaultParams, VaultResult } from './types';
-import { capturePaymentError } from '@/lib/sentry';
-import { inngest } from '@/lib/inngest';
+import { capturePaymentError } from '@/src/lib/sentry';
+import { inngest } from '@/src/lib/inngest';
 
 interface VaultCustomer {
   vaultId: string;

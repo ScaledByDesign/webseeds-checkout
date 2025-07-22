@@ -21,11 +21,20 @@ const order = {
   ]
 }
 
+interface ValidationError {
+  field: string
+  message: string
+  userFriendlyMessage: string
+  suggestions: string[]
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isExpired, setIsExpired] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
+  const [showValidationModal, setShowValidationModal] = useState(false)
   
   // Payment processing states
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle')
@@ -83,9 +92,123 @@ export default function CheckoutPage() {
     }
   }
 
-  const handlePaymentError = (errorMessage: string) => {
+  const createUserFriendlyValidationErrors = (errors: Record<string, string> | string): ValidationError[] => {
+    if (typeof errors === 'string') {
+      // Handle generic error messages
+      if (errors.toLowerCase().includes('card number')) {
+        return [{
+          field: 'card',
+          message: errors,
+          userFriendlyMessage: 'There\'s an issue with your card number',
+          suggestions: ['Please check that your card number is entered correctly', 'Make sure you\'ve entered all 16 digits', 'Try using a different card if the problem persists']
+        }]
+      } else if (errors.toLowerCase().includes('expir')) {
+        return [{
+          field: 'expiry',
+          message: errors,
+          userFriendlyMessage: 'Your card expiration date has an issue',
+          suggestions: ['Please check the expiration date on your card', 'Make sure to enter it in MM/YY format', 'Ensure your card hasn\'t expired']
+        }]
+      } else if (errors.toLowerCase().includes('cvv') || errors.toLowerCase().includes('security')) {
+        return [{
+          field: 'cvv',
+          message: errors,
+          userFriendlyMessage: 'There\'s an issue with your security code',
+          suggestions: ['Please check the 3-digit CVV code on the back of your card', 'For American Express, use the 4-digit code on the front']
+        }]
+      } else {
+        return [{
+          field: 'general',
+          message: errors,
+          userFriendlyMessage: 'We encountered an issue processing your payment',
+          suggestions: ['Please check all your information and try again', 'Make sure your card has sufficient funds', 'Contact your bank if the issue persists']
+        }]
+      }
+    }
+
+    // Handle structured validation errors
+    const validationErrors: ValidationError[] = []
+    Object.entries(errors).forEach(([field, message]) => {
+      let userFriendlyMessage = ''
+      let suggestions: string[] = []
+
+      switch (field.toLowerCase()) {
+        case 'firstname':
+        case 'first_name':
+          userFriendlyMessage = 'Please enter your first name'
+          suggestions = ['First name is required for shipping and billing']
+          break
+        case 'lastname':
+        case 'last_name':
+          userFriendlyMessage = 'Please enter your last name'
+          suggestions = ['Last name is required for shipping and billing']
+          break
+        case 'email':
+          userFriendlyMessage = 'Please enter a valid email address'
+          suggestions = ['We need your email to send order confirmations', 'Make sure to include @ and a valid domain (e.g., example.com)']
+          break
+        case 'phone':
+          userFriendlyMessage = 'Please enter a valid phone number'
+          suggestions = ['Phone number is required for delivery updates', 'Include area code (e.g., 555-123-4567)']
+          break
+        case 'billingaddress':
+        case 'address':
+          userFriendlyMessage = 'Please enter your billing address'
+          suggestions = ['We need your billing address for payment verification', 'Enter your complete street address including apartment/suite numbers']
+          break
+        case 'billingcity':
+        case 'city':
+          userFriendlyMessage = 'Please enter your city'
+          suggestions = ['City is required for billing and shipping']
+          break
+        case 'billingstate':
+        case 'state':
+          userFriendlyMessage = 'Please select your state'
+          suggestions = ['State is required for tax calculation and shipping']
+          break
+        case 'billingzipcode':
+        case 'zipcode':
+        case 'zip':
+          userFriendlyMessage = 'Please enter a valid ZIP code'
+          suggestions = ['ZIP code is required for billing verification', 'Use 5-digit format (e.g., 90210) or ZIP+4 (e.g., 90210-1234)']
+          break
+        case 'payment_token':
+          userFriendlyMessage = 'Payment information is incomplete'
+          suggestions = ['Please fill in all credit card fields', 'Make sure card number, expiration, and CVV are entered', 'Try refreshing the page if card fields aren\'t working']
+          break
+        case 'card':
+        case 'ccnumber':
+          userFriendlyMessage = 'There\'s an issue with your card number'
+          suggestions = ['Please check that your card number is entered correctly', 'Make sure you\'ve entered all 16 digits', 'Remove any spaces or dashes']
+          break
+        default:
+          userFriendlyMessage = `Please check your ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`
+          suggestions = ['Please verify this information and try again']
+      }
+
+      validationErrors.push({
+        field,
+        message,
+        userFriendlyMessage,
+        suggestions
+      })
+    })
+
+    return validationErrors
+  }
+
+  const handlePaymentError = (errorMessage: string, errors?: Record<string, string>) => {
     console.error('Payment failed:', errorMessage)
-    setError(errorMessage)
+    
+    if (errors) {
+      const validationErrors = createUserFriendlyValidationErrors(errors)
+      setValidationErrors(validationErrors)
+      setShowValidationModal(true)
+    } else {
+      const validationErrors = createUserFriendlyValidationErrors(errorMessage)
+      setValidationErrors(validationErrors)
+      setShowValidationModal(true)
+    }
   }
 
   const startPaymentStatusPolling = (sessionId: string) => {
@@ -182,8 +305,88 @@ export default function CheckoutPage() {
     alert('Special price has expired! The regular price will now apply.')
   }
 
+  // Validation Modal Component
+  const ValidationModal = () => {
+    if (!showValidationModal || validationErrors.length === 0) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+          <div className="p-6">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  We need to fix a few things
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Errors List */}
+            <div className="space-y-4">
+              {validationErrors.map((error, index) => (
+                <div key={index} className="border border-red-200 rounded-lg p-4 bg-red-50">
+                  <h4 className="font-medium text-red-800 mb-2">
+                    {error.userFriendlyMessage}
+                  </h4>
+                  <ul className="space-y-1">
+                    {error.suggestions.map((suggestion, suggestionIndex) => (
+                      <li key={suggestionIndex} className="text-sm text-red-700 flex items-start gap-2">
+                        <span className="w-1 h-1 bg-red-500 rounded-full mt-2 flex-shrink-0"></span>
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              >
+                Got it, let me fix this
+              </button>
+            </div>
+
+            {/* Help Section */}
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Need help?</p>
+                  <p>If you continue having issues, please contact our support team at support@fitspresso.com</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
+      {/* Validation Modal */}
+      <ValidationModal />
+      
       <header className="py-6 md:py-8 border-b border-gray-cd">
         <div className="container !px-0 !md:px-10">
           <div className="flex flex-col-reverse md:flex-row justify-between items-center">

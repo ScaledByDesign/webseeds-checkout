@@ -1,3 +1,4 @@
+// @sentry/no-wrap
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
     const authCode = response.authcode;
     const avsResponse = response.avsresponse;
     const cvvResponse = response.cvvresponse;
-    const orderId = response.orderid;
+    const responseOrderId = response.orderid;
     
     console.log('📊 Parsed Response:', {
       responseCode,
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
         authCode,
         avsResponse,
         cvvResponse,
-        orderId,
+        orderId: responseOrderId,
         amount: totalAmount.toFixed(2),
         breakdown: {
           subtotal: subtotal.toFixed(2),
@@ -235,7 +236,7 @@ export async function POST(request: NextRequest) {
           raw: responseText,
           parsed: response,
           amount: totalAmount.toFixed(2),
-          orderId: orderId,
+          orderId: responseOrderId,
         }
       }, { status: 400 });
     }

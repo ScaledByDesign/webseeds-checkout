@@ -29,6 +29,7 @@ export interface SessionData {
   state?: string
   createdAt: number
   expiresAt: number
+  lastVaultUpdate?: number
 }
 
 export async function createSession(data: Omit<SessionData, 'createdAt' | 'expiresAt'>): Promise<string> {
@@ -135,6 +136,31 @@ export function getSessionById(sessionId: string): SessionData | null {
   }
   
   return null
+}
+
+export async function updateSession(updatedData: SessionData): Promise<void> {
+  // Create new JWT token with updated data
+  const token = await new SignJWT({ ...updatedData })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30m')
+    .sign(key)
+
+  // Update cookie
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 30 * 60, // 30 minutes
+    path: '/'
+  }
+
+  cookies().set('upsell_session', token, cookieOptions)
+
+  // Also update cache
+  sessionCache.set(updatedData.id, updatedData)
+
+  console.log('🔄 Session updated:', updatedData.id)
 }
 
 export function deleteSession(): void {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { inngest } from '@/lib/inngest';
-import { captureIntegrationError } from '@/lib/sentry';
+import { inngest } from '@/src/lib/inngest';
+import { captureIntegrationError } from '@/src/lib/sentry';
 import crypto from 'crypto';
 
 interface WebhookParams {

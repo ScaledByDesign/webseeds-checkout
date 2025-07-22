@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { funnelSessionManager } from '@/lib/funnel-session';
-import { captureCheckoutEvent } from '@/lib/sentry';
+import { funnelSessionManager } from '@/src/lib/funnel-session';
+import { captureCheckoutEvent } from '@/src/lib/sentry';
 
 interface StatusResponse {
   success: boolean;

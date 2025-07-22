@@ -64,7 +64,7 @@ export default function ThankYouPage() {
 
       try {
         console.log('📋 Fetching order details for session:', sessionId)
-        const response = await fetch(`/api/order/details?session=${sessionId}`)
+        const response = await fetch(`/api/session/order-summary?session=${sessionId}`)
         const data = await response.json()
 
         if (data.success) {

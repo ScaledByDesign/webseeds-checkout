@@ -256,6 +256,31 @@ export class FunnelSessionManager {
   }
 
   /**
+   * Add upsell details to session
+   */
+  addUpsellDetails(sessionId: string, upsellDetails: {
+    step: number;
+    productCode: string;
+    amount: number;
+    bottles: number;
+    transactionId: string;
+  }): FunnelSessionData | null {
+    const session = this.getSession(sessionId);
+    
+    if (!session) {
+      return null;
+    }
+
+    const upsells = session.upsells || [];
+    upsells.push({
+      ...upsellDetails,
+      timestamp: new Date().toISOString()
+    });
+
+    return this.updateSession(sessionId, { upsells });
+  }
+
+  /**
    * Get all sessions for a specific email
    */
   getSessionsByEmail(email: string): FunnelSessionData[] {
