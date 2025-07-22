@@ -252,9 +252,9 @@ export default function TestCheckoutPage() {
       addLog(`❌ Error configuring CollectJS: ${error}`)
       setCollectJSStatus('error')
     }
-  }, [addLog])
+  }, [addLog, checkIframes, processPayment])
 
-  const checkIframes = () => {
+  const checkIframes = useCallback(() => {
     addLog('🔍 Checking for iframes...')
     
     const cardIframe = document.querySelector('#card-number iframe')
@@ -275,9 +275,9 @@ export default function TestCheckoutPage() {
         addLog(`📌 Available CollectJS functions: ${functions.join(', ')}`)
       }
     }
-  }
+  }, [addLog])
 
-  const processPayment = async (token: string) => {
+  const processPayment = useCallback(async (token: string) => {
     addLog(`🚀 Processing payment with token: ${token}`)
     
     try {
@@ -362,7 +362,7 @@ export default function TestCheckoutPage() {
     } catch (error) {
       addLog(`❌ API Error: ${error}`)
     }
-  }
+  }, [addLog, formData])
 
   // CollectJS will handle form submission via paymentSelector
   const handleFormValidation = () => {
