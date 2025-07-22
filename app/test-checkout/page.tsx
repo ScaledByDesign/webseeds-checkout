@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 export default function TestCheckoutPage() {
   const [loading, setLoading] = useState(false)
@@ -12,11 +12,11 @@ export default function TestCheckoutPage() {
     cvv: 'empty'
   })
   
-  const addLog = (message: string) => {
+  const addLog = useCallback((message: string) => {
     const timestamp = new Date().toLocaleTimeString()
     console.log(`[${timestamp}] ${message}`)
     setDebugLogs(prev => [...prev, `[${timestamp}] ${message}`])
-  }
+  }, [])
 
   // Complete form data with all fields
   const [formData, setFormData] = useState({
@@ -33,12 +33,7 @@ export default function TestCheckoutPage() {
     useSameAddress: true
   })
 
-  useEffect(() => {
-    addLog('🚀 Page loaded, starting CollectJS initialization')
-    loadCollectJS()
-  }, [])
-
-  const loadCollectJS = async () => {
+  const loadCollectJS = useCallback(async () => {
     try {
       addLog('📦 Checking for existing CollectJS script...')
       
@@ -78,9 +73,9 @@ export default function TestCheckoutPage() {
       addLog(`❌ Error in loadCollectJS: ${error}`)
       setCollectJSStatus('error')
     }
-  }
+  }, [addLog, initializeCollectJS])
 
-  const initializeCollectJS = () => {
+  const initializeCollectJS = useCallback(() => {
     addLog('🔧 Starting CollectJS configuration...')
     
     if (!window.CollectJS) {
@@ -255,7 +250,7 @@ export default function TestCheckoutPage() {
       addLog(`❌ Error configuring CollectJS: ${error}`)
       setCollectJSStatus('error')
     }
-  }
+  }, [addLog])
 
   const checkIframes = () => {
     addLog('🔍 Checking for iframes...')
@@ -424,6 +419,11 @@ export default function TestCheckoutPage() {
       addLog(`❌ Manual tokenization error: ${error}`)
     }
   }
+
+  useEffect(() => {
+    addLog('🚀 Page loaded, starting CollectJS initialization')
+    loadCollectJS()
+  }, [addLog, loadCollectJS])
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">

@@ -253,7 +253,7 @@ export function ModernCheckoutForm({
   // Check form validity whenever payment field status or CollectJS status changes
   useEffect(() => {
     checkAllFieldsValid()
-  }, [fieldStatus, collectJSStatus])
+  }, [fieldStatus, collectJSStatus, checkAllFieldsValid])
 
   // Load CollectJS - TEMPORARILY DISABLED FOR DEBUGGING
   useEffect(() => {
@@ -441,7 +441,7 @@ export function ModernCheckoutForm({
     }
 
     loadCollectJS()
-  }, [])
+  }, [checkAllFieldsValid, handleFormSubmission, onPaymentError])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -456,7 +456,7 @@ export function ModernCheckoutForm({
     }))
   }
 
-  const validateFormFields = (): FormErrors => {
+  const validateFormFields = useCallback((): FormErrors => {
     const errors: FormErrors = {}
     
     // Required field validation
@@ -482,7 +482,7 @@ export function ModernCheckoutForm({
     }
 
     return errors
-  }
+  }, [formData])
 
   const validateForm = (): boolean => {
     const errors = validateFormFields()
@@ -514,7 +514,7 @@ export function ModernCheckoutForm({
       console.error('Error in checkAllFieldsValid:', error)
       return false
     }
-  }, [fieldStatus.card, fieldStatus.expiry, fieldStatus.cvv, collectJSStatus])
+  }, [fieldStatus.card, fieldStatus.expiry, fieldStatus.cvv, collectJSStatus, validateFormFields])
 
   // Modern Input Component - simplified without real-time validation
   const ModernInput = ({ 
@@ -662,7 +662,7 @@ export function ModernCheckoutForm({
     )
   }
 
-  const handleFormSubmission = async (token: string, submissionData?: FormData) => {
+  const handleFormSubmission = useCallback(async (token: string, submissionData?: FormData) => {
     try {
       // Use passed data if available, otherwise fall back to current formData
       const dataToSubmit = submissionData || formData
@@ -739,7 +739,7 @@ export function ModernCheckoutForm({
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiEndpoint, formData, onPaymentError, onPaymentSuccess, order.items])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

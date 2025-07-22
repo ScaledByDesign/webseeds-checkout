@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 
 interface FormData {
@@ -204,7 +204,7 @@ export function CollectJSCheckoutForm({
         document.body.removeChild(scriptElement)
       }
     }
-  }, [])
+  }, [handleTokenReceived, onPaymentError])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -242,7 +242,7 @@ export function CollectJSCheckoutForm({
     return Object.keys(errors).length === 0
   }
 
-  const handleTokenReceived = async (token: string) => {
+  const handleTokenReceived = useCallback(async (token: string) => {
     try {
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -294,7 +294,7 @@ export function CollectJSCheckoutForm({
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiEndpoint, formData, onPaymentError, onPaymentSuccess])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 
 interface FormData {
@@ -201,7 +201,7 @@ export function CollectJSModernForm({
     }
 
     loadCollectJS()
-  }, [])
+  }, [formData, handleFormSubmission, onPaymentError])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -240,7 +240,7 @@ export function CollectJSModernForm({
     return Object.keys(errors).length === 0
   }
 
-  const handleFormSubmission = async (token: string, submissionData?: FormData) => {
+  const handleFormSubmission = useCallback(async (token: string, submissionData?: FormData) => {
     try {
       // Use passed data if available, otherwise fall back to current formData
       const dataToSubmit = submissionData || formData
@@ -297,7 +297,7 @@ export function CollectJSModernForm({
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiEndpoint, formData, onPaymentError, onPaymentSuccess])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

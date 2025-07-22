@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface TestCheckoutFormProps {
   order: any
@@ -127,7 +127,7 @@ export function TestCheckoutForm({
     }
 
     loadCollectJS()
-  }, [])
+  }, [handleFormSubmission, onPaymentError])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -185,7 +185,7 @@ export function TestCheckoutForm({
     return Object.keys(errors).length > 0 ? errors : null
   }
 
-  const handleFormSubmission = async (token: string) => {
+  const handleFormSubmission = useCallback(async (token: string) => {
     try {
       // Run client-side validation first
       const validationErrors = validateForm()
@@ -289,7 +289,7 @@ export function TestCheckoutForm({
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiEndpoint, formData, onPaymentError, onPaymentSuccess, order])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

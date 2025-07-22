@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 declare global {
   interface Window {
@@ -103,7 +103,7 @@ export default function CardUpdateModal({
         cleanup();
       }
     };
-  }, [isOpen]);
+  }, [isOpen, loadCollectJS, cleanup]);
 
   // Sync fallback form data with CollectJS when available
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function CardUpdateModal({
     }
   }, [fallbackCardData, collectJSReady]);
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     try {
       // Reset CollectJS if it exists
       if (typeof window !== 'undefined' && window.CollectJS) {
@@ -167,9 +167,9 @@ export default function CardUpdateModal({
     setCollectJSReady(false);
     setUpdateLoading(false);
     setUpdateError('');
-  };
+  }, []);
 
-  const configureCollectJS = () => {
+  const configureCollectJS = useCallback(() => {
     console.log('🔄 Configuring CollectJS for card update...');
     
     try {
@@ -222,9 +222,9 @@ export default function CardUpdateModal({
       console.error('❌ Error configuring CollectJS:', error);
       setUpdateError('Failed to initialize payment system');
     }
-  };
+  }, [onUpdate]);
 
-  const loadCollectJS = () => {
+  const loadCollectJS = useCallback(() => {
     if (typeof window === 'undefined') return;
     
     // Check if CollectJS is already loaded globally
@@ -254,7 +254,7 @@ export default function CardUpdateModal({
     };
     
     document.head.appendChild(script);
-  };
+  }, [cleanup, configureCollectJS]);
 
   const handleVaultUpdate = async (paymentToken: string) => {
     if (!sessionId) {
