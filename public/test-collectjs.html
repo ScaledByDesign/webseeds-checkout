@@ -1,0 +1,138 @@
+<html>
+  <head>
+    <title>CollectJS Test - NMI Direct</title>
+    <!-- Load CollectJS with the tokenization key -->
+    <script
+      src="https://secure.nmi.com/token/Collect.js"
+      data-tokenization-key="vZ668s-j859wu-6THDmy-kA46Hh"
+    ></script>
+  </head>
+  <body>
+    <h1>CollectJS Test - Direct Implementation</h1>
+    <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
+      
+      <form id="payment-form">
+        <!-- Customer Info -->
+        <div style="margin-bottom: 15px;">
+          <label>First Name</label><br>
+          <input type="text" name="firstname" value="Test" style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label>Last Name</label><br>
+          <input type="text" name="lastname" value="User" style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label>Email</label><br>
+          <input type="text" name="email" value="test@example.com" style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label>ZIP Code</label><br>
+          <input type="text" name="zip" value="12345" style="width: 100%; padding: 8px; margin-top: 5px;">
+        </div>
+        
+        <!-- Payment Fields -->
+        <div style="margin-bottom: 15px;">
+          <label>Card Number</label><br>
+          <div id="ccnumber" style="border: 1px solid #ccc; padding: 8px; margin-top: 5px; min-height: 40px;"></div>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label>Expiration</label><br>
+          <div id="ccexp" style="border: 1px solid #ccc; padding: 8px; margin-top: 5px; min-height: 40px;"></div>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label>CVV</label><br>
+          <div id="cvv" style="border: 1px solid #ccc; padding: 8px; margin-top: 5px; min-height: 40px;"></div>
+        </div>
+        
+        <button id="payButton" type="button" style="width: 100%; padding: 12px; background: #4681f4; color: white; border: none; cursor: pointer; font-size: 16px;">
+          Process Payment
+        </button>
+      </form>
+      
+      <div id="debug" style="margin-top: 20px; padding: 10px; background: #f5f5f5; font-family: monospace; font-size: 12px;">
+        <strong>Debug Log:</strong><br>
+      </div>
+    </div>
+    
+    <script>
+      const debug = document.getElementById('debug');
+      
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        debug.innerHTML += `[${time}] ${message}<br>`;
+        console.log(`[${time}] ${message}`);
+      }
+      
+      document.addEventListener('DOMContentLoaded', function() {
+        log('Page loaded, configuring CollectJS...');
+        
+        try {
+          CollectJS.configure({
+            paymentSelector: '#payButton',
+            variant: 'inline',
+            invalidCss: {
+              color: '#C8102E'
+            },
+            validCss: {
+              color: '#007C59'  
+            },
+            placeholderCss: {
+              color: '#757575'
+            },
+            focusCss: {
+              color: '#000000'
+            },
+            fields: {
+              ccnumber: {
+                selector: '#ccnumber',
+                title: 'Card Number',
+                placeholder: '0000 0000 0000 0000'
+              },
+              ccexp: {
+                selector: '#ccexp',
+                title: 'Expiration',
+                placeholder: '00 / 00'
+              },
+              cvv: {
+                display: 'show',
+                selector: '#cvv',
+                title: 'CVV',
+                placeholder: '123'
+              }
+            },
+            validationCallback: function(field, status, message) {
+              log(`Validation: ${field} = ${status ? 'valid' : 'invalid'} (${message})`);
+            },
+            timeoutDuration: 10000,
+            timeoutCallback: function() {
+              log('ERROR: Tokenization timeout');
+            },
+            fieldsAvailableCallback: function() {
+              log('SUCCESS: CollectJS fields loaded and ready!');
+            },
+            callback: function(response) {
+              log('TOKEN CALLBACK TRIGGERED!');
+              if (response.token) {
+                log(`SUCCESS: Token received = ${response.token}`);
+                alert('Token received: ' + response.token);
+              } else {
+                log(`ERROR: ${response.message || 'Unknown error'}`);
+                alert('Error: ' + (response.message || 'Unknown error'));
+              }
+            }
+          });
+          
+          log('CollectJS.configure() completed');
+          
+        } catch (error) {
+          log('ERROR: ' + error.message);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+export { GET, POST, PUT } from '../../../src/app/api/inngest/route';

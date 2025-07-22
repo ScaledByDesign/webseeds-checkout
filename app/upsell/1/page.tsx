@@ -3,15 +3,21 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Script from 'next/script';
+import { useRouter, useSearchParams } from 'next/navigation';
 import './upsell.css';
 
 export default function Upsell1() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionId = searchParams?.get('session');
+  
   const [showDownsell, setShowDownsell] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [showLastChanceModal, setShowLastChanceModal] = useState(false);
   const [showLastChance2Modal, setShowLastChance2Modal] = useState(false);
   const [countdown, setCountdown] = useState(900); // 15:00 in seconds
   const [faqOpenStates, setFaqOpenStates] = useState<{ [key: number]: boolean }>({});
+  const [loading, setLoading] = useState(false);
 
   // Countdown timer
   useEffect(() => {
@@ -55,6 +61,66 @@ export default function Upsell1() {
     document.addEventListener('mouseleave', handleMouseLeave);
     return () => document.removeEventListener('mouseleave', handleMouseLeave);
   }, []);
+
+  // Check if session is valid
+  useEffect(() => {
+    if (!sessionId) {
+      router.push('/checkout');
+    }
+  }, [sessionId, router]);
+
+  // Handle upsell purchase
+  const handleUpsellPurchase = async (productCode: string, amount: number, bottles: number) => {
+    if (!sessionId) {
+      router.push('/checkout');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/upsell/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          productCode,
+          amount,
+          bottles,
+          step: 1,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Redirect to thank you page with upsell confirmation
+        router.push(`/thankyou?session=${sessionId}&upsell=true&transaction=${result.transactionId}`);
+      } else {
+        console.error('Upsell failed:', result.error);
+        // Could show an error message here
+        alert('There was an error processing your upgrade. Please try again.');
+      }
+    } catch (error) {
+      console.error('Upsell error:', error);
+      alert('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle decline upsell
+  const handleDeclineUpsell = () => {
+    if (!sessionId) {
+      router.push('/checkout');
+      return;
+    }
+
+    // Redirect to second upsell page
+    router.push(`/upsell/2?session=${sessionId}`);
+  };
 
   return (
     <>
@@ -169,12 +235,13 @@ export default function Upsell1() {
                         <strong>Today's Price: $297</strong>
                       </p>
                       <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
-                        <a 
-                          href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC12_297" 
+                        <button 
+                          onClick={() => handleUpsellPurchase('RC12_297', 297, 12)}
+                          disabled={loading}
                           className="lh1 yellow-button limit-button w100 accept-link"
                         >
-                          Yes! Upgrade My Order!
-                        </a>
+                          {loading ? 'Processing...' : 'Yes! Upgrade My Order!'}
+                        </button>
                       </p>
                       <div className="has-text-centered">
                         <picture>
@@ -188,13 +255,13 @@ export default function Upsell1() {
                         <strong>✔ Free Shipping Included</strong>
                       </p>
                       <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
-                        <a 
-                          href="https://getretinaclear.com/options-bg/2/2/" 
+                        <button 
+                          onClick={handleDeclineUpsell}
                           className="lh1 limit-button flightPop accept-link-downsell" 
-                          style={{ color: '#c71585' }}
+                          style={{ color: '#c71585', background: 'none', border: 'none' }}
                         >
                           <u>No thanks, continue to order confirmation. I understand I'll never see this again.</u>
-                        </a>
+                        </button>
                       </p>
                     </div>
                   </div>
@@ -390,12 +457,13 @@ export default function Upsell1() {
                         <strong>Today's Price: $297</strong>
                       </p>
                       <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
-                        <a 
-                          href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC12_297" 
+                        <button 
+                          onClick={() => handleUpsellPurchase('RC12_297', 297, 12)}
+                          disabled={loading}
                           className="lh1 yellow-button limit-button w100 accept-link"
                         >
-                          Yes! Upgrade My Order!
-                        </a>
+                          {loading ? 'Processing...' : 'Yes! Upgrade My Order!'}
+                        </button>
                       </p>
                       <div className="has-text-centered">
                         <picture>
@@ -409,13 +477,13 @@ export default function Upsell1() {
                         <strong>✔ Free Shipping Included</strong>
                       </p>
                       <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
-                        <a 
-                          href="https://getretinaclear.com/options-bg/2/2/" 
+                        <button 
+                          onClick={handleDeclineUpsell}
                           className="lh1 limit-button flightPop accept-link-downsell" 
-                          style={{ color: '#c71585' }}
+                          style={{ color: '#c71585', background: 'none', border: 'none' }}
                         >
                           <u>No thanks, continue to order confirmation. I understand I'll never see this again.</u>
-                        </a>
+                        </button>
                       </p>
                     </div>
                   </div>
@@ -618,12 +686,13 @@ export default function Upsell1() {
                         <strong>Today's Price: $297</strong>
                       </p>
                       <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
-                        <a 
-                          href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC12_297" 
+                        <button 
+                          onClick={() => handleUpsellPurchase('RC12_297', 297, 12)}
+                          disabled={loading}
                           className="lh1 yellow-button limit-button w100 accept-link"
                         >
-                          Yes! Upgrade My Order!
-                        </a>
+                          {loading ? 'Processing...' : 'Yes! Upgrade My Order!'}
+                        </button>
                       </p>
                       <div className="has-text-centered">
                         <picture>
@@ -637,13 +706,13 @@ export default function Upsell1() {
                         <strong>✔ Free Shipping Included</strong>
                       </p>
                       <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
-                        <a 
-                          href="https://getretinaclear.com/options-bg/2/2/" 
+                        <button 
+                          onClick={handleDeclineUpsell}
                           className="lh1 limit-button flightPop accept-link-downsell" 
-                          style={{ color: '#c71585' }}
+                          style={{ color: '#c71585', background: 'none', border: 'none' }}
                         >
                           <u>No thanks, continue to order confirmation. I understand I'll never see this again.</u>
-                        </a>
+                        </button>
                       </p>
                     </div>
                   </div>
@@ -711,12 +780,13 @@ export default function Upsell1() {
                     <strong>Today's Price: $144</strong>
                   </p>
                   <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
-                    <a 
-                      href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC6_144" 
+                    <button 
+                      onClick={() => handleUpsellPurchase('RC6_144', 144, 6)}
+                      disabled={loading}
                       className="lh1 yellow-button limit-button w100 accept-link-downsell"
                     >
-                      Yes! Upgrade My Order!
-                    </a>
+                      {loading ? 'Processing...' : 'Yes! Upgrade My Order!'}
+                    </button>
                   </p>
                   <div className="has-text-centered">
                     <Image src="/assets/upsells/1/cards.png" width={220} height={70} style={{ width: 'auto', height: 'auto' }} alt="" />
@@ -728,13 +798,13 @@ export default function Upsell1() {
                     <strong>✔ Free Shipping Included</strong>
                   </p>
                   <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
-                    <a 
-                      href="https://getretinaclear.com/options-bg/2/2/" 
+                    <button 
+                      onClick={handleDeclineUpsell}
                       className="lh1 limit-button flightPop3" 
-                      style={{ color: '#c71585' }}
+                      style={{ color: '#c71585', background: 'none', border: 'none' }}
                     >
                       <u>No thanks, I understand I cannot return to this page or see this offer again.</u>
-                    </a>
+                    </button>
                   </p>
                 </div>
               </div>
@@ -798,12 +868,13 @@ export default function Upsell1() {
                     <strong>Today's Price: $144</strong>
                   </p>
                   <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
-                    <a 
-                      href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC6_144" 
+                    <button 
+                      onClick={() => handleUpsellPurchase('RC6_144', 144, 6)}
+                      disabled={loading}
                       className="lh1 yellow-button limit-button w100 accept-link-downsell"
                     >
-                      Yes! Upgrade My Order!
-                    </a>
+                      {loading ? 'Processing...' : 'Yes! Upgrade My Order!'}
+                    </button>
                   </p>
                   <div className="has-text-centered">
                     <Image src="/assets/upsells/1/cards.png" width={220} height={70} style={{ width: 'auto', height: 'auto' }} alt="" />
@@ -815,13 +886,13 @@ export default function Upsell1() {
                     <strong>✔ Free Shipping Included</strong>
                   </p>
                   <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
-                    <a 
-                      href="https://getretinaclear.com/options-bg/2/2/" 
+                    <button 
+                      onClick={handleDeclineUpsell}
                       className="lh1 limit-button flightPop3" 
-                      style={{ color: '#c71585' }}
+                      style={{ color: '#c71585', background: 'none', border: 'none' }}
                     >
                       <u>No thanks, I understand I cannot return to this page or see this offer again.</u>
-                    </a>
+                    </button>
                   </p>
                 </div>
               </div>
@@ -919,11 +990,11 @@ export default function Upsell1() {
             <p className="has-text-weight-bold lh1 mb-2 is-size-3 is-size-4-touch has-text-centered yellowunder">that's $0.80 a day!</p>
             <p className="lh1 mb-3 has-text-centered is-size-5">(with <strong>free shipping</strong> and protected by my <strong>60-day 100% money-back guarantee</strong>)</p>
             <p className="is-size-4 is-size-5-touch mb-1 has-text-weight-bold">
-              <a href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC12_297" className="lh1 yellow-button w100 accept-link">I Accept Upgrade For $297</a>
+              <button onClick={() => handleUpsellPurchase('RC12_297', 297, 12)} disabled={loading} className="lh1 yellow-button w100 accept-link">{loading ? 'Processing...' : 'I Accept Upgrade For $297'}</button>
             </p>
             <p className="mb-1 has-text-centered is-size-6">- OR -</p>
             <p className="is-size-4 is-capitalized is-size-5-touch mb-4 has-text-weight-bold">
-              <a href="#" className="lh1 upsell-button flightPop2 w100">I Decline This Offer</a>
+              <button onClick={() => setShowDownsell(true)} className="lh1 upsell-button flightPop2 w100">I Decline This Offer</button>
             </p>
             <p className="lh1 is-size-6 mb-0"><strong>NOTE:</strong> If I decline, I understand this will be the last time I'll ever see this offer and to get RetinaClear at this incredible discount. I fully understand the health implications of declining this offer and do not hold you, Jim Cooper responsible for this.</p>
           </div>
@@ -940,11 +1011,11 @@ export default function Upsell1() {
             <p className="has-text-weight-bold lh1 mb-2 is-size-3 is-size-4-touch has-text-centered yellowunder">that's $0.77 a day!</p>
             <p className="lh1 mb-3 has-text-centered is-size-5">(with <strong>free shipping</strong> and protected by my <strong>60-day 100% money-back guarantee</strong>)</p>
             <p className="is-size-4 is-size-5-touch mb-1 has-text-weight-bold">
-              <a href="https://buygoods.com/secure/upsell?account_id=10751&product_codename=2_RC6_144" className="lh1 yellow-button w100 accept-link-downsell">I Accept Upgrade For $144</a>
+              <button onClick={() => handleUpsellPurchase('RC6_144', 144, 6)} disabled={loading} className="lh1 yellow-button w100 accept-link-downsell">{loading ? 'Processing...' : 'I Accept Upgrade For $144'}</button>
             </p>
             <p className="mb-1 has-text-centered is-size-6">- OR -</p>
             <p className="is-size-4 is-capitalized is-size-5-touch mb-4 has-text-weight-bold">
-              <a href="https://getretinaclear.com/options-bg/2/2/" className="lh1 upsell-button w100">I Decline This Offer</a>
+              <button onClick={handleDeclineUpsell} className="lh1 upsell-button w100">I Decline This Offer</button>
             </p>
             <p className="lh1 is-size-6 mb-0"><strong>NOTE:</strong> If I decline, I understand this will be <strong>the last time</strong> I'll ever see this offer and to get RetinaClear at this incredible discount. I fully understand the health implications of declining this offer and do not hold you, Jim Cooper responsible for this.</p>
           </div>

@@ -41,8 +41,8 @@ export default function RootLayout({
         }} />
       </head>
       <body className={`${roboto.className} font-roboto bg-white`} suppressHydrationWarning>
-        <WebVitals />
-        <ClientOnlyWebVitals />
+        {/* <WebVitals />
+        <ClientOnlyWebVitals /> */}
         {children}
       </body>
     </html>

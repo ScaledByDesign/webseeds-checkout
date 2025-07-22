@@ -3,17 +3,172 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import CountdownTimer from '@/components/CountdownTimer'
-import { useState } from 'react'
+import { ModernCheckoutForm } from '@/components/ModernCheckoutForm'
+import { TestCheckoutForm } from '@/components/TestCheckoutForm'
+import { CollectJSCheckoutForm } from '@/components/CollectJSCheckoutForm'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+
+// Order data for the form
+const order = {
+  items: [
+    {
+      id: 'fitspresso-6-pack',
+      name: 'Fitspresso 6 Bottle Super Pack',
+      price: 294,
+      quantity: 1,
+    }
+  ]
+}
 
 export default function CheckoutPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [isExpired, setIsExpired] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Payment processing states
+  const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle')
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [pollCount, setPollCount] = useState(0)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Handle error messages from URL parameters
+  useEffect(() => {
+    const errorParam = searchParams?.get('error')
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam))
+      // Clear the error param from URL without refreshing
+      const url = new URL(window.location.href)
+      url.searchParams.delete('error')
+      window.history.replaceState({}, '', url.pathname)
+    }
+  }, [searchParams])
+
+  const handlePaymentSuccess = (result: any) => {
+    console.log('🎉 Payment successful!', result)
+    
+    if (result.success && result.transactionId) {
+      console.log('✅ Payment completed successfully!')
+      
+      // Store transaction details for success page
+      sessionStorage.setItem('transaction_result', JSON.stringify({
+        transactionId: result.transactionId,
+        authCode: result.authCode,
+        responseCode: result.responseCode,
+        amount: result.amount,
+        timestamp: result.timestamp
+      }))
+      
+      // Redirect to thank you page
+      setTimeout(() => {
+        window.location.href = '/thankyou'
+      }, 1000)
+    } else if (result.success && result.sessionId) {
+      // Handle the old flow with session polling
+      console.log('✅ Success! Starting payment processing...')
+      sessionStorage.setItem('checkout_session', result.sessionId)
+      startPaymentStatusPolling(result.sessionId)
+    }
+  }
+
+  const handlePaymentError = (errorMessage: string) => {
+    console.error('Payment failed:', errorMessage)
+    setError(errorMessage)
+  }
+
+  const startPaymentStatusPolling = (sessionId: string) => {
+    console.log('🔄 Starting payment status polling for session:', sessionId)
+    
+    setSessionId(sessionId)
+    setProcessingStatus('processing')
+    setPollCount(0)
+    
+    // Clear any existing polling
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+    }
+    
+    const pollPaymentStatus = async () => {
+      try {
+        console.log(`📡 Polling status for session ${sessionId} (attempt ${pollCount + 1})`)
+        
+        const response = await fetch(`/api/checkout/status/${sessionId}`)
+        const data = await response.json()
+        
+        console.log('📊 Status response:', data)
+        setPollCount(prev => prev + 1)
+        
+        if (data.status === 'succeeded') {
+          console.log('✅ Payment succeeded! Redirecting to upsell...')
+          setProcessingStatus('completed')
+          
+          // Clear polling
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+          }
+          
+          // Redirect to first upsell after brief delay
+          setTimeout(() => {
+            router.push(`/upsell/1?session=${sessionId}&transaction=${data.transactionId}`)
+          }, 2000)
+          
+        } else if (data.status === 'failed') {
+          console.log('❌ Payment failed:', data.error)
+          setProcessingStatus('failed')
+          setError(data.error || 'Payment failed. Please try again.')
+          
+          // Clear polling
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+          }
+          
+        } else if (pollCount >= 60) { // Stop polling after 5 minutes
+          console.log('⏰ Polling timeout')
+          setProcessingStatus('failed')
+          setError('Payment processing timeout. Please try again.')
+          
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+          }
+        }
+        // Otherwise keep polling (processing state)
+        
+      } catch (error) {
+        console.error('❌ Status polling error:', error)
+        
+        if (pollCount > 10) { // Give up after too many failed attempts
+          setProcessingStatus('failed')
+          setError('Unable to verify payment status. Please contact support.')
+          
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+          }
+        }
+      }
+    }
+    
+    // Start polling immediately, then every 5 seconds
+    pollPaymentStatus()
+    pollIntervalRef.current = setInterval(pollPaymentStatus, 5000)
+  }
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+      }
+    }
+  }, [])
 
   const handleTimerExpire = () => {
     setIsExpired(true)
-    // Optional: Show alert when timer expires
     alert('Special price has expired! The regular price will now apply.')
-    // Optional: You could redirect to a different page or refresh with new pricing
-    // window.location.reload()
   }
 
   return (
@@ -79,243 +234,132 @@ export default function CheckoutPage() {
                 </ul>
               </div>
 
-              {/* Express Checkout */}
-              <div>
-                <h3 className="text-center font-bold text-2.07rem text-gray-373737">Express Checkout</h3>
-                <div className="flex justify-between gap-3 mt-5 flex-wrap md:flex-nowrap">
-                  <button className="cursor-pointer w-full md:w-1/3">
-                    <Image className="w-full hidden md:block" src="/assets/images/PayPal.svg" alt="PayPal" width={200} height={50} />
-                    <Image className="w-full md:hidden" src="/assets/images/paypal-big.svg" alt="PayPal" width={200} height={50} />
-                  </button>
-                  <div className="flex justify-between gap-4 items-center w-full md:w-2/3">
-                    <button className="cursor-pointer w-1/2 md:w-full">
-                      <Image className="w-full" src="/assets/images/applypay.svg" alt="Apple Pay" width={200} height={50} />
-                    </button>
-                    <button className="cursor-pointer w-1/2 md:w-full">
-                      <Image className="w-full" src="/assets/images/googlepay.svg" alt="Google Pay" width={200} height={50} />
-                    </button>
+              {/* Error Display */}
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex">
+                    <div className="text-red-400">
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-800">{error}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-10 mb-10 border-b-2 border-gray-cd relative">
-                  <span className="absolute inline-block bg-white w-31 left-1/2 top-1/2 -translate-1/2 text-center text-gray-a6 text-2.13rem font-medium">
-                    OR
-                  </span>
+              )}
+
+              {/* Processing Overlay */}
+              {processingStatus === 'processing' && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl p-8 max-w-md mx-4 text-center">
+                    <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Processing Your Payment</h3>
+                    <p className="text-gray-600 mb-4">
+                      Please wait while we securely process your order. This may take a few moments.
+                    </p>
+                    <div className="bg-gray-100 rounded-lg p-3">
+                      <p className="text-sm text-gray-500">
+                        Session: {sessionId?.slice(-8)}... • Attempt {pollCount}/60
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-3">
+                      Do not close this window or refresh the page
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Success Overlay */}
+              {processingStatus === 'completed' && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl p-8 max-w-md mx-4 text-center">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h3>
+                    <p className="text-gray-600 mb-4">
+                      Your order has been processed successfully. Redirecting to your exclusive upsell offer...
+                    </p>
+                    <div className="animate-pulse">
+                      <div className="h-2 bg-green-200 rounded-full">
+                        <div className="h-2 bg-green-600 rounded-full" style={{ width: '75%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Checkout Form */}
+              <TestCheckoutForm
+                order={order}
+                onPaymentSuccess={handlePaymentSuccess}
+                onPaymentError={handlePaymentError}
+                apiEndpoint="/api/checkout/process"
+              />
+
+              <div className="flex justify-between px-4 items-center gap-6 mt-8">
+                <div>
+                  <Image className="h-18" src="/assets/images/mcafee-seeklogo.svg" alt="McAfee" width={72} height={72} style={{ width: 'auto', height: 'auto' }} />
+                </div>
+                <div>
+                  <Image className="h-24" src="/assets/images/Norton.svg" alt="Norton" width={96} height={96} style={{ width: 'auto', height: 'auto' }} />
+                </div>
+                <div>
+                  <Image className="h-19" src="/assets/images/Truste.svg" alt="TRUSTe" width={76} height={76} style={{ width: 'auto', height: 'auto' }} />
                 </div>
               </div>
 
-              {/* Checkout Form */}
-              <form action="#">
-                <h3 className="mb-6 text-gray-373738 font-medium text-2.7rem">Contact</h3>
+              <div className="md:mt-12 md:border-b-2 border-gray-cd"></div>
+
+              <div className="mt-8 pl-8 hidden md:block">
                 <div>
-                  <input
-                    type="text"
-                    className="w-full border-3 border-gray-cd px-9 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none"
-                    name=""
-                    placeholder="Email Address  (To receive order confirmation email)"
-                  />
-                </div>
-
-                <div className="mt-10">
-                  <h3 className="mb-6 text-gray-373738 font-medium text-2.7rem">Shipping</h3>
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className="w-full border-3 border-gray-cd pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                        name=""
-                        placeholder="Street Address"
-                      />
-                      <span className="absolute w-9 top-1/2 right-9 -translate-y-1/2">
-                        <Image src="/assets/images/search.svg" alt="Search" width={36} height={36} style={{ width: 'auto', height: 'auto' }} />
-                      </span>
-                    </div>
-                    <div className="sm:flex justify-between gap-3 sm:space-y-0 space-y-4">
-                      <div className="w-full">
-                        <input
-                          type="text"
-                          className="w-full border-3 border-gray-cd px-9 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                          name=""
-                          placeholder="City"
-                        />
-                      </div>
-                      <div className="w-full">
-                        <input
-                          type="text"
-                          className="w-full border-3 border-gray-cd px-9 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                          name=""
-                          placeholder="State"
-                        />
-                      </div>
-                      <div className="w-full">
-                        <input
-                          type="text"
-                          className="w-full border-3 border-gray-cd px-9 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                          name=""
-                          placeholder="Zip Code"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <select
-                        name=""
-                        className="w-full border-3 border-gray-cd pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                        id=""
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          Country
-                        </option>
-                        <option value="in">India</option>
-                        <option value="bn">Bangladesh</option>
-                        <option value="cn">China</option>
-                        <option value="ru">Russia</option>
-                        <option value="ir">Iran</option>
-                      </select>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className="w-full border-3 border-gray-cd pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                        name=""
-                        placeholder="Phone Number (For delivery confirmation texts)"
-                      />
-                      <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
-                        <Image src="/assets/images/info.svg" alt="Info" width={40} height={40} style={{ width: 'auto', height: 'auto' }} />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-10">
-                  <h3 className="mb-5 text-gray-373738 font-medium text-2.7rem">Payment</h3>
-                  <p className="flex gap-3 mb-4 items-center font-medium text-2.25rem">
-                    All transactions are secure and encrypted{' '}
-                    <Image className="w-8" src="/assets/images/lock.svg" alt="Secure" width={32} height={32} />
+                  <label className="flex items-center gap-5 cursor-pointer select-none">
+                    <input type="checkbox" className="peer hidden" />
+                    <span className="w-9 h-9 border-[3px] border-gray-666666 flex items-center justify-center rounded-md peer-checked:[&>img]:block">
+                      <Image src="/assets/images/check-dark.svg" alt="Check" className="hidden" width={36} height={36} />
+                    </span>
+                    <span className="text-gray-656565 font-medium text-1.8rem">Get SMS Alerts About Your Order</span>
+                  </label>
+                  <p className="text-1.7rem max-w-175 text-gray-656565 leading-[1.6]">
+                    Stay up to date on your purchase with order confirmation, shipping updates & special customer only discounts.
                   </p>
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        className="w-full border-3 border-gray-cd pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                        name=""
-                        placeholder="Card Number"
-                      />
-                      <div className="absolute top-1/2 right-9 -translate-y-1/2 flex gap-2">
-                        <Image className="h-13" src="/assets/images/visa.svg" alt="Visa" width={52} height={52} style={{ width: 'auto', height: 'auto' }} />
-                        <Image className="h-13" src="/assets/images/mastercard.svg" alt="Mastercard" width={52} height={52} style={{ width: 'auto', height: 'auto' }} />
-                        <Image className="h-13" src="/assets/images/american-express.svg" alt="American Express" width={52} height={52} style={{ width: 'auto', height: 'auto' }} />
-                      </div>
-                    </div>
-                    <div className="sm:flex justify-between gap-3 sm:space-y-0 space-y-4">
-                      <div className="w-full">
-                        <input
-                          type="text"
-                          className="w-full border-3 border-gray-cd px-9 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                          name=""
-                          placeholder="Expiration Date (MM/YY)"
-                        />
-                      </div>
-                      <div className="relative w-full">
-                        <input
-                          type="text"
-                          className="w-full border-3 border-gray-cd pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                          name=""
-                          placeholder="Security Code"
-                        />
-                        <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
-                          <Image src="/assets/images/info.svg" alt="Info" width={40} height={40} style={{ width: 'auto', height: 'auto' }} />
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        className="w-full border-3 border-gray-cd px-9 py-8 focus:outline-0 rounded-xl text-1.94rem text-gray-666666 leading-none bg-gray-f9"
-                        name=""
-                        placeholder="Name On Card"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-4 cursor-pointer select-none">
-                        <input type="checkbox" className="hidden peer" />
-                        <span className="w-9 h-9 border-[3px] border-gray-666666 flex items-center justify-center peer-checked:bg-gray-666666 rounded-md">
-                          <Image src="/assets/images/check.svg" alt="Check" width={36} height={36} style={{ width: 'auto', height: 'auto' }} />
-                        </span>
-                        <span className="text-gray-373738 font-medium text-1.63rem">Use shipping address as payment address</span>
-                      </label>
-                    </div>
-                  </div>
+                </div>
+                <div className="mt-6">
+                  <p className="text-1.7rem text-gray-656565 font-medium">&copy; 2025 Fitspresso. All Rights Reserved</p>
+                  <p className="text-gray-666666 text-1.3rem">
+                    These Statements Have Not Been Evaluated By The Food And Drug Administration. This Product Is Not Intended To Diagnose, Treat,
+                    Cure Or Prevent Any Disease.
+                  </p>
                 </div>
 
-                <div className="mt-10">
-                  <Link
-                    href="/upsell/1"
-                    className="block py-5 w-full rounded-full bg-yellow-f6c657 text-center font-bold text-3.7rem text-gray-373737 leading-none hover:bg-yellow-f4bd3f transition-colors"
-                  >
-                    Place Your Order
-                  </Link>
-                </div>
-
-                <div className="flex justify-between px-4 items-center gap-6 mt-8">
-                  <div>
-                    <Image className="h-18" src="/assets/images/mcafee-seeklogo.svg" alt="McAfee" width={72} height={72} style={{ width: 'auto', height: 'auto' }} />
-                  </div>
-                  <div>
-                    <Image className="h-24" src="/assets/images/Norton.svg" alt="Norton" width={96} height={96} style={{ width: 'auto', height: 'auto' }} />
-                  </div>
-                  <div>
-                    <Image className="h-19" src="/assets/images/Truste.svg" alt="TRUSTe" width={76} height={76} style={{ width: 'auto', height: 'auto' }} />
-                  </div>
-                </div>
-
-                <div className="md:mt-12 md:border-b-2 border-gray-cd"></div>
-
-                <div className="mt-8 pl-8 hidden md:block">
-                  <div>
-                    <label className="flex items-center gap-5 cursor-pointer select-none">
-                      <input type="checkbox" className="peer hidden" />
-                      <span className="w-9 h-9 border-[3px] border-gray-666666 flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                        <Image src="/assets/images/check-dark.svg" alt="Check" className="hidden" width={36} height={36} />
-                      </span>
-                      <span className="text-gray-656565 font-medium text-1.8rem">Get SMS Alerts About Your Order</span>
-                    </label>
-                    <p className="text-1.7rem max-w-175 text-gray-656565 leading-[1.6]">
-                      Stay up to date on your purchase with order confirmation, shipping updates & special customer only discounts.
-                    </p>
-                  </div>
-                  <div className="mt-6">
-                    <p className="text-1.7rem text-gray-656565 font-medium">&copy; 2025 Fitspresso. All Rights Reserved</p>
-                    <p className="text-gray-666666 text-1.3rem">
-                      These Statements Have Not Been Evaluated By The Food And Drug Administration. This Product Is Not Intended To Diagnose, Treat,
-                      Cure Or Prevent Any Disease.
-                    </p>
-                  </div>
-
-                  <ul className="mt-6 flex gap-6">
-                    <li>
-                      <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
-                        Refund Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
-                        Privacy Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
-                        Term of Service
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </form>
+                <ul className="mt-6 flex gap-6">
+                  <li>
+                    <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
+                      Refund Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
+                      Privacy Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
+                      Term of Service
+                    </Link>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
           
           {/* Right Column - Order Summary */}
           <div className="bg-gray-f2">
+            {/* Keep the existing order summary content */}
             <div className="md:pl-16 py-8 md:py-12 md:max-w-[56.3rem] md:mr-auto sm:max-w-4xl max-w-full px-6 md:px-0 mx-auto md:ml-0">
               <div>
                 <div className="hidden md:block">
@@ -390,12 +434,13 @@ export default function CheckoutPage() {
                   </li>
                 </ul>
 
-                {/* Testimonials */}
+                {/* Rest of the order summary content remains the same */}
                 <div className="mt-8 flex flex-col-reverse md:flex-col">
                   <div className="mt-8 flex flex-col gap-5">
                     <h3 className="text-center font-bold text-2.7rem mb-4">
                       250,000+ Customers! <br /> Your Story Can Be Next
                     </h3>
+                    {/* Testimonials and other content... */}
                     <div className="bg-white p-6 border-2 border-purple-916886 md:border-gray-cd rounded-xl">
                       <div className="flex justify-between items-center">
                         <div className="flex gap-4 items-center">
@@ -469,22 +514,6 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Mobile Trust Badges */}
-                  <ul className="md:hidden pt-8 flex items-center justify-between gap-3 text-purple-976987 font-medium text-xl">
-                    <li className="flex w-full items-center gap-3.25 border-3 border-purple-986988 bg-white rounded-full px-5 py-2">
-                      <Image className="w-8" src="/assets/images/circle-check.svg" alt="Check" width={32} height={32} />
-                      <span>One-Time Purchase</span>
-                    </li>
-                    <li className="flex w-full items-center gap-3.25 border-3 border-purple-986988 bg-white rounded-full px-5 py-2">
-                      <Image className="w-8" src="/assets/images/circle-check.svg" alt="Check" width={32} height={32} />
-                      <span>No Hidden Fees</span>
-                    </li>
-                    <li className="flex w-full items-center gap-3.25 border-3 border-purple-986988 bg-white rounded-full px-5 py-2">
-                      <Image className="w-8" src="/assets/images/circle-check.svg" alt="Check" width={32} height={32} />
-                      <span>Fast, Secure Payment</span>
-                    </li>
-                  </ul>
-
                   {/* Money Back Guarantee */}
                   <div className="bg-purple-916886 md:bg-white py-8 px-8 border-2 border-purple-916886 rounded-xl mt-8">
                     <div className="flex justify-center items-center gap-6">
@@ -505,47 +534,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Mobile Footer */}
-              <div className="mt-8 md:pl-8 md:hidden">
-                <div>
-                  <label className="flex items-center gap-5 cursor-pointer select-none">
-                    <input type="checkbox" className="peer hidden" />
-                    <span className="w-9 h-9 border-[3px] border-gray-666666 flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                      <Image src="/assets/images/check-dark.svg" alt="Check" className="hidden" width={36} height={36} />
-                    </span>
-                    <span className="text-gray-656565 font-medium text-1.8rem">Get SMS Alerts About Your Order</span>
-                  </label>
-                  <p className="text-1.7rem text-gray-656565 leading-[1.6]">
-                    Stay up to date on your purchase with order confirmation, shipping updates & special customer only discounts.
-                  </p>
-                </div>
-                <div className="mt-15">
-                  <p className="text-1.7rem text-gray-656565 font-medium">&copy; 2025 Fitspresso. All Rights Reserved</p>
-                  <p className="text-gray-666666 text-1.3rem">
-                    These Statements Have Not Been Evaluated By The Food And Drug Administration. This Product Is Not Intended To Diagnose, Treat,
-                    Cure Or Prevent Any Disease.
-                  </p>
-                </div>
-
-                <ul className="mt-16 flex gap-8">
-                  <li>
-                    <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
-                      Refund Policy
-                    </Link>
-                  </li>
-                  <li>
-                    <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
-                      Privacy Policy
-                    </Link>
-                  </li>
-                  <li>
-                    <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
-                      Term of Service
-                    </Link>
-                  </li>
-                </ul>
-              </div>
             </div>
           </div>
         </div>
@@ -553,3 +541,4 @@ export default function CheckoutPage() {
     </>
   )
 }
+
