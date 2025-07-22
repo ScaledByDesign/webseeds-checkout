@@ -96,8 +96,8 @@ export default function Upsell1() {
       const result = await response.json();
 
       if (result.success) {
-        // Redirect to thank you page with upsell confirmation
-        router.push(`/thankyou?session=${sessionId}&upsell=true&transaction=${result.transactionId}`);
+        // Redirect to second upsell page
+        router.push(`/upsell/2?session=${sessionId}&upsell1=${result.transactionId}`);
       } else {
         console.error('Upsell failed:', result.error);
         // Could show an error message here
@@ -218,7 +218,7 @@ export default function Upsell1() {
                         NORMALLY: <span style={{ color: '#c71585' }}>$197</span> per bottle
                       </p>
                       <p className="has-text-centered lh1 has-text-weight-bold is-size-2 is-size-3-touch mb-0">
-                        TODAY: <span style={{ color: 'green' }}>$24.75</span> per bottle
+                        TODAY: <span style={{ color: 'green' }}>$24.67</span> per bottle
                       </p>
                       <p className="has-text-centered lh1 mb-0" style={{ position: 'relative' }}>
                         <picture>
@@ -232,11 +232,11 @@ export default function Upsell1() {
                         </span>
                       </p>
                       <p className="has-text-centered mb-3 lh1" style={{ color: 'green' }}>
-                        <strong>Today's Price: $297</strong>
+                        <strong>Today's Price: $296</strong>
                       </p>
                       <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
                         <button 
-                          onClick={() => handleUpsellPurchase('RC12_297', 297, 12)}
+                          onClick={() => handleUpsellPurchase('RC12_296', 296, 12)}
                           disabled={loading}
                           className="lh1 yellow-button limit-button w100 accept-link"
                         >
@@ -388,7 +388,7 @@ export default function Upsell1() {
                   <p className="aff-content" data-display="block">That clearer, sharper vision you've been working toward can begin to fade—blurriness may creep back in, night driving can become more difficult, and the eye strain you thought was gone could return fast. The comfort, clarity, and visual confidence you've regained might slip away in just days without consistent support.</p>
                   <p className="aff-content" data-display="block">That's why taking RetinaClear daily is so important—your eyes need that steady, ongoing nourishment to thrive.</p>
                   <p>Can you imagine running out of RetinaClear, knowing your progress may reverse, and having to wait weeks to get back on track?</p>
-                  <p>You know what to do. <strong>Add 12 more bottles of RetinaClear to your order right now</strong> at <span className="aff-content" data-display="inline">a "family and friends" discount of</span> just <strong>$24.75</strong> per bottle <span className="aff-content" data-display="inline">before they cut off our ingredients supply - that's a huge <strong>87%</strong> saving!</span></p>
+                  <p>You know what to do. <strong>Add 12 more bottles of RetinaClear to your order right now</strong> at <span className="aff-content" data-display="inline">a "family and friends" discount of</span> just <strong>$24.67</strong> per bottle <span className="aff-content" data-display="inline">before they cut off our ingredients supply - that's a huge <strong>87%</strong> saving!</span></p>
                   <p className="has-text-weight-bold has-text-left is-size-2 is-size-3-touch lh1 headlineColor1 is-capitalized">So, what's the catch?</p>
                   <p>Well, there isn't one.</p>
                   <p>By adding 12 bottles of RetinaClear to your order, we save on the cost of processing and fulfillment - and we want to pass those savings on to you!</p>
@@ -417,7 +417,7 @@ export default function Upsell1() {
                   <p className="aff-content" data-display="block">Keep in mind, this is a one-time offer for select customers. This discount will disappear once you leave this page!</p>
                   <p className="aff-content" data-display="block">RetinaClear is not sold in stores or elsewhere online and never will be. It is only available for purchase on this page ONLY. In fact, this is the <strong>very last time</strong> you'll be able to buy RetinaClear before your checkout is complete — you must protect your eye health now and well into the future.</p>
                   <p className="aff-content" data-display="block">And if you have friends or family who struggle with vision problems this is the perfect time to grab RetinaClear for them at this massively discounted rate as well.</p>
-                  <p>Click the "YES UPGRADE MY ORDER" button below and add 12 bottles of RetinaClear <span className="aff-content" data-display="inline">saving you a crazy <strong>$2,067</strong></span>, that's a full 12-month supply for only <strong><u className="yellowunder">$24.75 per bottle</u></strong> + <strong>free shipping and handling</strong>!</p>
+                  <p>Click the "YES UPGRADE MY ORDER" button below and add 12 bottles of RetinaClear <span className="aff-content" data-display="inline">saving you a crazy <strong>$2,067</strong></span>, that's a full 12-month supply for only <strong><u className="yellowunder">$24.67 per bottle</u></strong> + <strong>free shipping and handling</strong>!</p>
                   <p className="mb-1">See you on the next page,</p>
                   <div className="mb-6" style={{ width: '200px', height: '50px', display: 'inline-block' }}>
                     <Image src="/assets/upsells/shared/signature.png" width={200} height={50} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -440,7 +440,7 @@ export default function Upsell1() {
                         NORMALLY: <span style={{ color: '#c71585' }} data-display="block">$197</span> per bottle
                       </p>
                       <p className="has-text-centered lh1 has-text-weight-bold is-size-2 is-size-3-touch mb-0">
-                        TODAY: <span style={{ color: 'green' }}>$24.75</span> per bottle
+                        TODAY: <span style={{ color: 'green' }}>$24.67</span> per bottle
                       </p>
                       <p className="has-text-centered lh1 mb-0" style={{ position: 'relative' }}>
                         <picture>
@@ -454,11 +454,11 @@ export default function Upsell1() {
                         </span>
                       </p>
                       <p className="has-text-centered mb-3 lh1" style={{ color: 'green' }}>
-                        <strong>Today's Price: $297</strong>
+                        <strong>Today's Price: $296</strong>
                       </p>
                       <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
                         <button 
-                          onClick={() => handleUpsellPurchase('RC12_297', 297, 12)}
+                          onClick={() => handleUpsellPurchase('RC12_296', 296, 12)}
                           disabled={loading}
                           className="lh1 yellow-button limit-button w100 accept-link"
                         >
@@ -669,7 +669,7 @@ export default function Upsell1() {
                         NORMALLY: <span style={{ color: '#c71585' }} data-display="block">$197</span> per bottle
                       </p>
                       <p className="has-text-centered lh1 has-text-weight-bold is-size-2 is-size-3-touch mb-0">
-                        TODAY: <span style={{ color: 'green' }}>$24.75</span> per bottle
+                        TODAY: <span style={{ color: 'green' }}>$24.67</span> per bottle
                       </p>
                       <p className="has-text-centered lh1 mb-0" style={{ position: 'relative' }}>
                         <picture>
@@ -683,11 +683,11 @@ export default function Upsell1() {
                         </span>
                       </p>
                       <p className="has-text-centered mb-3 lh1" style={{ color: 'green' }}>
-                        <strong>Today's Price: $297</strong>
+                        <strong>Today's Price: $296</strong>
                       </p>
                       <p className="is-size-3 is-size-4-touch is-uppercase mb-2 has-text-weight-bold has-text-centered">
                         <button 
-                          onClick={() => handleUpsellPurchase('RC12_297', 297, 12)}
+                          onClick={() => handleUpsellPurchase('RC12_296', 296, 12)}
                           disabled={loading}
                           className="lh1 yellow-button limit-button w100 accept-link"
                         >
@@ -986,11 +986,11 @@ export default function Upsell1() {
           <div id="loadModal-lastchance">
             <p className="has-text-weight-bold is-size-2 mt-3 is-size-3-touch mb-2 has-text-centered lh1" style={{ color: '#c71585' }}>LAST CHANCE</p>
             <p className="has-text-weight-bold lh1 mb-2 is-size-4 has-text-centered">Add 12 bottles of RetinaClear for the low pricing of just</p>
-            <p className="has-text-weight-bold thorn is-size-2 is-size-3-touch mb-2 has-text-centered lh1">$24.75 per bottle</p>
+            <p className="has-text-weight-bold thorn is-size-2 is-size-3-touch mb-2 has-text-centered lh1">$24.67 per bottle</p>
             <p className="has-text-weight-bold lh1 mb-2 is-size-3 is-size-4-touch has-text-centered yellowunder">that's $0.80 a day!</p>
             <p className="lh1 mb-3 has-text-centered is-size-5">(with <strong>free shipping</strong> and protected by my <strong>60-day 100% money-back guarantee</strong>)</p>
             <p className="is-size-4 is-size-5-touch mb-1 has-text-weight-bold">
-              <button onClick={() => handleUpsellPurchase('RC12_297', 297, 12)} disabled={loading} className="lh1 yellow-button w100 accept-link">{loading ? 'Processing...' : 'I Accept Upgrade For $297'}</button>
+              <button onClick={() => handleUpsellPurchase('RC12_296', 296, 12)} disabled={loading} className="lh1 yellow-button w100 accept-link">{loading ? 'Processing...' : 'I Accept Upgrade For $296'}</button>
             </p>
             <p className="mb-1 has-text-centered is-size-6">- OR -</p>
             <p className="is-size-4 is-capitalized is-size-5-touch mb-4 has-text-weight-bold">

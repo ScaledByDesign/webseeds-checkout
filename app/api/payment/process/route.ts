@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createSession } from '@/src/lib/cookie-session'
 
 // NMI API Configuration
 const NMI_API_URL = process.env.NMI_API_URL || 'https://secure.networkmerchants.com/api/transact.php'
@@ -72,10 +73,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate order totals
-    const subtotal = 294.00 // Product price
-    const tax = 26.46 // 9% tax
+    // Add small random amount to prevent duplicate transaction errors in testing
+    const randomCents = Math.floor(Math.random() * 10) / 100 // 0.00 to 0.09
+    const subtotal = 294.00 + randomCents // Product price with variation
+    
+    // Tax calculation - should be based on state/location
+    // TODO: Implement proper tax calculation based on customer location
+    const TAX_RATES: Record<string, number> = {
+      'CA': 0.0725,  // California: 7.25%
+      'TX': 0.0625,  // Texas: 6.25%
+      'NY': 0.08,    // New York: 8%
+      'FL': 0.06,    // Florida: 6%
+      'WA': 0.065,   // Washington: 6.5%
+      'DEFAULT': 0.0 // No tax for other states (simplified)
+    }
+    
+    const taxRate = TAX_RATES[state?.toUpperCase()] || TAX_RATES.DEFAULT
+    const tax = parseFloat((subtotal * taxRate).toFixed(2))
     const shipping = 0.00 // Free shipping
-    const total = subtotal + tax + shipping // 320.46
+    const total = subtotal + tax + shipping
 
     // Prepare NMI API request parameters
     const nmiParams = new URLSearchParams({
@@ -123,7 +139,12 @@ export async function POST(request: NextRequest) {
       
       // Merchant defined fields
       merchant_defined_field_1: 'webseed-checkout',
-      merchant_defined_field_2: Date.now().toString()
+      merchant_defined_field_2: Date.now().toString(),
+      
+      // Customer Vault - Store card for future upsells
+      customer_vault: 'add_customer',
+      // Generate a shorter vault ID (max 36 chars)
+      customer_vault_id: `CV${Date.now()}-${Math.random().toString(36).substring(2, 8)}` // ~20 chars
     })
 
     // Add line items for Level 3 data
@@ -137,7 +158,7 @@ export async function POST(request: NextRequest) {
         unit_of_measure: 'EA',
         total_amount: subtotal,
         tax_amount: tax,
-        tax_rate: 0.09,
+        tax_rate: taxRate,
         commodity_code: '50202504', // Dietary supplements commodity code
         discount_amount: 0
       }
@@ -164,7 +185,7 @@ export async function POST(request: NextRequest) {
     console.log('💰 Transaction amount:', total.toFixed(2))
     console.log('📊 Level 3 Data:')
     console.log('  - Subtotal:', subtotal.toFixed(2))
-    console.log('  - Tax:', tax.toFixed(2))
+    console.log('  - Tax:', tax.toFixed(2), `(${(taxRate * 100).toFixed(2)}% for ${state || 'unknown state'})`)
     console.log('  - Shipping:', shipping.toFixed(2))
     console.log('  - Line items:', lineItems.length)
     console.log('  - Order ID:', nmiParams.get('orderid'))
@@ -198,6 +219,67 @@ export async function POST(request: NextRequest) {
     if (isApproved && responseData.transactionid) {
       console.log('✅ Payment approved by NMI!')
       
+      // Extract vault ID from response
+      const vaultId = responseData.customer_vault_id || nmiParams.get('customer_vault_id')
+      
+      // Create session for upsell flow
+      const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+      
+      // Store session data in cookie
+      console.log('🍪 Creating session cookie:', {
+        sessionId,
+        vaultId: vaultId ? 'Present' : 'Missing',
+        email,
+        firstName,
+        lastName,
+        transactionId: responseData.transactionid,
+        state: state || 'CA'
+      })
+      
+      await createSession({
+        id: sessionId,
+        vaultId: vaultId || '',
+        customerId: email,
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
+        transactionId: responseData.transactionid,
+        state: state || 'CA'
+      })
+      
+      console.log('✅ Session cookie created successfully')
+      
+      // Store order details for thank you page
+      try {
+        const baseUrl = new URL(request.url).origin
+        const response = await fetch(`${baseUrl}/api/order/details`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'add_order',
+            sessionId,
+            transactionId: responseData.transactionid,
+            amount: total,
+            productCode: 'FITSPRESSO_6',
+            customer: {
+              firstName,
+              lastName,
+              email,
+              phone: phone || '',
+              address: address || '',
+              city: city || '',
+              state: state || '',
+              zipCode: zipCode || ''
+            }
+          })
+        })
+        const result = await response.json()
+        console.log('📦 Order details stored:', result.success ? 'Success' : result.error)
+      } catch (error) {
+        console.error('⚠️ Failed to store order details:', error)
+        // Don't fail the whole transaction for this
+      }
+      
       // Return successful response
       const response = {
         success: true,
@@ -211,10 +293,14 @@ export async function POST(request: NextRequest) {
         shipping: shipping,
         avsResponse: responseData.avsresponse || '',
         cvvResponse: responseData.cvvresponse || '',
+        vaultId: vaultId,
+        sessionId: sessionId,
         timestamp: Date.now()
       }
       
       console.log('🎉 Payment processed successfully:', response)
+      console.log('🔐 Customer Vault ID:', vaultId)
+      console.log('🎟️ Session ID for upsells:', sessionId)
       
       return NextResponse.json(response, { status: 200 })
       

@@ -16,9 +16,15 @@ const { chromium } = require('playwright');
     console.log('📍 Navigating to checkout page...');
     await page.goto('http://localhost:3000/checkout');
     
+    // Generate unique email for this test run
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const testEmail = `test-${timestamp}-${randomStr}@example.com`;
+    
     // Fill contact info
     console.log('📝 Filling contact information...');
-    await page.fill('input[name="email"]', 'test@example.com');
+    console.log(`📧 Using email: ${testEmail}`);
+    await page.fill('input[name="email"]', testEmail);
     await page.fill('input[name="firstName"]', 'Test');
     await page.fill('input[name="lastName"]', 'User');
     await page.fill('input[name="phone"]', '5559876543');

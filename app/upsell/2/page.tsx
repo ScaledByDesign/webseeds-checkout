@@ -57,15 +57,38 @@ export default function Upsell2() {
   useEffect(() => {
     if (!sessionId) {
       router.push('/checkout');
+    } else {
+      // Debug client-side cookies
+      console.log('🍪 Client-side cookies:', document.cookie);
+      console.log('🍪 Session ID from URL:', sessionId);
+      
+      // Make a test request to debug cookies
+      fetch('/api/test-cookie', { credentials: 'same-origin' })
+        .then(res => res.json())
+        .then(data => {
+          console.log('🍪 Cookie test result:', data);
+        })
+        .catch(err => {
+          console.error('🍪 Cookie test failed:', err);
+        });
     }
   }, [sessionId, router]);
 
   // Handle upsell purchase
   const handleUpsellPurchase = async (productCode: string, amount: number, bottles: number) => {
     if (!sessionId) {
+      console.error('No session ID found in URL params');
       router.push('/checkout');
       return;
     }
+
+    console.log('🎯 Processing upsell 2 purchase:', {
+      sessionId,
+      productCode,
+      amount,
+      bottles,
+      step: 2
+    });
 
     setLoading(true);
 
@@ -75,6 +98,7 @@ export default function Upsell2() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'same-origin', // Important for cookies
         body: JSON.stringify({
           sessionId,
           productCode,

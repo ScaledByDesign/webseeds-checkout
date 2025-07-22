@@ -288,22 +288,27 @@ export function TestCheckoutForm({
         <button
           type="button"
           onClick={() => {
+            // Generate unique data to avoid duplicate transactions
+            const timestamp = Date.now()
+            const randomNum = Math.floor(Math.random() * 1000)
+            const randomZip = `900${Math.floor(Math.random() * 90) + 10}`
+            
             setFormData({
-              email: 'test@example.com',
+              email: `test-${timestamp}@example.com`,
               firstName: 'John',
-              lastName: 'Doe',
-              billingAddress: '123 Main Street',
+              lastName: `Test${randomNum}`,
+              billingAddress: `${randomNum} Main Street`,
               billingCity: 'Los Angeles',
               billingState: 'CA',
-              billingZipCode: '90210',
+              billingZipCode: randomZip,
               billingCountry: 'US',
-              shippingAddress: '456 Oak Avenue',
+              shippingAddress: `${randomNum + 1} Oak Avenue`,
               shippingCity: 'San Francisco',
               shippingState: 'CA',
               shippingZipCode: '94102',
               shippingCountry: 'US',
-              phone: '5551234567',
-              nameOnCard: 'John Doe',
+              phone: `555${String(timestamp).slice(-7)}`,
+              nameOnCard: `John Test${randomNum}`,
               useBillingForShipping: true
             })
           }}

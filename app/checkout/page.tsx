@@ -57,13 +57,24 @@ export default function CheckoutPage() {
         authCode: result.authCode,
         responseCode: result.responseCode,
         amount: result.amount,
-        timestamp: result.timestamp
+        timestamp: result.timestamp,
+        vaultId: result.vaultId,
+        sessionId: result.sessionId
       }))
       
-      // Redirect to thank you page
-      setTimeout(() => {
-        window.location.href = '/thankyou'
-      }, 1000)
+      // Check if we have a session for upsells
+      if (result.sessionId && result.vaultId) {
+        console.log('🎯 Redirecting to upsell with session:', result.sessionId)
+        // Redirect to first upsell page
+        setTimeout(() => {
+          window.location.href = `/upsell/1?session=${result.sessionId}&transaction=${result.transactionId}`
+        }, 1000)
+      } else {
+        // No upsell flow, go directly to thank you
+        setTimeout(() => {
+          window.location.href = '/thankyou'
+        }, 1000)
+      }
     } else if (result.success && result.sessionId) {
       // Handle the old flow with session polling
       console.log('✅ Success! Starting payment processing...')
