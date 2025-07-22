@@ -1,0 +1,494 @@
+<!doctype html>
+<html class="text-[2.1vw] md:text-[0.738vw]">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="./assets/style.css" rel="stylesheet">
+</head>
+
+<body class="font-roboto bg-white">
+
+    <header class="md:py-15.5 md:border-b-3 border-[#CDCDCD]">
+        <div class="container !px-0 !md:px-10">
+            <div class="flex flex-col-reverse md:flex-row justify-between items-center">
+                <div class="py-10 md:py-0 flex gap-2.75 justify-center md:justify-start items-end w-full md:w-auto">
+                    <img class="max-w-full w-110" src="assets/images/Logo.svg" alt="">
+                    <div class=" gap-2.75 hidden md:flex">
+                        <p class="font-medium text-4xl text-[#373737] whitespace-nowrap">Secure Checkout</p>
+                        <img class="w-7" src="assets/images/lock.svg" alt="">
+                    </div>
+                </div>
+                <div class="flex items-center gap-6.5 w-full md:w-auto justify-center bg-[#e4e4e4] md:bg-transparent">
+                    <p class="font-medium text-[2.5rem] text-[#976987]">Special Price Reserved For</p>
+                    <div
+                        class="py-5.5 px-6 md:bg-[#986988] font-bold text-[#976987] md:text-white  text-[4.5rem] leading-none rounded-2xl">
+                        9:59</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="grid grid-col-1 md:grid-cols-2">
+            <div>
+                <div
+                    class="md:pr-23 py-18 md:max-w-[56.3rem] md:ml-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:mr-0">
+                    <!-- only for mobile -->
+                    <div class="md:hidden mb-10">
+                        <ul class="flex flex-col gap-30 pb-16 border-b-3 border-[#CDCDCD]">
+                            <li class="flex justify-between items-center gap-5">
+                                <div class="flex gap-13 items-center">
+                                    <div>
+                                        <img class="w-54" src="assets/images/6-bottles.png" alt="">
+                                    </div>
+                                    <div>
+                                        <h3 class="font-medium text-[2.1rem] leading-relaxed">Fitspresso <br> 6
+                                            Bottle Super Pack</h3>
+                                        <p class="text-[#976987] font-medium text-[1.7rem]">Most Popular!</p>
+                                    </div>
+                                </div>
+                                <div class="font-medium text-[2.5rem] text-[#373737] uppercase">$294</div>
+                            </li>
+                        </ul>
+                        <ul class="pt-16 font-medium text-[2.5rem] text-[#373737] flex flex-col gap-5">
+                            <li class="flex justify-between items-center ">
+                                <div>Shipping</div>
+                                <div class="uppercase">free</div>
+                            </li>
+                            <li class="flex justify-between items-center ">
+                                <div>Total</div>
+                                <div class="uppercase"><small
+                                        class="text-[1.63rem] font-normal text-[#656565] mr-2">USD</small> $294</div>
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- only for mobile -->
+
+                    <div>
+                        <h3 class="text-center font-bold text-[2.07rem] text-[#373737]">Express Checkout</h3>
+                        <div class="flex justify-between gap-4 mt-6 flex-wrap md:flex-nowrap">
+                            <button class="cursor-pointer w-full md:w-1/3">
+                                <img class="w-full hidden md:block" src="assets/images/PayPal.svg" alt="">
+                                <img class="w-full md:hidden" src="assets/images/paypal-big.svg" alt="">
+                            </button>
+                            <div class="flex justify-between gap-4 items-center w-full md:w-2/3">
+                                <button class="cursor-pointer w-1/2 md:w-full"><img class="w-full"
+                                        src="assets/images/applypay.svg" alt=""></button>
+                                <button class="cursor-pointer  w-1/2 md:w-full"><img class="w-full"
+                                        src="assets/images/googlepay.svg" alt=""></button>
+                            </div>
+                        </div>
+                        <div class="mt-15 mb-22.5 border-b-3 border-[#CDCDCD] relative">
+                            <span
+                                class="absolute inline-block bg-white w-31 left-1/2 top-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">OR</span>
+                        </div>
+                    </div>
+                    <form action="#">
+                        <h3 class="mb-12.5 text-[#373738] font-medium text-[2.7rem]">Contact</h3>
+                        <div>
+                            <input type="text"
+                                class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none"
+                                name="" placeholder="Email Address  (To receive order confirmation email)">
+                        </div>
+
+                        <div class="mt-25">
+                            <h3 class="mb-11.5 text-[#373738] font-medium text-[2.7rem]">Shipping</h3>
+                            <div class="space-y-8">
+                                <div class="relative">
+                                    <input type="text"
+                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        name="" placeholder="Street Address">
+                                    <span class="absolute w-9 top-1/2 right-9 -translate-y-1/2"><img
+                                            src="assets/images/search.svg" alt=""></span>
+                                </div>
+                                <div class="sm:flex justify-between gap-4 space-y-8">
+                                    <div class="w-full">
+                                        <input type="text"
+                                            class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                            name="" placeholder="City">
+                                    </div>
+                                    <div class="w-full">
+                                        <input type="text"
+                                            class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                            name="" placeholder="State">
+                                    </div>
+                                    <div class="w-full">
+                                        <input type="text"
+                                            class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                            name="" placeholder="Zip Code">
+                                    </div>
+                                </div>
+                                <div>
+                                    <select name=""
+                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        id="">
+                                        <option selected disabled>Country</option>
+                                        <option value="in">India</option>
+                                        <option value="bn">Bangladesh</option>
+                                        <option value="bn">China</option>
+                                        <option value="bn">Russia</option>
+                                        <option value="bn">Iran</option>
+                                    </select>
+                                </div>
+                                <div class="relative">
+                                    <input type="text"
+                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        name="" placeholder="Phone Number (For delivery confirmation texts)">
+                                    <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
+                                            src="assets/images/info.svg" alt=""></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-25">
+                            <h3 class="mb-5 text-[#373738] font-medium text-[2.7rem]">Payment</h3>
+                            <p class="flex gap-5 mb-5 items-center font-medium text-[2.25rem]">All transactions are
+                                secure and encrypted <img class="w-8" src="assets/images/lock.svg" alt=""></p>
+                            <div class="space-y-8">
+                                <div class="relative">
+                                    <input type="text"
+                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        name="" placeholder="Card Number">
+                                    <div class="absolute top-1/2 right-9 -translate-y-1/2 flex gap-2">
+                                        <img class="h-13" src="assets/images/visa.svg" alt="">
+                                        <img class="h-13" src="assets/images/mastercard.svg" alt="">
+                                        <img class="h-13" src="assets/images/american-express.svg" alt="">
+                                    </div>
+                                </div>
+                                <div class="sm:flex justify-between gap-4 space-y-8">
+                                    <div class="w-full">
+                                        <input type="text"
+                                            class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                            name="" placeholder="Expiration Date (MM/YY)">
+                                    </div>
+                                    <div class="relative w-full">
+                                        <input type="text"
+                                            class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                            name="" placeholder="Security Code">
+                                        <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
+                                                src="assets/images/info.svg" alt=""></span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <input type="text"
+                                        class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        name="" placeholder="Name On Card">
+                                </div>
+
+                                <div>
+                                    <label class="flex items-center gap-4 cursor-pointer select-none">
+                                        <input type="checkbox" class="hidden peer">
+                                        <span
+                                            class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center peer-checked:bg-[#666666] rounded-md">
+                                            <img src="assets/images/check.svg" alt="">
+                                        </span>
+                                        <span class="text-[#373738] font-medium text-[1.63rem]">
+                                            Use shipping address as payment address
+                                        </span>
+                                    </label>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="mt-25">
+                            <button type="submit"
+                                class="py-12 w-full rounded-full bg-[#F6C657] text-center font-bold text-[3.7rem] text-[#373737] leading-none">Place
+                                Your Order</button>
+                        </div>
+
+                        <div class="flex justify-between px-7.5 items-center gap-10 mt-11">
+                            <div><img class="h-18" src="assets/images/mcafee-seeklogo.svg" alt=""></div>
+                            <div><img class="h-24" src="assets/images/Norton.svg" alt=""></div>
+                            <div><img class="h-19" src="assets/images/Truste.svg" alt=""></div>
+                        </div>
+
+                        <div class="md:mt-35 md:border-b-3 border-[#CDCDCD]"></div>
+
+                        <div class="mt-18 pl-15 hidden md:block">
+                            <div>
+                                <label class="flex items-center gap-5 cursor-pointer select-none">
+                                    <input type="checkbox" class="peer hidden">
+
+                                    <span
+                                        class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
+                                        <img src="assets/images/check-dark.svg" alt="" class="hidden" />
+                                    </span>
+
+                                    <span class="text-[#656565] font-medium text-[1.8rem]">
+                                        Get SMS Alerts About Your Order
+                                    </span>
+                                </label>
+                                <p class="text-[1.7rem] max-w-175 text-[#656565] leading-[1.6]">Stay up to date on your
+                                    purchase with order confirmation, shipping updates & special customer only
+                                    discounts.
+                                </p>
+                            </div>
+                            <div class="mt-15">
+                                <p class="text-[1.7rem] text-[#656565] font-medium">&copy; 2025 RetinaClear. All Rights
+                                    Reserved</p>
+                                <p class="text-[#666666] text-[1.3rem]">These Statements Have Not Been Evaluated By The
+                                    Food And Drug Administration. This Product Is Not Intended To Diagnose, Treat, Cure
+                                    Or Prevent Any Disease.</p>
+                            </div>
+
+                            <ul class="mt-16 flex gap-8">
+                                <li><a class="font-medium underline text-[1.8rem] text-[#666666]" href="#">Refund
+                                        Policy</a></li>
+                                <li><a class="font-medium underline text-[1.8rem] text-[#666666]" href="#">Privacy
+                                        Policy</a></li>
+                                <li><a class="font-medium underline text-[1.8rem] text-[#666666]" href="#">Term of
+                                        Service</a></li>
+                            </ul>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+            <div class="bg-[#f2f2f2]">
+                <div
+                    class="md:pl-23 py-18 md:max-w-[56.3rem] md:mr-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:ml-0">
+                    <div>
+                        <div class="hidden md:block">
+                            <ul class="flex flex-col gap-30 pb-16 border-b-3 border-[#CDCDCD]">
+                                <li class="flex justify-between items-center gap-5">
+                                    <div class="flex gap-13 items-center">
+                                        <div>
+                                            <img class="w-44" src="assets/images/6-bottles.png" alt="">
+                                        </div>
+                                        <div>
+                                            <h3 class="font-medium text-[2.13rem] leading-relaxed">Fitspresso <br> 6
+                                                Bottle Super Pack</h3>
+                                            <p class="text-[#976987] font-medium text-[1.63rem]">Most Popular!</p>
+                                        </div>
+                                    </div>
+                                    <div class="font-medium text-[2.38rem] text-[#373737] uppercase">$294</div>
+                                </li>
+                                <li class="flex justify-between items-center gap-5">
+                                    <div class="flex gap-13 items-center">
+                                        <div>
+                                            <img class="w-44" src="assets/images/bonus-ebooks.png" alt="">
+                                        </div>
+                                        <div>
+                                            <h3 class="font-medium text-[2.13rem] leading-relaxed">Bonus eBooks</h3>
+                                            <p class="text-[#976987] font-medium text-[1.63rem]">First Time Customer</p>
+                                        </div>
+                                    </div>
+                                    <div class="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
+                                </li>
+                                <li class="flex justify-between items-center gap-5">
+                                    <div class="flex gap-13 items-center">
+                                        <div>
+                                            <img class="w-44" src="assets/images/bonus-call.png" alt="">
+                                        </div>
+                                        <div>
+                                            <img class="w-15" src="assets/images/shape-1.svg" alt="">
+                                            <h3 class="font-medium text-[2.13rem] leading-relaxed">Bonus Coaching Call
+                                            </h3>
+                                            <p class="text-[#976987] font-medium text-[1.63rem]">Limited Time</p>
+                                        </div>
+                                    </div>
+                                    <div class="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
+                                </li>
+                            </ul>
+                            <ul class="pt-16 font-medium text-[2.19rem] text-[#373737] flex flex-col gap-5">
+                                <li class="flex justify-between items-center ">
+                                    <div>Shipping</div>
+                                    <div class="uppercase">free</div>
+                                </li>
+                                <li class="flex justify-between items-center ">
+                                    <div>Total</div>
+                                    <div class="uppercase"><small
+                                            class="text-[1.63rem] font-normal text-[#656565] mr-2">USD</small> $294
+                                    </div>
+                                </li>
+                            </ul>
+
+                        </div>
+                        <ul
+                            class="hidden md:flex pt-15 items-center justify-between gap-5 text-[#976987] font-medium md:text-[1.5rem]">
+                            <li
+                                class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
+                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="">
+                                <span>One-Time Purchase</span>
+                            </li>
+                            <li
+                                class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
+                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="">
+                                <span>No Hidden Fees</span>
+                            </li>
+                            <li
+                                class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
+                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="">
+                                <span>Fast, Secure Payment</span>
+                            </li>
+                        </ul>
+                        <div class="mt-15 flex flex-col-reverse md:flex-col">
+
+                            <div class="mt-15 flex flex-col gap-6">
+                                <h3 class="text-center font-bold text-[2.7rem]">250,000+ Customers! <br> Your Story Can
+                                    Be
+                                    Next</h3>
+                                <div class="bg-white p-11 border-3 border-[#916B86] md:border-[#CDCDCD] rounded-2xl">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex gap-6.5 items-center">
+                                            <div>
+                                                <img class="w-31.75 h-31.75 object-cover" src="assets/images/olivia.png"
+                                                    alt="">
+                                            </div>
+                                            <div>
+                                                <h4 class="text-[#373737] font-bold text-[2rem] mb-4.5 leading-none">
+                                                    Olivia Harris
+                                                </h4>
+                                                <p
+                                                    class="flex items-center gap-1 font-medium text-[1.69rem] text-[#976987]">
+                                                    <img class="w-7.25" src="assets/images/circle-check.svg" alt="">
+                                                    Verified Customer
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="flex gap-2 items-center">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                            </div>
+                                            <span
+                                                class="inline-block mt-4 px-4 py-1.5 bg-[#986988] text-white font-bold text-[1.45rem] rounded-[5rem] leading-none">5
+                                                Stars</span>
+                                        </div>
+                                    </div>
+                                    <p class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">“I
+                                        can hardly
+                                        believe it, I know longer need my glasses and
+                                        I feel amazing. I’m a
+                                        believer.”</p>
+                                </div>
+
+                                <div class="bg-white p-11 border-3 border-[#916B86] md:border-[#CDCDCD] rounded-2xl">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex gap-6.5 items-center">
+                                            <div>
+                                                <img class="w-31.75 h-31.75 object-cover" src="assets/images/emily.png"
+                                                    alt="">
+                                            </div>
+                                            <div>
+                                                <h4 class="text-[#373737] font-bold text-[2rem] mb-4.5 leading-none">
+                                                    Emily Parker
+                                                </h4>
+                                                <p
+                                                    class="flex items-center gap-1 font-medium text-[1.69rem] text-[#976987]">
+                                                    <img class="w-7.25" src="assets/images/circle-check.svg" alt="">
+                                                    Verified Customer
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="flex gap-2 items-center">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                            </div>
+                                            <span
+                                                class="inline-block mt-4 px-4 py-1.5 bg-[#986988] text-white font-bold text-[1.45rem] rounded-[5rem] leading-none">5
+                                                Stars</span>
+                                        </div>
+                                    </div>
+                                    <p class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">“I
+                                        can hardly
+                                        believe it, I know longer need my glasses and
+                                        I feel amazing. I’m a
+                                        believer.”</p>
+                                </div>
+                            </div>
+
+                            <ul
+                                class="md:hidden pt-15 flex items-center justify-between gap-5 text-[#976987] font-medium  text-xl">
+                                <li
+                                    class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
+                                    <img class=" w-8" src="assets/images/circle-check.svg" alt="">
+                                    <span>One-Time Purchase</span>
+                                </li>
+                                <li
+                                    class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
+                                    <img class="w-8" src="assets/images/circle-check.svg" alt="">
+                                    <span>No Hidden Fees</span>
+                                </li>
+                                <li
+                                    class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
+                                    <img class="w-8" src="assets/images/circle-check.svg" alt="">
+                                    <span>Fast, Secure Payment</span>
+                                </li>
+                            </ul>
+
+                            <div
+                                class="bg-[#916B86] md:bg-white py-13 px-15 border-3 border-[#916B86] rounded-2xl mt-13.5">
+                                <div class="flex justify-center items-center gap-10">
+                                    <div class="w-full text-center">
+                                        <img class="w-66 mx-auto" src="assets/images/money-back.png" alt="">
+                                    </div>
+                                    <div class="w-full">
+                                        <h3
+                                            class="text-[#F6C657] md:text-[#916B85] font-bold text-[3.25rem] leading-[1.2]">
+                                            100% <br>
+                                            Money-Back <br> Guarantee!</h3>
+                                    </div>
+                                </div>
+                                <p class="mt-7.5 text-center text-[1.94rem] leading-[1.2] text-white md:text-[#373737]">
+                                    There’s
+                                    absolutely zero risk in trying! You will love how RetinaClear makes you feel and
+                                    transforms your eyesight! If you decide the product isn’t for you, just let us know,
+                                    and we will refund your money, no questions asked.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-18 md:pl-15 md:hidden">
+                        <div>
+                            <label class="flex items-center gap-5 cursor-pointer select-none">
+                                <input type="checkbox" class="peer hidden">
+
+                                <span
+                                    class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
+                                    <img src="assets/images/check-dark.svg" alt="" class="hidden" />
+                                </span>
+
+                                <span class="text-[#656565] font-medium text-[1.8rem]">
+                                    Get SMS Alerts About Your Order
+                                </span>
+                            </label>
+                            <p class="text-[1.7rem] text-[#656565] leading-[1.6]">Stay up to date on your
+                                purchase with order confirmation, shipping updates & special customer only
+                                discounts.
+                            </p>
+                        </div>
+                        <div class="mt-15">
+                            <p class="text-[1.7rem] text-[#656565] font-medium">&copy; 2025 RetinaClear. All Rights
+                                Reserved</p>
+                            <p class="text-[#666666] text-[1.3rem]">These Statements Have Not Been Evaluated By The
+                                Food And Drug Administration. This Product Is Not Intended To Diagnose, Treat, Cure
+                                Or Prevent Any Disease.</p>
+                        </div>
+
+                        <ul class="mt-16 flex gap-8">
+                            <li><a class="font-medium underline text-[1.8rem] text-[#666666]" href="#">Refund
+                                    Policy</a></li>
+                            <li><a class="font-medium underline text-[1.8rem] text-[#666666]" href="#">Privacy
+                                    Policy</a></li>
+                            <li><a class="font-medium underline text-[1.8rem] text-[#666666]" href="#">Term of
+                                    Service</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+
+
+</html>
