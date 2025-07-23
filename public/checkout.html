@@ -1,13 +1,28 @@
 <!doctype html>
-<html class="text-[2.1vw] md:text-[0.738vw]">
+<html class="text-[2.1vw] md:text-[0.738vw]" lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="./assets/style.css" rel="stylesheet">
-    <!-- Google Places API for address autocomplete -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places&callback=initAutocomplete" async defer></script>
+    <meta name="description" content="Secure checkout for Fitspresso - Complete your order with our fast, secure payment process">
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://maps.googleapis.com">
+    <link rel="preconnect" href="https://ipapi.co">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="./assets/style.css" as="style">
+    <link rel="preload" href="./assets/images/Logo.svg" as="image">
+    
+    <link href="./assets/style.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/style.css"></noscript>
+    <!-- Critical CSS inline -->
     <style>
+        /* Critical CSS for above-the-fold content */
+        *,::after,::before{box-sizing:border-box}body{margin:0;font-family:Roboto,sans-serif;background:#fff}header{padding:1rem 0;border-bottom:3px solid #cdcdcd}.container{width:100%;padding:0 2.5rem;margin:0 auto}.hidden{display:none}.block{display:block}.text-\[2\.1vw\]{font-size:2.1vw}.md\:text-\[0\.738vw\]{font-size:.738vw}@media (min-width:768px){.md\:flex{display:flex}.md\:hidden{display:none}.md\:block{display:block}.md\:inline-block{display:inline-block}.md\:flex-row{flex-direction:row}.md\:py-0{padding-top:0;padding-bottom:0}}
+        
         /* Container max-width for large screens */
         .container-max {
             max-width: 1440px;
@@ -137,10 +152,10 @@
             <div class="container !px-0 !md:px-10">
                 <div class="flex flex-col-reverse md:flex-row justify-between items-center">
                 <div class="py-10 md:py-0 flex gap-2.75 justify-center md:justify-start items-end w-full md:w-auto">
-                    <img class="max-w-full w-110" src="assets/images/Logo.svg" alt="">
+                    <img class="max-w-full w-110" src="assets/images/Logo.svg" alt="Fitspresso Logo" width="220" height="60" loading="eager">
                     <div class=" gap-2.75 hidden md:flex">
                         <p class="font-medium text-4xl text-[#373737] whitespace-nowrap">Secure Checkout</p>
-                        <img class="w-7" src="assets/images/lock.svg" alt="">
+                        <img class="w-7" src="assets/images/lock.svg" alt="Secure" width="28" height="28" loading="eager">
                     </div>
                 </div>
                 <div class="flex items-center gap-6.5 w-full md:w-auto justify-center bg-[#e4e4e4] md:bg-transparent">
@@ -165,7 +180,7 @@
                             <li class="flex justify-between items-center gap-5">
                                 <div class="flex gap-13 items-center">
                                     <div>
-                                        <img class="w-54" src="assets/images/6-bottles.png" alt="">
+                                        <img class="w-54" src="assets/images/6-bottles.png" alt="6 Bottle Pack" width="216" height="216" loading="lazy">
                                     </div>
                                     <div>
                                         <h3 class="font-medium text-[2.1rem] leading-relaxed">Fitspresso <br> 6
@@ -194,14 +209,14 @@
                         <h3 class="text-center font-bold text-[2.07rem] text-[#373737]">Express Checkout</h3>
                         <div class="flex justify-between gap-4 mt-6 flex-wrap md:flex-nowrap">
                             <button class="cursor-pointer w-full md:w-1/3">
-                                <img class="w-full hidden md:block" src="assets/images/PayPal.svg" alt="">
-                                <img class="w-full md:hidden" src="assets/images/paypal-big.svg" alt="">
+                                <img class="w-full hidden md:inline-block" src="assets/images/PayPal.svg" alt="PayPal" width="100" height="40" loading="lazy">
+                                <img class="w-full inline-block md:hidden" src="assets/images/paypal-big.svg" alt="PayPal" width="200" height="60" loading="lazy">
                             </button>
                             <div class="flex justify-between gap-4 items-center w-full md:w-2/3">
                                 <button class="cursor-pointer w-1/2 md:w-full"><img class="w-full"
-                                        src="assets/images/applypay.svg" alt=""></button>
+                                        src="assets/images/applypay.svg" alt="Apple Pay" width="100" height="40" loading="lazy"></button>
                                 <button class="cursor-pointer  w-1/2 md:w-full"><img class="w-full"
-                                        src="assets/images/googlepay.svg" alt=""></button>
+                                        src="assets/images/googlepay.svg" alt="Google Pay" width="100" height="40" loading="lazy"></button>
                             </div>
                         </div>
                         <div class="mt-15 mb-22.5 border-b-3 border-[#CDCDCD] relative">
@@ -266,7 +281,7 @@
                                         placeholder=" " pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required>
                                     <label for="phone" class="floating-label">Phone Number (For delivery confirmation texts)</label>
                                     <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
-                                            src="assets/images/info.svg" alt=""></span>
+                                            src="assets/images/info.svg" alt="Info" width="40" height="40" loading="lazy"></span>
                                 </div>
                             </div>
                         </div>
@@ -274,7 +289,7 @@
                         <div class="mt-25">
                             <h3 class="mb-5 text-[#373738] font-medium text-[2.7rem]">Payment</h3>
                             <p class="flex gap-5 mb-5 items-center font-medium text-[2.25rem]">All transactions are
-                                secure and encrypted <img class="w-8" src="assets/images/lock.svg" alt=""></p>
+                                secure and encrypted <img class="w-8" src="assets/images/lock.svg" alt="Secure" width="32" height="32" loading="lazy"></p>
                             <div class="space-y-8">
                                 <div class="floating-label-group relative">
                                     <input type="text" id="cardNumber"
@@ -282,9 +297,9 @@
                                         placeholder=" " pattern="[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}" maxlength="19" required>
                                     <label for="cardNumber" class="floating-label">Card Number</label>
                                     <div class="absolute top-1/2 right-9 -translate-y-1/2 flex gap-2">
-                                        <img class="h-13" src="assets/images/visa.svg" alt="">
-                                        <img class="h-13" src="assets/images/mastercard.svg" alt="">
-                                        <img class="h-13" src="assets/images/american-express.svg" alt="">
+                                        <img class="h-13" src="assets/images/visa.svg" alt="Visa" width="52" height="52" loading="lazy">
+                                        <img class="h-13" src="assets/images/mastercard.svg" alt="Mastercard" width="52" height="52" loading="lazy">
+                                        <img class="h-13" src="assets/images/american-express.svg" alt="American Express" width="52" height="52" loading="lazy">
                                     </div>
                                 </div>
                                 <div class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
@@ -300,7 +315,7 @@
                                             placeholder=" " pattern="[0-9]{3,4}" maxlength="4" required>
                                         <label for="cvv" class="floating-label">Security Code</label>
                                         <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
-                                                src="assets/images/info.svg" alt=""></span>
+                                                src="assets/images/info.svg" alt="Info" width="40" height="40" loading="lazy"></span>
                                     </div>
                                 </div>
                                 <div class="floating-label-group">
@@ -315,7 +330,7 @@
                                         <input type="checkbox" class="hidden peer" id="sameAddress" checked>
                                         <span
                                             class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center peer-checked:bg-[#666666] rounded-md">
-                                            <img src="assets/images/check.svg" alt="">
+                                            <img src="assets/images/check.svg" alt="Checkmark" width="16" height="16" loading="lazy">
                                         </span>
                                         <span class="text-[#373738] font-medium text-[1.63rem]">
                                             Use shipping address as payment address
@@ -378,9 +393,9 @@
                         </div>
 
                         <div class="flex justify-between px-7.5 items-center gap-10 mt-11">
-                            <div><img class="h-18" src="assets/images/mcafee-seeklogo.svg" alt=""></div>
-                            <div><img class="h-24" src="assets/images/Norton.svg" alt=""></div>
-                            <div><img class="h-19" src="assets/images/Truste.svg" alt=""></div>
+                            <div><img class="h-18" src="assets/images/mcafee-seeklogo.svg" alt="McAfee Secure" width="72" height="72" loading="lazy"></div>
+                            <div><img class="h-24" src="assets/images/Norton.svg" alt="Norton Secured" width="96" height="96" loading="lazy"></div>
+                            <div><img class="h-19" src="assets/images/Truste.svg" alt="TRUSTe Verified" width="76" height="76" loading="lazy"></div>
                         </div>
 
                         <div class="md:mt-35 md:border-b-3 border-[#CDCDCD]"></div>
@@ -392,7 +407,7 @@
 
                                     <span
                                         class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                                        <img src="assets/images/check-dark.svg" alt="" class="hidden" />
+                                        <img src="assets/images/check-dark.svg" alt="Checkmark" class="hidden" width="16" height="16" loading="lazy" />
                                     </span>
 
                                     <span class="text-[#656565] font-medium text-[1.8rem]">
@@ -434,7 +449,7 @@
                                 <li class="flex justify-between items-center gap-5">
                                     <div class="flex gap-13 items-center">
                                         <div>
-                                            <img class="w-44" src="assets/images/6-bottles.png" alt="">
+                                            <img class="w-44" src="assets/images/6-bottles.png" alt="6 Bottle Pack" width="176" height="176" loading="lazy">
                                         </div>
                                         <div>
                                             <h3 class="font-medium text-[2.13rem] leading-relaxed">Fitspresso <br> 6
@@ -447,7 +462,7 @@
                                 <li class="flex justify-between items-center gap-5">
                                     <div class="flex gap-13 items-center">
                                         <div>
-                                            <img class="w-44" src="assets/images/bonus-ebooks.png" alt="">
+                                            <img class="w-44" src="assets/images/bonus-ebooks.png" alt="Bonus eBooks" width="176" height="176" loading="lazy">
                                         </div>
                                         <div>
                                             <h3 class="font-medium text-[2.13rem] leading-relaxed">Bonus eBooks</h3>
@@ -459,10 +474,10 @@
                                 <li class="flex justify-between items-center gap-5">
                                     <div class="flex gap-13 items-center">
                                         <div>
-                                            <img class="w-44" src="assets/images/bonus-call.png" alt="">
+                                            <img class="w-44" src="assets/images/bonus-call.png" alt="Bonus Call" width="176" height="176" loading="lazy">
                                         </div>
                                         <div>
-                                            <img class="w-15" src="assets/images/shape-1.svg" alt="">
+                                            <img class="w-15" src="assets/images/shape-1.svg" alt="Shape" width="60" height="60" loading="lazy">
                                             <h3 class="font-medium text-[2.13rem] leading-relaxed">Bonus Coaching Call
                                             </h3>
                                             <p class="text-[#976987] font-medium text-[1.63rem]">Limited Time</p>
@@ -489,17 +504,17 @@
                             class="hidden md:flex pt-15 items-center justify-between gap-5 text-[#976987] font-medium md:text-[1.5rem]">
                             <li
                                 class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
-                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="">
+                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="Check" width="48" height="48" loading="lazy">
                                 <span>One-Time Purchase</span>
                             </li>
                             <li
                                 class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
-                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="">
+                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="Check" width="48" height="48" loading="lazy">
                                 <span>No Hidden Fees</span>
                             </li>
                             <li
                                 class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
-                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="">
+                                <img class="md:w-11.25 w-12" src="assets/images/circle-check.svg" alt="Check" width="48" height="48" loading="lazy">
                                 <span>Fast, Secure Payment</span>
                             </li>
                         </ul>
@@ -514,7 +529,7 @@
                                         <div class="flex gap-6.5 items-center">
                                             <div>
                                                 <img class="w-31.75 h-31.75 object-cover" src="assets/images/olivia.png"
-                                                    alt="">
+                                                    alt="Olivia Harris" width="127" height="127" loading="lazy">
                                             </div>
                                             <div>
                                                 <h4 class="text-[#373737] font-bold text-[2rem] mb-4.5 leading-none">
@@ -522,18 +537,18 @@
                                                 </h4>
                                                 <p
                                                     class="flex items-center gap-1 font-medium text-[1.69rem] text-[#976987]">
-                                                    <img class="w-7.25" src="assets/images/circle-check.svg" alt="">
+                                                    <img class="w-7.25" src="assets/images/circle-check.svg" alt="Verified" width="29" height="29" loading="lazy">
                                                     Verified Customer
                                                 </p>
                                             </div>
                                         </div>
                                         <div class="text-right">
                                             <div class="flex gap-2 items-center">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
                                             </div>
                                             <span
                                                 class="inline-block mt-4 px-4 py-1.5 bg-[#986988] text-white font-bold text-[1.45rem] rounded-[5rem] leading-none">5
@@ -552,7 +567,7 @@
                                         <div class="flex gap-6.5 items-center">
                                             <div>
                                                 <img class="w-31.75 h-31.75 object-cover" src="assets/images/emily.png"
-                                                    alt="">
+                                                    alt="Emily Parker" width="127" height="127" loading="lazy">
                                             </div>
                                             <div>
                                                 <h4 class="text-[#373737] font-bold text-[2rem] mb-4.5 leading-none">
@@ -560,18 +575,18 @@
                                                 </h4>
                                                 <p
                                                     class="flex items-center gap-1 font-medium text-[1.69rem] text-[#976987]">
-                                                    <img class="w-7.25" src="assets/images/circle-check.svg" alt="">
+                                                    <img class="w-7.25" src="assets/images/circle-check.svg" alt="Verified" width="29" height="29" loading="lazy">
                                                     Verified Customer
                                                 </p>
                                             </div>
                                         </div>
                                         <div class="text-right">
                                             <div class="flex gap-2 items-center">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
-                                                <img class="w-7.25" src="assets/images/star.svg" alt="">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
+                                                <img class="w-7.25" src="assets/images/star.svg" alt="Star" width="29" height="29" loading="lazy">
                                             </div>
                                             <span
                                                 class="inline-block mt-4 px-4 py-1.5 bg-[#986988] text-white font-bold text-[1.45rem] rounded-[5rem] leading-none">5
@@ -590,7 +605,7 @@
                                 class="md:hidden pt-15 flex items-center justify-between gap-5 text-[#976987] font-medium  text-xl">
                                 <li
                                     class="flex w-full items-center gap-3.25 border-3 border-[#986988] bg-white rounded-full px-5 py-2">
-                                    <img class=" w-8" src="assets/images/circle-check.svg" alt="">
+                                    <img class=" w-8" src="assets/images/circle-check.svg" alt="Check" width="32" height="32" loading="lazy">
                                     <span>One-Time Purchase</span>
                                 </li>
                                 <li
@@ -609,7 +624,7 @@
                                 class="bg-[#916B86] md:bg-white py-13 px-15 border-3 border-[#916B86] rounded-2xl mt-13.5">
                                 <div class="flex justify-center items-center gap-10">
                                     <div class="w-full text-center">
-                                        <img class="w-66 mx-auto" src="assets/images/money-back.png" alt="">
+                                        <img class="w-66 mx-auto" src="assets/images/money-back.png" alt="Money Back Guarantee" width="264" height="264" loading="lazy">
                                     </div>
                                     <div class="w-full">
                                         <h3
@@ -634,7 +649,7 @@
 
                                 <span
                                     class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                                    <img src="assets/images/check-dark.svg" alt="" class="hidden" />
+                                    <img src="assets/images/check-dark.svg" alt="Checkmark" class="hidden" width="16" height="16" loading="lazy" />
                                 </span>
 
                                 <span class="text-[#656565] font-medium text-[1.8rem]">
@@ -669,28 +684,37 @@
         </div>
     </main>
 
+    <!-- Resource hints -->
+    <link rel="dns-prefetch" href="//ipapi.co">
+    <link rel="dns-prefetch" href="//maps.googleapis.com">
+    
+    <!-- Web Font optimization -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"></noscript>
+    
+    <!-- Defer non-critical scripts -->
     <script>
-        // Countdown timer
-        let minutes = 9;
-        let seconds = 59;
-        
-        function updateTimer() {
-            if (seconds === 0) {
-                if (minutes === 0) {
-                    // Timer expired
-                    return;
-                }
-                minutes--;
-                seconds = 59;
-            } else {
-                seconds--;
+        // Performance optimized scripts - minified
+        let m=!1;function lGM(){if(!m){m=!0;const e='YOUR_GOOGLE_API_KEY';if(e&&'YOUR_GOOGLE_API_KEY'!==e){const t=document.createElement('script');t.src=`https://maps.googleapis.com/maps/api/js?key=${e}&libraries=places&callback=initAutocomplete`;t.async=!0;t.defer=!0;document.body.appendChild(t)}}}document.addEventListener('focusin',function(e){('address'===e.target.id||'billing-address'===e.target.id)&&lGM()},{passive:!0});setTimeout(lGM,5e3);
+    </script>
+
+    <script>
+        // Main application script - optimized and deferred
+        document.addEventListener('DOMContentLoaded', function() {
+            // Countdown timer
+            let minutes = 9, seconds = 59;
+            function updateTimer() {
+                if (seconds === 0) {
+                    if (minutes === 0) return;
+                    minutes--; seconds = 59;
+                } else { seconds--; }
+                document.getElementById('minutes').textContent = minutes.toString();
+                document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
             }
-            
-            document.getElementById('minutes').textContent = minutes.toString();
-            document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
-        }
-        
-        setInterval(updateTimer, 1000);
+            setInterval(updateTimer, 1000);
         
         // GeoIP detection to auto-fill country and state
         async function detectLocationAndFill() {
@@ -846,10 +870,26 @@
             }
         }
         
-        // Call GeoIP detection on page load
-        window.addEventListener('load', function() {
-            detectLocationAndFill();
-        });
+        // Delay GeoIP detection to improve initial load
+        let geoIPLoaded = false;
+        function loadGeoIPOnInteraction() {
+            if (!geoIPLoaded) {
+                geoIPLoaded = true;
+                setTimeout(detectLocationAndFill, 100);
+            }
+        }
+        
+        // Load GeoIP on first user interaction
+        document.addEventListener('click', loadGeoIPOnInteraction, { once: true });
+        document.addEventListener('focus', loadGeoIPOnInteraction, { once: true, capture: true });
+        document.addEventListener('touchstart', loadGeoIPOnInteraction, { once: true });
+        
+        // Also load after a delay if no interaction
+        setTimeout(function() {
+            if (!geoIPLoaded) {
+                loadGeoIPOnInteraction();
+            }
+        }, 3000);
         
         // Toggle billing address
         const sameAddressCheckbox = document.getElementById('sameAddress');
@@ -893,13 +933,36 @@
             e.target.value = value;
         });
         
-        // Form validation
-        document.getElementById('checkout-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Add your form submission logic here
-            alert('Order submitted successfully!');
+            // Form validation
+            document.getElementById('checkout-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // Add your form submission logic here
+                alert('Order submitted successfully!');
+            });
         });
+        
+        // Performance monitoring
+        if (window.performance && performance.mark) {
+            window.addEventListener('load', function() {
+                try {
+                    const perfData = performance.getEntriesByType('navigation')[0];
+                    console.log('Page Load Metrics:', {
+                        'Total Load Time': perfData.loadEventEnd - perfData.fetchStart,
+                        'DOM Ready': perfData.domContentLoadedEventEnd - perfData.fetchStart,
+                        'First Paint': performance.getEntriesByName('first-paint')[0]?.startTime
+                    });
+                } catch(e) {}
+            });
+        }
+        
+        // Register Service Worker for offline caching
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
     </script>
 </body>
 
