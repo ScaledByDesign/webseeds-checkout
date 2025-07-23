@@ -43,13 +43,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
-    <!-- Load non-critical CSS asynchronously -->
-    <link rel="preload" href="./assets/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="./assets/style.css"></noscript>
+    <!-- Load CSS immediately to prevent layout shifts -->
+    <link href="./assets/style.css" rel="stylesheet">
     
-    <!-- Load fonts with display swap for better performance -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"></noscript>
+    <!-- Preload and load fonts immediately to prevent layout shift -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
     <!-- Critical CSS inline -->
     <style>
@@ -100,8 +99,14 @@
         }
         
         /* Font loading optimization */
-        .font-roboto {
-            font-display: swap;
+        body {
+            /* Use system fonts as immediate fallback */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        
+        /* Apply Roboto when loaded */
+        .fonts-loaded body {
+            font-family: Roboto, sans-serif;
         }
         
         /* Header specific constraints */
@@ -849,6 +854,16 @@
         </div>
     </main>
 
+    
+    <!-- Font loading detection -->
+    <script>
+        // Detect when fonts are loaded to prevent FOUT
+        if ('fonts' in document) {
+            document.fonts.ready.then(function() {
+                document.documentElement.classList.add('fonts-loaded');
+            });
+        }
+    </script>
     
     <!-- Defer non-critical scripts -->
     <script>
