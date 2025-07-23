@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./assets/style.css" rel="stylesheet">
+    <!-- Google Places API for address autocomplete -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places&callback=initAutocomplete" async defer></script>
     <style>
         /* Container max-width for large screens */
         .container-max {
@@ -101,6 +103,29 @@
         /* Countdown timer */
         .countdown-timer {
             font-variant-numeric: tabular-nums;
+        }
+        
+        /* Google Places Autocomplete dropdown */
+        .pac-container {
+            z-index: 1051;
+            border-radius: 0.75rem;
+            border: 3px solid #CDCDCD;
+            margin-top: 0.5rem;
+            font-family: inherit;
+        }
+        
+        .pac-item {
+            padding: 0.75rem 1rem;
+            font-size: 1.6rem;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .pac-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .pac-item-selected {
+            background-color: #e5e5e5;
         }
     </style>
 </head>
@@ -666,6 +691,165 @@
         }
         
         setInterval(updateTimer, 1000);
+        
+        // GeoIP detection to auto-fill country and state
+        async function detectLocationAndFill() {
+            try {
+                // Using ipapi.co free tier for GeoIP detection
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                
+                if (data.country_code) {
+                    // Set country
+                    const countrySelect = document.getElementById('country');
+                    const billingCountrySelect = document.getElementById('billing-country');
+                    const countryCode = data.country_code.toLowerCase();
+                    
+                    // Map country codes to select values
+                    const countryMap = {
+                        'us': 'us',
+                        'ca': 'ca',
+                        'gb': 'uk',
+                        'au': 'au',
+                        'nz': 'nz'
+                    };
+                    
+                    if (countryMap[countryCode]) {
+                        countrySelect.value = countryMap[countryCode];
+                        billingCountrySelect.value = countryMap[countryCode];
+                        
+                        // Trigger floating label update
+                        countrySelect.dispatchEvent(new Event('change'));
+                        billingCountrySelect.dispatchEvent(new Event('change'));
+                    }
+                }
+                
+                if (data.region) {
+                    // Set state/province
+                    const stateInput = document.getElementById('state');
+                    const billingStateInput = document.getElementById('billing-state');
+                    
+                    stateInput.value = data.region;
+                    billingStateInput.value = data.region;
+                    
+                    // Trigger floating label update
+                    stateInput.dispatchEvent(new Event('input'));
+                    billingStateInput.dispatchEvent(new Event('input'));
+                }
+                
+                if (data.city) {
+                    // Set city
+                    const cityInput = document.getElementById('city');
+                    const billingCityInput = document.getElementById('billing-city');
+                    
+                    cityInput.value = data.city;
+                    billingCityInput.value = data.city;
+                    
+                    // Trigger floating label update
+                    cityInput.dispatchEvent(new Event('input'));
+                    billingCityInput.dispatchEvent(new Event('input'));
+                }
+            } catch (error) {
+                console.log('GeoIP detection failed:', error);
+            }
+        }
+        
+        // Google Places Autocomplete
+        let shippingAutocomplete;
+        let billingAutocomplete;
+        
+        function initAutocomplete() {
+            // Options for autocomplete
+            const options = {
+                types: ['address'],
+                fields: ['address_components', 'formatted_address'],
+                componentRestrictions: { country: ['us', 'ca', 'gb', 'au', 'nz'] }
+            };
+            
+            // Initialize autocomplete for shipping address
+            const shippingAddressInput = document.getElementById('address');
+            shippingAutocomplete = new google.maps.places.Autocomplete(shippingAddressInput, options);
+            
+            shippingAutocomplete.addListener('place_changed', function() {
+                fillInAddress('shipping', shippingAutocomplete);
+            });
+            
+            // Initialize autocomplete for billing address
+            const billingAddressInput = document.getElementById('billing-address');
+            billingAutocomplete = new google.maps.places.Autocomplete(billingAddressInput, options);
+            
+            billingAutocomplete.addListener('place_changed', function() {
+                fillInAddress('billing', billingAutocomplete);
+            });
+        }
+        
+        function fillInAddress(type, autocomplete) {
+            const place = autocomplete.getPlace();
+            
+            if (!place.address_components) {
+                return;
+            }
+            
+            // Reset fields
+            const prefix = type === 'billing' ? 'billing-' : '';
+            const fields = {
+                street_number: '',
+                route: '',
+                locality: `${prefix}city`,
+                administrative_area_level_1: `${prefix}state`,
+                postal_code: `${prefix}zip`,
+                country: `${prefix}country`
+            };
+            
+            // Parse address components
+            let streetNumber = '';
+            let route = '';
+            
+            for (const component of place.address_components) {
+                const addressType = component.types[0];
+                
+                if (addressType === 'street_number') {
+                    streetNumber = component.long_name;
+                } else if (addressType === 'route') {
+                    route = component.long_name;
+                } else if (fields[addressType]) {
+                    const input = document.getElementById(fields[addressType]);
+                    if (input) {
+                        if (addressType === 'country') {
+                            // Map country names to select values
+                            const countryMap = {
+                                'United States': 'us',
+                                'Canada': 'ca',
+                                'United Kingdom': 'uk',
+                                'Australia': 'au',
+                                'New Zealand': 'nz'
+                            };
+                            input.value = countryMap[component.long_name] || '';
+                        } else if (addressType === 'administrative_area_level_1') {
+                            // Use short name for states
+                            input.value = component.short_name;
+                        } else {
+                            input.value = component.long_name;
+                        }
+                        
+                        // Trigger event to update floating labels
+                        input.dispatchEvent(new Event(input.tagName === 'SELECT' ? 'change' : 'input'));
+                    }
+                }
+            }
+            
+            // Combine street number and route
+            const addressInput = document.getElementById(type === 'billing' ? 'billing-address' : 'address');
+            if (addressInput) {
+                addressInput.value = `${streetNumber} ${route}`.trim();
+                addressInput.dispatchEvent(new Event('input'));
+            }
+        }
+        
+        // Call GeoIP detection on page load
+        window.addEventListener('load', function() {
+            detectLocationAndFill();
+        });
         
         // Toggle billing address
         const sameAddressCheckbox = document.getElementById('sameAddress');
