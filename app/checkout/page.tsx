@@ -8,7 +8,7 @@ import CountdownTimer from '@/components/CountdownTimer'
 import { ModernCheckoutForm } from '@/components/ModernCheckoutForm'
 import { TestCheckoutForm } from '@/components/TestCheckoutForm'
 import { CollectJSCheckoutForm } from '@/components/CollectJSCheckoutForm'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 // Order data for the form
@@ -30,7 +30,7 @@ interface ValidationError {
   suggestions: string[]
 }
 
-function CheckoutContent() {
+export default function CheckoutPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isExpired, setIsExpired] = useState(false)
@@ -758,15 +758,4 @@ function CheckoutContent() {
   )
 }
 
-export default function CheckoutPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-      </div>
-    }>
-      <CheckoutContent />
-    </Suspense>
-  )
-}
 
