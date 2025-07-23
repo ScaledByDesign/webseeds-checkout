@@ -27,7 +27,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://maps.googleapis.com">
-    <link rel="preconnect" href="https://ipapi.co">
+    <!-- Remove ipapi.co preconnect/dns-prefetch from initial load to improve LCP -->
     
     <!-- Preload critical resources -->
     <link rel="preload" href="./assets/style.css" as="style">
@@ -36,7 +36,6 @@
     
     <!-- Prefetch next page -->
     <link rel="prefetch" href="./thankyou.html">
-    <link rel="dns-prefetch" href="//ipapi.co">
     <link rel="dns-prefetch" href="//maps.googleapis.com">
     
     <!-- Google Fonts -->
@@ -1076,6 +1075,7 @@
         function loadGeoIPOnInteraction() {
             if (!geoIPLoaded) {
                 geoIPLoaded = true;
+                addIpapiPreconnect();
                 setTimeout(detectLocationAndFill, 100);
             }
         }
@@ -1084,6 +1084,16 @@
         document.addEventListener('click', loadGeoIPOnInteraction, { once: true });
         document.addEventListener('focus', loadGeoIPOnInteraction, { once: true, capture: true });
         document.addEventListener('touchstart', loadGeoIPOnInteraction, { once: true });
+        
+        // Add ipapi.co preconnect when about to use it
+        function addIpapiPreconnect() {
+            if (!document.querySelector('link[href*="ipapi.co"]')) {
+                const link = document.createElement('link');
+                link.rel = 'preconnect';
+                link.href = 'https://ipapi.co';
+                document.head.appendChild(link);
+            }
+        }
         
         // Also load after a delay if no interaction
         setTimeout(function() {
