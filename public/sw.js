@@ -27,7 +27,14 @@ const urlsToCache = [
   '/assets/images/bonus-ebooks.png',
   '/assets/images/bonus-call.png',
   '/assets/images/olivia.png',
-  '/assets/images/emily.png'
+  '/assets/images/emily.png',
+  // WebP versions
+  '/assets/images/6-bottles.webp',
+  '/assets/images/money-back.webp',
+  '/assets/images/bonus-ebooks.webp',
+  '/assets/images/bonus-call.webp',
+  '/assets/images/olivia.webp',
+  '/assets/images/emily.webp'
 ];
 
 // Install Service Worker
