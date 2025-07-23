@@ -5,13 +5,112 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="./assets/style.css" rel="stylesheet">
+    <style>
+        /* Container max-width for large screens */
+        .container-max {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+        
+        /* Limit viewport-based font sizes on large screens */
+        @media (min-width: 1440px) {
+            html {
+                font-size: 10.6px !important; /* Cap the root font size */
+            }
+        }
+        
+        /* Header specific constraints */
+        @media (min-width: 1024px) {
+            header {
+                max-height: 120px;
+                overflow: hidden;
+            }
+            
+            header .container {
+                padding-top: 1rem !important;
+                padding-bottom: 1rem !important;
+            }
+            
+            header img.w-110 {
+                max-width: 200px;
+            }
+            
+            header .text-4xl {
+                font-size: 1.5rem !important;
+            }
+            
+            header .text-\\[2\\.5rem\\] {
+                font-size: 1.25rem !important;
+            }
+            
+            header .text-\\[4\\.5rem\\] {
+                font-size: 2rem !important;
+            }
+            
+            header .py-5\\.5 {
+                padding-top: 0.75rem !important;
+                padding-bottom: 0.75rem !important;
+            }
+        }
+        
+        /* Floating label styles */
+        .floating-label-group {
+            position: relative;
+        }
+        
+        .floating-label {
+            position: absolute;
+            pointer-events: none;
+            left: 2.25rem;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.2s ease;
+            font-size: 1.94rem;
+            color: #666666;
+            background: white;
+            padding: 0 0.25rem;
+        }
+        
+        .floating-label-group input:focus ~ .floating-label,
+        .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
+        .floating-label-group select:focus ~ .floating-label,
+        .floating-label-group select:valid ~ .floating-label {
+            top: 0;
+            transform: translateY(-50%);
+            font-size: 1.4rem;
+            color: #976987;
+        }
+        
+        .floating-label-group input:focus,
+        .floating-label-group select:focus {
+            border-color: #976987;
+        }
+        
+        /* Hide billing section by default */
+        #billing-section {
+            display: none;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 3px solid #CDCDCD;
+        }
+        
+        #billing-section.show {
+            display: block;
+        }
+        
+        /* Countdown timer */
+        .countdown-timer {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
 </head>
 
 <body class="font-roboto bg-white">
 
-    <header class="md:py-15.5 md:border-b-3 border-[#CDCDCD]">
-        <div class="container !px-0 !md:px-10">
-            <div class="flex flex-col-reverse md:flex-row justify-between items-center">
+    <header class="py-4 md:py-8 lg:py-6 md:border-b-3 border-[#CDCDCD]">
+        <div class="container-max">
+            <div class="container !px-0 !md:px-10">
+                <div class="flex flex-col-reverse md:flex-row justify-between items-center">
                 <div class="py-10 md:py-0 flex gap-2.75 justify-center md:justify-start items-end w-full md:w-auto">
                     <img class="max-w-full w-110" src="assets/images/Logo.svg" alt="">
                     <div class=" gap-2.75 hidden md:flex">
@@ -21,19 +120,20 @@
                 </div>
                 <div class="flex items-center gap-6.5 w-full md:w-auto justify-center bg-[#e4e4e4] md:bg-transparent">
                     <p class="font-medium text-[2.5rem] text-[#976987]">Special Price Reserved For</p>
-                    <div
-                        class="py-5.5 px-6 md:bg-[#986988] font-bold text-[#976987] md:text-white  text-[4.5rem] leading-none rounded-2xl">
-                        9:59</div>
+                    <div class="py-5.5 px-6 md:bg-[#986988] font-bold text-[#976987] md:text-white text-[4.5rem] leading-none rounded-2xl countdown-timer">
+                        <span id="minutes">9</span>:<span id="seconds">59</span>
+                    </div>
                 </div>
+            </div>
             </div>
         </div>
     </header>
 
     <main>
-        <div class="grid grid-col-1 md:grid-cols-2">
+        <div class="container-max">
+            <div class="grid grid-col-1 md:grid-cols-2">
             <div>
-                <div
-                    class="md:pr-23 py-18 md:max-w-[56.3rem] md:ml-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:mr-0">
+                <div class="md:pr-23 py-18 md:max-w-[56.3rem] md:ml-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:mr-0">
                     <!-- only for mobile -->
                     <div class="md:hidden mb-10">
                         <ul class="flex flex-col gap-30 pb-16 border-b-3 border-[#CDCDCD]">
@@ -84,57 +184,62 @@
                                 class="absolute inline-block bg-white w-31 left-1/2 top-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">OR</span>
                         </div>
                     </div>
-                    <form action="#">
+                    <form action="#" id="checkout-form">
                         <h3 class="mb-12.5 text-[#373738] font-medium text-[2.7rem]">Contact</h3>
-                        <div>
-                            <input type="text"
+                        <div class="floating-label-group">
+                            <input type="email" id="email"
                                 class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none"
-                                name="" placeholder="Email Address  (To receive order confirmation email)">
+                                placeholder=" " required>
+                            <label for="email" class="floating-label">Email Address (To receive order confirmation email)</label>
                         </div>
 
                         <div class="mt-25">
                             <h3 class="mb-11.5 text-[#373738] font-medium text-[2.7rem]">Shipping</h3>
                             <div class="space-y-8">
-                                <div class="relative">
-                                    <input type="text"
-                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                        name="" placeholder="Street Address">
-                                    <span class="absolute w-9 top-1/2 right-9 -translate-y-1/2"><img
-                                            src="assets/images/search.svg" alt=""></span>
+                                <div class="floating-label-group">
+                                    <input type="text" id="address"
+                                        class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        placeholder=" " required>
+                                    <label for="address" class="floating-label">Street Address</label>
                                 </div>
-                                <div class="sm:flex justify-between gap-4 space-y-8">
-                                    <div class="w-full">
-                                        <input type="text"
+                                <div class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
+                                    <div class="floating-label-group w-full">
+                                        <input type="text" id="city"
                                             class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                            name="" placeholder="City">
+                                            placeholder=" " required>
+                                        <label for="city" class="floating-label">City</label>
                                     </div>
-                                    <div class="w-full">
-                                        <input type="text"
+                                    <div class="floating-label-group w-full">
+                                        <input type="text" id="state"
                                             class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                            name="" placeholder="State">
+                                            placeholder=" " required>
+                                        <label for="state" class="floating-label">State</label>
                                     </div>
-                                    <div class="w-full">
-                                        <input type="text"
+                                    <div class="floating-label-group w-full">
+                                        <input type="text" id="zip"
                                             class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                            name="" placeholder="Zip Code">
+                                            placeholder=" " pattern="[0-9]{5}" required>
+                                        <label for="zip" class="floating-label">Zip Code</label>
                                     </div>
                                 </div>
-                                <div>
-                                    <select name=""
-                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                        id="">
-                                        <option selected disabled>Country</option>
-                                        <option value="in">India</option>
-                                        <option value="bn">Bangladesh</option>
-                                        <option value="bn">China</option>
-                                        <option value="bn">Russia</option>
-                                        <option value="bn">Iran</option>
+                                <div class="floating-label-group">
+                                    <select id="country"
+                                        class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        required>
+                                        <option value="" disabled selected></option>
+                                        <option value="us">United States</option>
+                                        <option value="ca">Canada</option>
+                                        <option value="uk">United Kingdom</option>
+                                        <option value="au">Australia</option>
+                                        <option value="nz">New Zealand</option>
                                     </select>
+                                    <label for="country" class="floating-label">Country</label>
                                 </div>
-                                <div class="relative">
-                                    <input type="text"
+                                <div class="floating-label-group relative">
+                                    <input type="tel" id="phone"
                                         class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                        name="" placeholder="Phone Number (For delivery confirmation texts)">
+                                        placeholder=" " pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required>
+                                    <label for="phone" class="floating-label">Phone Number (For delivery confirmation texts)</label>
                                     <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
                                             src="assets/images/info.svg" alt=""></span>
                                 </div>
@@ -146,39 +251,43 @@
                             <p class="flex gap-5 mb-5 items-center font-medium text-[2.25rem]">All transactions are
                                 secure and encrypted <img class="w-8" src="assets/images/lock.svg" alt=""></p>
                             <div class="space-y-8">
-                                <div class="relative">
-                                    <input type="text"
-                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                        name="" placeholder="Card Number">
+                                <div class="floating-label-group relative">
+                                    <input type="text" id="cardNumber"
+                                        class="w-full border-3 border-[#CDCDCD] pl-9 pr-40 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                        placeholder=" " pattern="[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}" maxlength="19" required>
+                                    <label for="cardNumber" class="floating-label">Card Number</label>
                                     <div class="absolute top-1/2 right-9 -translate-y-1/2 flex gap-2">
                                         <img class="h-13" src="assets/images/visa.svg" alt="">
                                         <img class="h-13" src="assets/images/mastercard.svg" alt="">
                                         <img class="h-13" src="assets/images/american-express.svg" alt="">
                                     </div>
                                 </div>
-                                <div class="sm:flex justify-between gap-4 space-y-8">
-                                    <div class="w-full">
-                                        <input type="text"
+                                <div class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
+                                    <div class="floating-label-group w-full">
+                                        <input type="text" id="expiry"
                                             class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                            name="" placeholder="Expiration Date (MM/YY)">
+                                            placeholder=" " pattern="[0-9]{2}/[0-9]{2}" maxlength="5" required>
+                                        <label for="expiry" class="floating-label">Expiration Date (MM/YY)</label>
                                     </div>
-                                    <div class="relative w-full">
-                                        <input type="text"
+                                    <div class="floating-label-group relative w-full">
+                                        <input type="text" id="cvv"
                                             class="w-full border-3 border-[#CDCDCD] pl-9 pr-17 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                            name="" placeholder="Security Code">
+                                            placeholder=" " pattern="[0-9]{3,4}" maxlength="4" required>
+                                        <label for="cvv" class="floating-label">Security Code</label>
                                         <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
                                                 src="assets/images/info.svg" alt=""></span>
                                     </div>
                                 </div>
-                                <div>
-                                    <input type="text"
+                                <div class="floating-label-group">
+                                    <input type="text" id="nameOnCard"
                                         class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
-                                        name="" placeholder="Name On Card">
+                                        placeholder=" " required>
+                                    <label for="nameOnCard" class="floating-label">Name On Card</label>
                                 </div>
 
                                 <div>
                                     <label class="flex items-center gap-4 cursor-pointer select-none">
-                                        <input type="checkbox" class="hidden peer">
+                                        <input type="checkbox" class="hidden peer" id="sameAddress" checked>
                                         <span
                                             class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center peer-checked:bg-[#666666] rounded-md">
                                             <img src="assets/images/check.svg" alt="">
@@ -187,6 +296,51 @@
                                             Use shipping address as payment address
                                         </span>
                                     </label>
+                                </div>
+
+                                <!-- Billing Address Section -->
+                                <div id="billing-section">
+                                    <h4 class="mb-8 text-[#373738] font-medium text-[2.25rem]">Billing Address</h4>
+                                    <div class="space-y-8">
+                                        <div class="floating-label-group">
+                                            <input type="text" id="billing-address"
+                                                class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                                placeholder=" ">
+                                            <label for="billing-address" class="floating-label">Street Address</label>
+                                        </div>
+                                        <div class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
+                                            <div class="floating-label-group w-full">
+                                                <input type="text" id="billing-city"
+                                                    class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                                    placeholder=" ">
+                                                <label for="billing-city" class="floating-label">City</label>
+                                            </div>
+                                            <div class="floating-label-group w-full">
+                                                <input type="text" id="billing-state"
+                                                    class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                                    placeholder=" ">
+                                                <label for="billing-state" class="floating-label">State</label>
+                                            </div>
+                                            <div class="floating-label-group w-full">
+                                                <input type="text" id="billing-zip"
+                                                    class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                                                    placeholder=" " pattern="[0-9]{5}">
+                                                <label for="billing-zip" class="floating-label">Zip Code</label>
+                                            </div>
+                                        </div>
+                                        <div class="floating-label-group">
+                                            <select id="billing-country"
+                                                class="w-full border-3 border-[#CDCDCD] px-9 py-8 focus:outline-0 rounded-xl text-[1.94rem] text-[#666666] leading-none bg-[#F9F9F9]">
+                                                <option value="" disabled selected></option>
+                                                <option value="us">United States</option>
+                                                <option value="ca">Canada</option>
+                                                <option value="uk">United Kingdom</option>
+                                                <option value="au">Australia</option>
+                                                <option value="nz">New Zealand</option>
+                                            </select>
+                                            <label for="billing-country" class="floating-label">Country</label>
+                                        </div>
+                                    </div>
                                 </div>
 
                             </div>
@@ -361,11 +515,11 @@
                                                 Stars</span>
                                         </div>
                                     </div>
-                                    <p class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">“I
+                                    <p class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">"I
                                         can hardly
                                         believe it, I know longer need my glasses and
-                                        I feel amazing. I’m a
-                                        believer.”</p>
+                                        I feel amazing. I'm a
+                                        believer."</p>
                                 </div>
 
                                 <div class="bg-white p-11 border-3 border-[#916B86] md:border-[#CDCDCD] rounded-2xl">
@@ -399,11 +553,11 @@
                                                 Stars</span>
                                         </div>
                                     </div>
-                                    <p class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">“I
+                                    <p class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">"I
                                         can hardly
                                         believe it, I know longer need my glasses and
-                                        I feel amazing. I’m a
-                                        believer.”</p>
+                                        I feel amazing. I'm a
+                                        believer."</p>
                                 </div>
                             </div>
 
@@ -440,9 +594,9 @@
                                     </div>
                                 </div>
                                 <p class="mt-7.5 text-center text-[1.94rem] leading-[1.2] text-white md:text-[#373737]">
-                                    There’s
+                                    There's
                                     absolutely zero risk in trying! You will love how RetinaClear makes you feel and
-                                    transforms your eyesight! If you decide the product isn’t for you, just let us know,
+                                    transforms your eyesight! If you decide the product isn't for you, just let us know,
                                     and we will refund your money, no questions asked.</p>
                             </div>
                         </div>
@@ -486,9 +640,83 @@
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     </main>
-</body>
 
+    <script>
+        // Countdown timer
+        let minutes = 9;
+        let seconds = 59;
+        
+        function updateTimer() {
+            if (seconds === 0) {
+                if (minutes === 0) {
+                    // Timer expired
+                    return;
+                }
+                minutes--;
+                seconds = 59;
+            } else {
+                seconds--;
+            }
+            
+            document.getElementById('minutes').textContent = minutes.toString();
+            document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+        }
+        
+        setInterval(updateTimer, 1000);
+        
+        // Toggle billing address
+        const sameAddressCheckbox = document.getElementById('sameAddress');
+        const billingSection = document.getElementById('billing-section');
+        
+        sameAddressCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                billingSection.classList.remove('show');
+            } else {
+                billingSection.classList.add('show');
+            }
+        });
+        
+        // Format card number
+        const cardNumberInput = document.getElementById('cardNumber');
+        cardNumberInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+        });
+        
+        // Format expiry date
+        const expiryInput = document.getElementById('expiry');
+        expiryInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+            if (value.length >= 2) {
+                value = value.substring(0,2) + '/' + value.substring(2,4);
+            }
+            e.target.value = value;
+        });
+        
+        // Format phone number
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length >= 6) {
+                value = value.substring(0,3) + '-' + value.substring(3,6) + '-' + value.substring(6,10);
+            } else if (value.length >= 3) {
+                value = value.substring(0,3) + '-' + value.substring(3);
+            }
+            e.target.value = value;
+        });
+        
+        // Form validation
+        document.getElementById('checkout-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Add your form submission logic here
+            alert('Order submitted successfully!');
+        });
+    </script>
+</body>
 
 </html>
