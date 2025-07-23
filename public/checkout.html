@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Secure Checkout - Fitspresso 6 Bottle Pack | Complete Your Order</title>
     <meta name="description" content="Secure checkout for Fitspresso - Complete your order with our fast, secure payment process. 100% money-back guarantee, free shipping.">
-    <meta name="robots" content="noindex, nofollow">
+    <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://yoursite.com/checkout">
     
     <!-- Security -->
@@ -39,12 +39,17 @@
     <link rel="dns-prefetch" href="//ipapi.co">
     <link rel="dns-prefetch" href="//maps.googleapis.com">
     
-    <link href="./assets/style.css" rel="stylesheet">
-    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Load non-critical CSS asynchronously -->
+    <link rel="preload" href="./assets/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="./assets/style.css"></noscript>
+    
+    <!-- Load fonts with display swap for better performance -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"></noscript>
     
     <!-- Critical CSS inline -->
     <style>
