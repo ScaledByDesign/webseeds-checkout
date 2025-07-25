@@ -394,7 +394,7 @@
                                 aria-required="true"
                                 inputmode="email">
                             <label for="email" class="floating-label">Email Address (To receive order confirmation email)</label>
-                            <div id="email-error" class="text-red-600 text-2xl mt-2 hidden"></div>
+                            <div id="email-error" class="text-2xl mt-2 hidden" style="color: #dc2626;"></div>
                         </div>
 
                         <div class="mt-23">
@@ -407,7 +407,7 @@
                                         autocomplete="street-address"
                                         aria-required="true">
                                     <label for="address" class="floating-label">Street Address</label>
-                                    <div id="address-error" class="text-red-600 text-2xl mt-2 hidden"></div>
+                                    <div id="address-error" class="text-2xl mt-2 hidden" style="color: #dc2626;"></div>
                                 </div>
                                 <div class="floating-label-group">
                                     <input type="text" id="apartment"
@@ -416,7 +416,7 @@
                                         pattern="[a-zA-Z0-9\s\-#\.]*"
                                         autocomplete="address-line2">
                                     <label for="apartment" class="floating-label">Apartment, suite, etc (optional)</label>
-                                    <div id="apartment-error" class="text-red-600 text-2xl mt-2 hidden">Apartment, Suite cannot contain any special characters</div>
+                                    <div id="apartment-error" class="text-2xl mt-2 hidden" style="color: #dc2626;">Apartment, Suite cannot contain any special characters</div>
                                 </div>
                                 <div class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
                                     <div class="floating-label-group w-full">
@@ -426,7 +426,7 @@
                                             autocomplete="address-level2"
                                             aria-required="true">
                                         <label for="city" class="floating-label">City</label>
-                                        <div id="city-error" class="text-red-600 text-2xl mt-2 hidden"></div>
+                                        <div id="city-error" class="text-2xl mt-2 hidden" style="color: #dc2626;"></div>
                                     </div>
                                     <div class="floating-label-group w-full">
                                         <input type="text" id="state"
@@ -435,7 +435,7 @@
                                             autocomplete="address-level1"
                                             aria-required="true">
                                         <label for="state" class="floating-label">State</label>
-                                        <div id="state-error" class="text-red-600 text-2xl mt-2 hidden"></div>
+                                        <div id="state-error" class="text-2xl mt-2 hidden" style="color: #dc2626;"></div>
                                     </div>
                                     <div class="floating-label-group w-full">
                                         <input type="text" id="zip"
@@ -445,7 +445,7 @@
                                             aria-required="true"
                                             inputmode="numeric">
                                         <label for="zip" class="floating-label">Zip Code</label>
-                                        <div id="zip-error" class="text-red-600 text-2xl mt-2 hidden"></div>
+                                        <div id="zip-error" class="text-2xl mt-2 hidden" style="color: #dc2626;"></div>
                                     </div>
                                 </div>
                                 <div class="floating-label-group">
@@ -473,7 +473,7 @@
                                     <label for="phone" class="floating-label">Phone Number (For delivery confirmation texts)</label>
                                     <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
                                             src="assets/images/info.svg" alt="Info" width="40" height="40" loading="lazy"></span>
-                                    <div id="phone-error" class="text-red-600 text-2xl mt-2 hidden"></div>
+                                    <div id="phone-error" class="text-2xl mt-2 hidden" style="color: #dc2626;"></div>
                                 </div>
                             </div>
                         </div>
@@ -1310,6 +1310,39 @@
                     }
                 } else {
                     showError('zip', 'ZIP code is required');
+                }
+            });
+            
+            // Address validation
+            document.getElementById('address').addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    showError('address', 'Street address is required');
+                } else if (this.value.trim().length < 5) {
+                    showError('address', 'Please enter a valid street address');
+                } else {
+                    clearError('address');
+                }
+            });
+            
+            // City validation
+            document.getElementById('city').addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    showError('city', 'City is required');
+                } else if (this.value.trim().length < 2) {
+                    showError('city', 'Please enter a valid city name');
+                } else {
+                    clearError('city');
+                }
+            });
+            
+            // State validation
+            document.getElementById('state').addEventListener('blur', function() {
+                if (!this.value.trim()) {
+                    showError('state', 'State is required');
+                } else if (this.value.trim().length < 2) {
+                    showError('state', 'Please enter a valid state');
+                } else {
+                    clearError('state');
                 }
             });
             
