@@ -211,6 +211,28 @@
             border-color: #976987;
         }
         
+        /* Adjust ZIP code and CVV labels in their default placeholder state */
+        #zip:placeholder-shown ~ .floating-label,
+        #billing-zip:placeholder-shown ~ .floating-label,
+        #cvv:placeholder-shown ~ .floating-label {
+            top: calc(50% - 10px);
+        }
+        
+        /* When ZIP code or CVV is focused or has value, use the same floating position as other fields */
+        #zip:focus ~ .floating-label,
+        #zip:not(:placeholder-shown) ~ .floating-label,
+        #billing-zip:focus ~ .floating-label,
+        #billing-zip:not(:placeholder-shown) ~ .floating-label,
+        #cvv:focus ~ .floating-label,
+        #cvv:not(:placeholder-shown) ~ .floating-label {
+            top: 1.2rem;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: #976987;
+            background: white;
+            z-index: 1;
+        }
+        
         /* Hide billing section by default */
         #billing-section {
             display: none;
