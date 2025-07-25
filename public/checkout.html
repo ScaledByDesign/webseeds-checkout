@@ -265,6 +265,17 @@
             outline: 3px solid #976987;
             outline-offset: -3px;
         }
+        
+        /* Validation error styles */
+        .input-error {
+            border-color: #dc2626 !important;
+        }
+        
+        .error-message {
+            color: #dc2626;
+            font-size: 1.75rem;
+            margin-top: 0.5rem;
+        }
     </style>
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -368,9 +379,9 @@
                                         src="assets/images/googlepay.svg" alt="Google Pay" width="100" height="40" loading="lazy"></button>
                             </div>
                         </div>
-                        <div class="mt-15 mb-22.5 border-b-3 border-[#CDCDCD] relative">
+                        <div class="mt-16 mb-21.5 border-b-3 border-[#CDCDCD] relative">
                             <span
-                                class="absolute inline-block bg-white w-31 left-1/2 top-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">OR</span>
+                                class="absolute inline-block bg-white w-31 left-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">OR</span>
                         </div>
                     </div>
                     <form action="#" id="checkout-form">
@@ -383,9 +394,10 @@
                                 aria-required="true"
                                 inputmode="email">
                             <label for="email" class="floating-label">Email Address (To receive order confirmation email)</label>
+                            <div id="email-error" class="text-red-600 text-2xl mt-2 hidden"></div>
                         </div>
 
-                        <div class="mt-25">
+                        <div class="mt-23">
                             <h3 class="mb-11.5 text-[#373738] font-medium text-[2.7rem]">Shipping</h3>
                             <div class="space-y-8">
                                 <div class="floating-label-group">
@@ -395,6 +407,7 @@
                                         autocomplete="street-address"
                                         aria-required="true">
                                     <label for="address" class="floating-label">Street Address</label>
+                                    <div id="address-error" class="text-red-600 text-2xl mt-2 hidden"></div>
                                 </div>
                                 <div class="floating-label-group">
                                     <input type="text" id="apartment"
@@ -403,7 +416,7 @@
                                         pattern="[a-zA-Z0-9\s\-#\.]*"
                                         autocomplete="address-line2">
                                     <label for="apartment" class="floating-label">Apartment, suite, etc (optional)</label>
-                                    <div id="apartment-error" class="text-red-600 text-sm mt-2 hidden">Apartment, Suite cannot contain any special characters</div>
+                                    <div id="apartment-error" class="text-red-600 text-2xl mt-2 hidden">Apartment, Suite cannot contain any special characters</div>
                                 </div>
                                 <div class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
                                     <div class="floating-label-group w-full">
@@ -413,6 +426,7 @@
                                             autocomplete="address-level2"
                                             aria-required="true">
                                         <label for="city" class="floating-label">City</label>
+                                        <div id="city-error" class="text-red-600 text-2xl mt-2 hidden"></div>
                                     </div>
                                     <div class="floating-label-group w-full">
                                         <input type="text" id="state"
@@ -421,6 +435,7 @@
                                             autocomplete="address-level1"
                                             aria-required="true">
                                         <label for="state" class="floating-label">State</label>
+                                        <div id="state-error" class="text-red-600 text-2xl mt-2 hidden"></div>
                                     </div>
                                     <div class="floating-label-group w-full">
                                         <input type="text" id="zip"
@@ -430,6 +445,7 @@
                                             aria-required="true"
                                             inputmode="numeric">
                                         <label for="zip" class="floating-label">Zip Code</label>
+                                        <div id="zip-error" class="text-red-600 text-2xl mt-2 hidden"></div>
                                     </div>
                                 </div>
                                 <div class="floating-label-group">
@@ -457,6 +473,7 @@
                                     <label for="phone" class="floating-label">Phone Number (For delivery confirmation texts)</label>
                                     <span class="absolute w-10 top-1/2 right-9 -translate-y-1/2"><img
                                             src="assets/images/info.svg" alt="Info" width="40" height="40" loading="lazy"></span>
+                                    <div id="phone-error" class="text-red-600 text-2xl mt-2 hidden"></div>
                                 </div>
                             </div>
                         </div>
@@ -1210,18 +1227,104 @@
             }, 100);
             phoneInput.addEventListener('input', formatPhone);
         
+            // Form validation functions
+            function validateEmail(email) {
+                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return re.test(email);
+            }
+            
+            function validatePhone(phone) {
+                const cleaned = phone.replace(/\D/g, '');
+                return cleaned.length === 10;
+            }
+            
+            function validateZip(zip) {
+                const cleaned = zip.replace(/\D/g, '');
+                return cleaned.length === 5 || cleaned.length === 9;
+            }
+            
+            function showError(inputId, message) {
+                const input = document.getElementById(inputId);
+                const errorDiv = document.getElementById(inputId + '-error');
+                input.classList.add('input-error');
+                if (errorDiv) {
+                    errorDiv.textContent = message;
+                    errorDiv.classList.remove('hidden');
+                }
+            }
+            
+            function clearError(inputId) {
+                const input = document.getElementById(inputId);
+                const errorDiv = document.getElementById(inputId + '-error');
+                input.classList.remove('input-error');
+                if (errorDiv) {
+                    errorDiv.classList.add('hidden');
+                }
+            }
+            
+            // Required field validation
+            function validateRequired(inputId, fieldName) {
+                const input = document.getElementById(inputId);
+                if (!input.value.trim()) {
+                    showError(inputId, fieldName + ' is required');
+                    return false;
+                } else {
+                    clearError(inputId);
+                    return true;
+                }
+            }
+            
+            // Email validation
+            document.getElementById('email').addEventListener('blur', function() {
+                if (this.value) {
+                    if (!validateEmail(this.value)) {
+                        showError('email', 'Please enter a valid email address');
+                    } else {
+                        clearError('email');
+                    }
+                } else {
+                    showError('email', 'Email is required');
+                }
+            });
+            
+            // Phone validation
+            document.getElementById('phone').addEventListener('blur', function() {
+                if (this.value) {
+                    if (!validatePhone(this.value)) {
+                        showError('phone', 'Please enter a valid 10-digit phone number');
+                    } else {
+                        clearError('phone');
+                    }
+                } else {
+                    showError('phone', 'Phone number is required');
+                }
+            });
+            
+            // ZIP code validation
+            document.getElementById('zip').addEventListener('blur', function() {
+                if (this.value) {
+                    if (!validateZip(this.value)) {
+                        showError('zip', 'Please enter a valid ZIP code');
+                    } else {
+                        clearError('zip');
+                    }
+                } else {
+                    showError('zip', 'ZIP code is required');
+                }
+            });
+            
             // Apartment field validation
             const apartmentInput = document.getElementById('apartment');
             const apartmentError = document.getElementById('apartment-error');
             
             apartmentInput.addEventListener('input', function(e) {
                 const specialCharsRegex = /^[a-zA-Z0-9\s\-#\.]*$/;
-                if (!specialCharsRegex.test(e.target.value)) {
+                if (e.target.value && !specialCharsRegex.test(e.target.value)) {
                     apartmentError.classList.remove('hidden');
-                    e.target.classList.add('border-red-500');
+                    e.target.classList.add('input-error');
                 } else {
                     apartmentError.classList.add('hidden');
-                    e.target.classList.remove('border-red-500');
+                    e.target.classList.remove('input-error');
                 }
             });
             
