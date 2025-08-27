@@ -1,0 +1,17 @@
+{
+  "name": "Fitspresso Checkout",
+  "short_name": "Fitspresso",
+  "description": "Secure checkout for Fitspresso products",
+  "start_url": "/checkout.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#986988",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/images/Logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+# Page snapshot
+
+```yaml
+- banner:
+  - img "Fitspresso Logo"
+  - paragraph: Special Price Reserved For
+  - timer "Special offer time remaining": 9:45
+- main:
+  - list:
+    - listitem:
+      - img "6 Bottle Pack"
+      - heading "Fitspresso 6 Bottle Pack" [level=3]
+      - paragraph: Most Popular!
+      - text: $294
+  - list:
+    - listitem: Shipping free
+    - listitem: Total USD$294
+  - heading "Express Checkout" [level=3]
+  - button "Pay with PayPal":
+    - img "PayPal"
+  - button "Pay with Apple Pay":
+    - img "Apple Pay"
+  - button "Pay with Google Pay":
+    - img "Google Pay"
+  - text: OR
+  - heading "Contact" [level=3]
+  - textbox "Email(To receive order confirmation email) Email Address"
+  - text: Email(To receive order confirmation email)
+  - heading "Shipping" [level=3]
+  - textbox "First Name"
+  - text: First Name
+  - textbox "Last Name"
+  - text: Last Name
+  - textbox "Street Address"
+  - text: Street Address
+  - textbox "Apartment, suite, etc (optional)"
+  - text: Apartment, suite, etc (optional)
+  - textbox "City"
+  - text: City
+  - textbox "State"
+  - text: State
+  - textbox "ZIP Code"
+  - text: ZIP Code
+  - combobox "Country":
+    - option [disabled]
+    - option "United States" [selected]
+    - option "Canada"
+    - option "United Kingdom"
+    - option "Australia"
+    - option "New Zealand"
+  - text: Country
+  - img
+  - textbox "Phone Number"
+  - text: Phone Number
+  - heading "Payment" [level=3]
+  - paragraph:
+    - img "Secure"
+    - text: Secure & Encrypted
+  - iframe
+  - text: Card Number
+  - img "Visa"
+  - img "Mastercard"
+  - img "American Express"
+  - iframe
+  - text: Expiration Date (MM/YY)
+  - iframe
+  - text: Security Code
+  - img "Info"
+  - textbox "Name On Card"
+  - text: Name On Card
+  - img "Checkmark"
+  - text: Use shipping address as payment
+  - button "Place Your Order - Total $294": Place Your Order
+  - img "McAfee Secure"
+  - img "Norton Secured"
+  - img "TRUSTe Verified"
+  - heading "250,000+ Customers! Your Story Can Be Next" [level=3]
+  - img "Olivia Harris"
+  - heading "Olivia Harris" [level=4]
+  - paragraph:
+    - img "Verified"
+    - text: Verified Customer
+  - img "Star"
+  - img "Star"
+  - img "Star"
+  - img "Star"
+  - img "Star"
+  - text: 5 Stars
+  - paragraph: "\"I can hardly believe it, I know longer need my glasses and I feel amazing. I'm a believer.\""
+  - img "Emily Parker"
+  - heading "Emily Parker" [level=4]
+  - paragraph:
+    - img "Verified"
+    - text: Verified Customer
+  - img "Star"
+  - img "Star"
+  - img "Star"
+  - img "Star"
+  - img "Star"
+  - text: 5 Stars
+  - paragraph: "\"I can hardly believe it, I know longer need my glasses and I feel amazing. I'm a believer.\""
+  - img "Money Back"
+  - heading "100% Money-Back Guarantee!" [level=3]
+  - paragraph: There's absolutely zero risk in trying! You will love how Fitspresso makes you feel and transforms your life! If you decide the product isn't for you, just let us know, and we will refund your money, no questions asked.
+- alert
+```

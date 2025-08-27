@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>
+      Secure Checkout - Fitspresso 6 Bottle Pack | Complete Your Order
+    </title>
+    <meta
+      name="description"
+      content="Secure checkout for Fitspresso - Complete your order with our fast, secure payment process. 100% money-back guarantee, free shipping." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://yoursite.com/checkout" />
+
+    <!-- Security -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;" />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Secure Checkout - Fitspresso" />
+    <meta
+      property="og:description"
+      content="Complete your Fitspresso order with our secure checkout. Free shipping and 100% money-back guarantee." />
+    <meta
+      property="og:image"
+      content="https://yoursite.com/assets/images/6-bottles.png" />
+
+    <!-- Mobile App -->
+    <meta name="theme-color" content="#986988" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://maps.googleapis.com" />
+    <!-- Remove ipapi.co preconnect/dns-prefetch from initial load to improve LCP -->
+
+    <!-- Preload critical resources -->
+    <link rel="preload" href="./assets/style.css" as="style" />
+    <link rel="preload" href="./assets/images/Logo.svg" as="image" />
+    <!-- Font preload removed for lazy loading -->
+
+    <!-- Prefetch next page -->
+    <link rel="prefetch" href="./thankyou.html" />
+    <link rel="dns-prefetch" href="//maps.googleapis.com" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Load CSS immediately to prevent layout shifts -->
+    <link href="./assets/style.css" rel="stylesheet" />
+
+    <!-- Lazy load fonts with font-display:swap -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+    /></noscript>
+
+    <!-- Critical CSS inline -->
+    <style>
+      /* Critical CSS for above-the-fold content */
+      *,
+      ::after,
+      ::before {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background: #fff;
+      }
+      header {
+        /* padding: 1rem 0; */
+        /* border-bottom: 3px solid #cdcdcd; */
+        min-height: 80px;
+      }
+      .container {
+        width: 100%;
+        padding: 0 2.5rem;
+        margin: 0 auto;
+      }
+      .hidden {
+        display: none;
+      }
+      .block {
+        display: block;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
+      .focus\:not-sr-only:focus {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: inherit;
+        margin: inherit;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+      }
+      .text-\[2\.1vw\] {
+        font-size: 2.1vw;
+      }
+      .md\:text-\[0\.738vw\] {
+        font-size: 0.738vw;
+      }
+      @media (min-width: 768px) {
+        header {
+          min-height: 120px;
+        }
+        .md\:flex {
+          display: flex;
+        }
+        .md\:hidden {
+          display: none;
+        }
+        .md\:block {
+          display: block;
+        }
+        .md\:inline-block {
+          display: inline-block;
+        }
+        .md\:flex-row {
+          flex-direction: row;
+        }
+        .md\:py-0 {
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+      }
+
+      /* Font loading optimization */
+      .fonts-loaded body {
+        font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Helvetica, Arial, sans-serif;
+      }
+
+      /* Container max-width for large screens */
+      .container-max {
+        margin: 0 auto;
+      }
+
+      /* Prevent main content shift */
+      main {
+        min-height: calc(100vh - 120px);
+      }
+
+      /* Restore original viewport-based sizing */
+      html {
+        font-size: 2.1vw;
+      }
+
+      @media (min-width: 768px) {
+        html {
+          font-size: 0.738vw;
+        }
+      }
+
+      /* Limit viewport-based font sizes on large screens */
+      @media (min-width: 1600px) {
+        html {
+          font-size: 11.8px !important; /* Cap the root font size */
+        }
+      }
+
+      /* Prevent layout shift for logo */
+      img.w-110 {
+        aspect-ratio: 220 / 60;
+        height: auto;
+        display: block;
+        min-height: 60px;
+      }
+
+      /* Correct aspect ratio for 6-bottles image */
+      img[src*="6-bottles"] {
+        aspect-ratio: 181 / 144;
+        object-fit: contain;
+      }
+
+      /* Font loading optimization */
+      body {
+        /* Use system fonts as immediate fallback */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+      }
+
+      /* Apply Roboto when loaded */
+      .fonts-loaded body {
+        font-family: Roboto, sans-serif;
+      }
+
+      /* Header specific constraints */
+      @media (min-width: 1024px) {
+        header {
+          max-height: 120px;
+          overflow: hidden;
+        }
+
+        header .container {
+          padding-top: 1rem !important;
+          padding-bottom: 1rem !important;
+        }
+
+        header img.w-110 {
+          max-width: 200px;
+          width: 200px;
+          height: 41.55px; /* Maintains aspect ratio */
+          min-height: 41.55px;
+        }
+
+        header .text-4xl {
+          font-size: 1.5rem !important;
+        }
+
+        header .text-\[2\.5rem\] {
+          /* font-size: 1.25rem !important; */
+        }
+
+        header .text-\[4\.5rem\] {
+          /* font-size: 2rem !important; */
+        }
+
+        header .py-5\.5 {
+          padding-top: 0.75rem !important;
+          padding-bottom: 0.75rem !important;
+        }
+      }
+
+      /* Google Places Autocomplete dropdown */
+      .pac-container {
+        z-index: 1051;
+        border-radius: 0.75rem;
+        border: 3px solid #cdcdcd;
+        margin-top: 0.5rem;
+        font-family: inherit;
+      }
+
+      .pac-item {
+        padding: 0.75rem 1rem;
+        font-size: 1.6rem;
+        border-bottom: 1px solid #e5e5e5;
+      }
+
+      .pac-item:hover {
+        background-color: #f5f5f5;
+      }
+
+      .pac-item-selected {
+        background-color: #e5e5e5;
+      }
+
+      /* Floating label styles */
+      .floating-label-group {
+        position: relative;
+      }
+
+      /* Prevent form element layout shifts */
+      .floating-label-group input,
+      .floating-label-group select {
+        min-height: 3.5rem;
+      }
+
+      .floating-label {
+        position: absolute;
+        pointer-events: none;
+        left: 2.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        transition: all 0.2s ease;
+        font-size: 1.94rem;
+        color: #666666;
+        padding: 0 0.25rem;
+        @media (max-width: 639px) {
+          font-size: 2.4rem;
+        }
+      }
+
+      .floating-label-group input:focus ~ .floating-label,
+      .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
+      .floating-label-group select:focus ~ .floating-label,
+      .floating-label-group select:valid ~ .floating-label {
+        top: 1.2rem;
+        transform: translateY(-50%);
+        font-size: 1.2rem;
+        color: #976987;
+        /* background: white; */
+        z-index: 1;
+      }
+      .floating-label-group input:focus ~ .floating-label,
+      .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
+      .floating-label-group select:focus ~ .floating-label,
+      .floating-label-group select:valid ~ .floating-label,
+      .floating-label-group input:focus ~ span,
+      .floating-label-group input:not(:placeholder-shown) ~ span,
+      .floating-label-group select:focus ~ span,
+      .floating-label-group select:valid ~ span {
+        font-size: 1.2rem;
+        color: #976987;
+        /* background: white; */
+        z-index: 1;
+      }
+      .floating-label-group input:focus,
+      .floating-label-group select:focus {
+        border-color: #976987;
+      }
+
+      /* Adjust ZIP code and CVV labels in their default placeholder state */
+      #zip:placeholder-shown ~ .floating-label,
+      #billing-zip:placeholder-shown ~ .floating-label,
+      #cvv:placeholder-shown ~ .floating-label {
+        /* top: calc(50% - 10px); */
+      }
+
+      /* When ZIP code or CVV is focused or has value, use the same floating position as other fields */
+      #zip:focus ~ .floating-label,
+      #zip:not(:placeholder-shown) ~ .floating-label,
+      #billing-zip:focus ~ .floating-label,
+      #billing-zip:not(:placeholder-shown) ~ .floating-label,
+      #cvv:focus ~ .floating-label,
+      #cvv:not(:placeholder-shown) ~ .floating-label {
+        top: 1.2rem;
+        transform: translateY(-50%);
+        font-size: 1.2rem;
+        color: #976987;
+        background: white;
+        z-index: 1;
+      }
+
+      /* Hide billing section by default */
+      #billing-section {
+        display: none;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 3px solid #cdcdcd;
+      }
+
+      #billing-section.show {
+        display: block;
+      }
+
+      /* Countdown timer */
+      .countdown-timer {
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Enhanced focus styles for accessibility */
+      *:focus {
+        outline: 3px solid #976987;
+        outline-offset: 2px;
+      }
+
+      button:focus,
+      a:focus {
+        outline: 3px solid #976987;
+        outline-offset: 2px;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: 3px solid #976987;
+        outline-offset: -3px;
+      }
+
+      /* Validation error styles */
+      .input-error {
+        border-color: #dc2626 !important;
+      }
+
+      .error-message {
+        color: #dc2626;
+        font-size: 1.75rem;
+        margin-top: 0.5rem;
+        font-weight: 600;
+        margin-left: 5%;
+      }
+      .floating-label-group:has(.input-error:placeholder-shown)
+        label.floating-label {
+        top: 37% !important;
+      }
+      .floating-label-group:has(.input-error:placeholder-shown)
+        input:focus
+        ~ .floating-label
+        span {
+        top: 37% !important;
+      }
+      .floating-label-group input:focus ~ .floating-label span,
+      .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
+      .floating-label-group
+        input:not(:placeholder-shown)
+        ~ .floating-label
+        span {
+        font-size: 1.2rem;
+        color: #976987;
+        /* background: white; */
+        z-index: 1;
+      }
+      .form-select {
+        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAQCAYAAAAMJL+VAAAABGdBTUEAALGPC/xhBQAAAQtJREFUOBG1lEEOgjAQRalbGj2OG9caOACn4ALGtfEuHACiazceR1PWOH/CNA3aMiTaBDpt/7zPdBKy7M/DCL9pGkvxxVp7KsvyJftL5rZt1865M+Ucq6pyyF3hNcI7Cuu+728QYn/JQA5yKaempxuZmQngOwEaYx55nu+1lQh8GIatMGi+01NwBcEmhxBqK4nAPZJ78K0KKFAJmR3oPp8+Iwgob0Oa6+TLoeCvRx+mTUYf/FVBGTPRwDkfLxnaSrRwcH0FWhNOmrkWYbE2XEicqgSa1J0LQ+aPCuQgZiLnwewbGuz5MGoAhcIkCQcjaTBjMgtXGURMVHC1wcQEy0J+Zlj8bKAnY1/UzDe2dbAVqfXn6wAAAABJRU5ErkJggg==");
+        background-size: 1.8rem;
+        background-position: right 1.7rem center;
+      }
+      .bg-white {
+        background-color: #fff;
+      }
+
+      /* Background color for sm and larger screens */
+      @media (min-width: 640px) {
+        .sm\:bg-f2f2f2 {
+          background-color: #f2f2f2;
+        }
+      }
+    </style>
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Fitspresso 6 Bottle Pack",
+        "image": "https://yoursite.com/assets/images/6-bottles.png",
+        "description": "Most popular Fitspresso package with 6 bottles",
+        "offers": {
+          "@type": "Offer",
+          "price": "294.00",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+          "priceValidUntil": "2025-12-31",
+          "seller": {
+            "@type": "Organization",
+            "name": "Fitspresso"
+          }
+        }
+      }
+    </script>
+  </head>
+
+  <body class="font-roboto bg-white pb-20 sm:pb-0">
+    <!-- Skip Navigation -->
+    <a
+      href="#checkout-form"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-[#986988] text-white px-4 py-2 rounded"
+      >Skip to checkout form</a
+    >
+
+    <header class="pb-4 py-0 md:py-8 lg:py-6 md:border-b-3 border-[#CDCDCD]">
+      <div class="container-max">
+        <div class="container !px-0 !md:px-10">
+          <div
+            class="flex flex-col-reverse md:flex-row justify-between items-center">
+            <div
+              class="pt-10 pb-5 sm:py-10 md:py-0 flex gap-2.75 justify-center md:justify-start items-end w-full md:w-auto">
+              <img
+                class="max-w-full w-110"
+                src="assets/images/Logo.svg"
+                alt="Fitspresso Logo"
+                width="220"
+                height="60"
+                loading="eager" />
+              <div class="gap-2.75 -mt-3 chidden md:flex hidden sm:flex">
+                <p
+                  class="font-medium text-[2rem] text-[#373737] whitespace-nowrap">
+                  Secure Checkout
+                </p>
+                <img
+                  class="w-6 -mt-3"
+                  src="assets/images/lock.svg"
+                  alt="Secure"
+                  width="28"
+                  height="28"
+                  loading="eager" />
+              </div>
+            </div>
+            <div
+              class="flex items-center gap-6.5 w-full md:w-auto justify-center bg-[#e4e4e4] md:bg-transparent">
+              <p
+                class="font-medium sm:text-[3rem] text-[2.5rem] text-[#976987]">
+                Special Price Reserved For
+              </p>
+              <div
+                class="py-5.5 px-6 md:bg-[#986988] font-bold text-[#bf4e6f] md:text-white text-[4.5rem] leading-none rounded-2xl countdown-timer"
+                role="timer"
+                aria-live="polite"
+                aria-label="Special offer time remaining">
+                <span id="minutes">9</span>:<span id="seconds">59</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container-max">
+        <div class="grid grid-cols-1 md:grid-cols-2">
+          <div>
+            <div
+              class="md:pr-23 pt-0 md:pt-15 pb-18 md:max-w-[56.3rem] md:ml-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:mr-0">
+              <!-- only for mobile -->
+              <div class="md:hidden mb-10">
+                <ul
+                  class="flex flex-col gap-16 pb-10 border-b-3 border-[#CDCDCD]">
+                  <li class="flex justify-between items-center gap-5">
+                    <div class="flex gap-13 items-center">
+                      <div>
+                        <picture>
+                          <source
+                            srcset="assets/images/6-bottles.webp"
+                            type="image/webp" />
+                          <img
+                            class="w-54"
+                            src="assets/images/6-bottles.png"
+                            alt="6 Bottle Pack"
+                            width="216"
+                            height="172"
+                            loading="lazy"
+                            style="
+                              aspect-ratio: 181/144;
+                              object-fit: contain;
+                            " />
+                        </picture>
+                      </div>
+                      <div>
+                        <h3 class="font-bold text-[2.5rem] leading-tight">
+                          Fitspresso <br />
+                          6 Bottle Pack
+                        </h3>
+                        <p class="text-[#976987] font-medium text-[2.1rem]">
+                          Most Popular!
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      class="font-medium text-[2.5rem] text-[#373737] uppercase">
+                      $294
+                    </div>
+                  </li>
+                </ul>
+                <ul
+                  class="pt-7 font-medium text-[2.5rem] text-[#373737] flex flex-col gap-5">
+                  <li class="flex justify-between items-center">
+                    <div>Shipping</div>
+                    <div class="uppercase">free</div>
+                  </li>
+                  <li class="flex justify-between items-center">
+                    <div>Total</div>
+                    <div class="uppercase">
+                      <small
+                        class="text-[1.63rem] font-normal text-[#656565] mr-2"
+                        >USD</small
+                      >
+                      $294
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              <!-- only for mobile -->
+
+              <div>
+                <h3 class="text-center font-bold text-[2.07rem] text-[#969696]">
+                  Express Checkout
+                </h3>
+                <div
+                  class="flex justify-between gap-4 mt-6 flex-wrap md:flex-nowrap">
+                  <button
+                    class="cursor-pointer w-full md:w-1/3"
+                    aria-label="Pay with PayPal"
+                    type="button">
+                    <img
+                      class="w-full hidden md:inline-block"
+                      src="assets/images/PayPal.svg"
+                      alt="PayPal"
+                      width="100"
+                      height="40"
+                      loading="lazy" />
+                    <img
+                      class="w-full inline-block md:hidden"
+                      src="assets/images/paypal-big.svg"
+                      alt="PayPal"
+                      width="200"
+                      height="60"
+                      loading="eager"
+                      fetchpriority="high" />
+                  </button>
+                  <div
+                    class="flex justify-between gap-4 items-center w-full md:w-2/3">
+                    <button
+                      class="cursor-pointer w-1/2 md:w-full"
+                      aria-label="Pay with Apple Pay"
+                      type="button">
+                      <img
+                        class="w-full"
+                        src="assets/images/applypay.svg"
+                        alt="Apple Pay"
+                        width="100"
+                        height="40"
+                        loading="lazy" />
+                    </button>
+                    <button
+                      class="cursor-pointer w-1/2 md:w-full"
+                      aria-label="Pay with Google Pay"
+                      type="button">
+                      <img
+                        class="w-full"
+                        src="assets/images/googlepay.svg"
+                        alt="Google Pay"
+                        width="100"
+                        height="40"
+                        loading="lazy" />
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-10 mb-21.5 border-b-3 border-[#CDCDCD] relative">
+                  <span
+                    class="absolute inline-block bg-white w-31 left-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium"
+                    >OR</span
+                  >
+                </div>
+              </div>
+              <form action="#" id="checkout-form">
+                <h3
+                  class="mt:8 mb:4 sm:mt-16 sm:mb-8 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
+                  Contact
+                </h3>
+                <div class="floating-label-group">
+                  <input
+                    type="email"
+                    id="email"
+                    class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                    placeholder=" "
+                    required
+                    autocomplete="email"
+                    aria-required="true"
+                    inputmode="email" />
+                  <label
+                    for="email"
+                    class="floating-label bg-transparent sm:hidden block"
+                    >Email
+                    <span class="text-[1.6rem] text-[#a2a2a2]"
+                      >(To receive order confirmation email)</span
+                    >
+                  </label>
+                  <label
+                    for="email"
+                    class="floating-label bg-transparent hidden sm:block"
+                    >Email Address</label
+                  >
+                  <div
+                    id="email-error"
+                    class="text-2xl mt-2 hidden error-message"
+                    style="color: #dc2626"></div>
+                </div>
+
+                <div class="mt-16">
+                  <h3
+                    class="mt:8 mb:4 sm:mt-16 sm:mb-8 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
+                    Shipping
+                  </h3>
+                  <div class="space-y-8">
+                    <div class="floating-label-group">
+                      <input
+                        type="text"
+                        id="address"
+                        class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                        placeholder=" "
+                        required
+                        autocomplete="street-address"
+                        aria-required="true" />
+                      <label for="address" class="floating-label bg-transparent"
+                        >Street Address</label
+                      >
+                      <div
+                        id="address-error"
+                        class="text-2xl mt-2 hidden error-message"
+                        style="color: #dc2626"></div>
+                    </div>
+                    <div class="floating-label-group">
+                      <input
+                        type="text"
+                        id="apartment"
+                        class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                        placeholder=" "
+                        pattern="[a-zA-Z0-9\s\-#\.]*"
+                        autocomplete="address-line2" />
+                      <label
+                        for="apartment"
+                        class="floating-label bg-transparent"
+                        >Apartment, suite, etc
+                        <span class="text-[1.6rem] text-[#a2a2a2]"
+                          >(optional)</span
+                        ></label
+                      >
+                      <div
+                        id="apartment-error"
+                        class="text-2xl mt-2 hidden error-message"
+                        style="color: #dc2626">
+                        Apartment, Suite cannot contain any special characters
+                      </div>
+                    </div>
+                    <div
+                      class="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
+                      <div class="floating-label-group w-full lg:mb-0">
+                        <input
+                          type="text"
+                          id="city"
+                          class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                          placeholder=" "
+                          required
+                          autocomplete="address-level2"
+                          aria-required="true" />
+                        <label for="city" class="floating-label bg-transparent"
+                          >City</label
+                        >
+                        <div
+                          id="city-error"
+                          class="text-2xl mt-2 hidden error-message"
+                          style="color: #dc2626"></div>
+                      </div>
+                      <div class="floating-label-group w-full lg:mb-0">
+                        <input
+                          type="text"
+                          id="state"
+                          class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                          placeholder=" "
+                          required
+                          autocomplete="address-level1"
+                          aria-required="true" />
+                        <label for="state" class="floating-label bg-transparent"
+                          >State</label
+                        >
+                        <div
+                          id="state-error"
+                          class="text-2xl mt-2 hidden error-message"
+                          style="color: #dc2626"></div>
+                      </div>
+                      <div class="floating-label-group w-full lg:mb-0">
+                        <input
+                          type="text"
+                          id="zip"
+                          class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                          placeholder=" "
+                          pattern="[0-9]{5}(-[0-9]{4})?"
+                          required
+                          autocomplete="postal-code"
+                          aria-required="true"
+                          inputmode="numeric" />
+                        <label for="zip" class="floating-label bg-transparent"
+                          >Zip Code</label
+                        >
+                        <div
+                          id="zip-error"
+                          class="text-2xl mt-2 hidden error-message"
+                          style="color: #dc2626"></div>
+                      </div>
+                    </div>
+                    <div class="floating-label-group">
+                      <select
+                        id="country"
+                        class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] appearance-none bg-no-repeat form-select"
+                        required
+                        autocomplete="country"
+                        aria-required="true">
+                        <option value="" disabled selected></option>
+                        <option value="us">United States</option>
+                        <option value="ca">Canada</option>
+                        <option value="uk">United Kingdom</option>
+                        <option value="au">Australia</option>
+                        <option value="nz">New Zealand</option>
+                      </select>
+                      <label for="country" class="floating-label bg-transparent"
+                        >Country</label
+                      >
+                    </div>
+                    <div class="floating-label-group relative">
+                      <input
+                        type="tel"
+                        id="phone"
+                        class="w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                        placeholder=" "
+                        pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+                        required
+                        autocomplete="tel"
+                        aria-required="true"
+                        inputmode="tel" />
+                      <label
+                        for="phone"
+                        class="floating-label bg-transparent sm:hidden block"
+                        >Phone Number
+                        <span class="text-[1.6rem] text-[#a2a2a2]"
+                          >(For delivery confirmation texts)</span
+                        ></label
+                      >
+                      <label
+                        for="phone"
+                        class="floating-label bg-transparent hidden sm:block text-[2.7rem]"
+                        >Phone
+                        <span class="text-[1.6rem] text-[#a2a2a2]"
+                          >(For delivery confirmation texts)</span
+                        ></label
+                      >
+                      <label
+                        for="phone"
+                        class="floating-label bg-transparent"></label>
+                      <span
+                        class="absolute w-10 top-1/2 right-9 -translate-y-1/2"
+                        ><img
+                          src="assets/images/info.svg"
+                          alt="Info"
+                          width="40"
+                          height="40"
+                          loading="lazy"
+                      /></span>
+                      <div
+                        id="phone-error"
+                        class="text-2xl mt-2 hidden error-message"
+                        style="color: #dc2626"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-7.5 relative">
+                  <h3
+                    class="mt:40 sm:mt:0 mb-4 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
+                    Payment
+                  </h3>
+                  <p
+                    class="flex gap-2 mb-10 items-center font-medium text-[1.94rem] text-[#6d6d6d] hidden md:block">
+                    All transactions are secure and encrypted
+                    <img
+                      class="w-6 inline-block -mt-3"
+                      src="assets/images/lock.svg"
+                      alt="Secure"
+                      width="16"
+                      height="16"
+                      loading="lazy" />
+                  </p>
+                  <p
+                    class="absolute right-0 transform top-5 flex gap-2 items-center font-medium text-[1.94rem] text-[#6d6d6d7] sm:hidden md:hidden lg:hidden xl:hidden block">
+                    <img
+                      class="w-6 inline-block"
+                      src="assets/images/lock.svg"
+                      alt="Secure"
+                      width="16"
+                      height="16"
+                      loading="lazy" />
+                    Secure & Encrypted
+                  </p>
+                  <div class="space-y-8">
+                    <div class="floating-label-group relative">
+                      <input
+                        type="text"
+                        id="cardNumber"
+                        class="w-full border-2 border-[#CDCDCD] pl-9 pr-40 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                        placeholder=" "
+                        pattern="[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}"
+                        maxlength="19"
+                        required
+                        autocomplete="cc-number"
+                        aria-required="true"
+                        inputmode="numeric" />
+                      <label
+                        for="cardNumber"
+                        class="floating-label bg-transparent"
+                        >Card Number</label
+                      >
+                      <div
+                        class="absolute top-1/2 right-4 -translate-y-1/2 flex gap-2">
+                        <img
+                          class="h-14"
+                          src="assets/images/visa.svg"
+                          alt="Visa"
+                          width="52"
+                          height="52"
+                          loading="lazy" />
+                        <img
+                          class="h-14"
+                          src="assets/images/mastercard.svg"
+                          alt="Mastercard"
+                          width="52"
+                          height="52"
+                          loading="lazy" />
+                        <img
+                          class="h-14"
+                          src="assets/images/american-express.svg"
+                          alt="American Express"
+                          width="52"
+                          height="52"
+                          loading="lazy" />
+                      </div>
+                    </div>
+                    <div
+                      class="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
+                      <div class="floating-label-group w-full lg:mb-0">
+                        <input
+                          type="text"
+                          id="expiry"
+                          class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                          placeholder=" "
+                          pattern="[0-9]{2}/[0-9]{2}"
+                          maxlength="5"
+                          required
+                          autocomplete="cc-exp"
+                          aria-required="true"
+                          inputmode="numeric" />
+                        <label
+                          for="expiry"
+                          class="floating-label bg-transparent"
+                          >Expiration Date
+                          <span class="text-[1.6rem] text-[#a2a2a2]"
+                            >(MM/YY)</span
+                          ></label
+                        >
+                      </div>
+                      <div class="floating-label-group relative w-full lg:mb-0">
+                        <input
+                          type="text"
+                          id="cvv"
+                          class="w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                          placeholder=" "
+                          pattern="[0-9]{3,4}"
+                          maxlength="4"
+                          required
+                          autocomplete="cc-csc"
+                          aria-required="true"
+                          inputmode="numeric" />
+                        <label for="cvv" class="floating-label bg-transparent"
+                          >Security Code</label
+                        >
+                        <span
+                          class="absolute w-10 top-1/2 right-9 -translate-y-1/2"
+                          ><img
+                            src="assets/images/info.svg"
+                            alt="Info"
+                            width="40"
+                            height="40"
+                            loading="lazy"
+                        /></span>
+                      </div>
+                    </div>
+                    <div class="floating-label-group">
+                      <input
+                        type="text"
+                        id="nameOnCard"
+                        class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                        placeholder=" "
+                        required
+                        autocomplete="cc-name"
+                        aria-required="true" />
+                      <label
+                        for="nameOnCard"
+                        class="floating-label bg-transparent"
+                        >Name On Card</label
+                      >
+                    </div>
+
+                    <div>
+                      <label
+                        class="flex items-center gap-4 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          class="hidden peer"
+                          id="sameAddress"
+                          checked />
+                        <span
+                          class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center peer-checked:bg-[#666666] rounded-xl">
+                          <img
+                            src="assets/images/check.svg"
+                            alt="Checkmark"
+                            width="16"
+                            height="16"
+                            loading="lazy" />
+                        </span>
+                        <span class="text-[#373738] font-medium text-[2.5rem]">
+                          Use shipping address as payment
+                          <span class="sm:block hidden">address</span>
+                        </span>
+                      </label>
+                    </div>
+
+                    <!-- Billing Address Section -->
+                    <div id="billing-section">
+                      <h4
+                        class="mb-8 text-[#373738] font-medium text-[2.25rem]">
+                        Billing Address
+                      </h4>
+                      <div class="space-y-8">
+                        <div class="floating-label-group">
+                          <input
+                            type="text"
+                            id="billing-address"
+                            class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                            placeholder=" " />
+                          <label
+                            for="billing-address"
+                            class="floating-label bg-transparent"
+                            >Street Address</label
+                          >
+                        </div>
+                        <div
+                          class="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
+                          <div class="floating-label-group w-full">
+                            <input
+                              type="text"
+                              id="billing-city"
+                              class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                              placeholder=" " />
+                            <label
+                              for="billing-city"
+                              class="floating-label bg-transparent"
+                              >City</label
+                            >
+                          </div>
+                          <div class="floating-label-group w-full">
+                            <input
+                              type="text"
+                              id="billing-state"
+                              class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                              placeholder=" " />
+                            <label
+                              for="billing-state"
+                              class="floating-label bg-transparent"
+                              >State</label
+                            >
+                          </div>
+                          <div class="floating-label-group w-full">
+                            <input
+                              type="text"
+                              id="billing-zip"
+                              class="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                              placeholder=" "
+                              pattern="[0-9]{5}" />
+                            <label
+                              for="billing-zip"
+                              class="floating-label bg-transparent"
+                              >Zip Code</label
+                            >
+                          </div>
+                        </div>
+                        <div class="floating-label-group">
+                          <select
+                            id="billing-country"
+                            class="w-full border-2 border-[#CDCDCD] px-9 py-6 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]">
+                            <option value="" disabled selected></option>
+                            <option value="us">United States</option>
+                            <option value="ca">Canada</option>
+                            <option value="uk">United Kingdom</option>
+                            <option value="au">Australia</option>
+                            <option value="nz">New Zealand</option>
+                          </select>
+                          <label
+                            for="billing-country"
+                            class="floating-label bg-transparent"
+                            >Country</label
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-25">
+                  <button
+                    type="submit"
+                    class="py-12 w-full rounded-full bg-[#F6C657] text-center font-bold text-[3.7rem] text-[#373737] leading-none"
+                    aria-label="Place Your Order - Total $294">
+                    Place Your Order
+                  </button>
+                </div>
+
+                <div
+                  class="flex justify-between items-center mt-11 w-full px-7.5 gap-10">
+                  <div class="w-1/3 flex justify-center">
+                    <img
+                      class="h-32 object-contain"
+                      src="assets/images/mcafee-seeklogo.svg"
+                      alt="McAfee Secure"
+                      loading="lazy" />
+                  </div>
+                  <div class="w-1/3 flex justify-center">
+                    <img
+                      class="h-30 object-contain"
+                      src="assets/images/Norton.svg"
+                      alt="Norton Secured"
+                      loading="lazy" />
+                  </div>
+                  <div class="w-1/3 flex justify-center">
+                    <img
+                      class="h-32 object-contain"
+                      src="assets/images/Truste.svg"
+                      alt="TRUSTe Verified"
+                      loading="lazy" />
+                  </div>
+                </div>
+
+                <div class="md:mt-35 md:border-b-3 border-[#CDCDCD]"></div>
+
+                <div class="mt-18 pl-15 hidden md:block">
+                  <div>
+                    <label
+                      class="flex items-center gap-5 cursor-pointer select-none">
+                      <input type="checkbox" class="peer hidden" checked />
+
+                      <span
+                        class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
+                        <img
+                          src="assets/images/check-dark.svg"
+                          alt="Checkmark"
+                          class="hidden"
+                          width="16"
+                          height="16"
+                          loading="lazy" />
+                      </span>
+
+                      <span class="text-[#656565] font-medium text-[1.8rem]">
+                        Get SMS Alerts About Your Order
+                      </span>
+                    </label>
+                    <p
+                      class="text-[1.7rem] max-w-175 text-[#656565] leading-[1.6]">
+                      Stay up to date on your purchase with order confirmation,
+                      shipping updates & special customer only discounts.
+                    </p>
+                  </div>
+                  <div class="mt-15">
+                    <p class="text-[1.7rem] text-[#656565] font-medium">
+                      &copy; 2025 RetinaClear. All Rights Reserved
+                    </p>
+                    <p class="text-[#666666] text-[1.3rem]">
+                      These Statements Have Not Been Evaluated By The Food And
+                      Drug Administration. This Product Is Not Intended To
+                      Diagnose, Treat, Cure Or Prevent Any Disease.
+                    </p>
+                  </div>
+
+                  <ul class="mt-16 flex gap-8">
+                    <li>
+                      <a
+                        class="font-medium underline text-[1.8rem] text-[#666666]"
+                        href="#"
+                        >Refund Policy</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        class="font-medium underline text-[1.8rem] text-[#666666]"
+                        href="#"
+                        >Privacy Policy</a
+                      >
+                    </li>
+                    <li>
+                      <a
+                        class="font-medium underline text-[1.8rem] text-[#666666]"
+                        href="#"
+                        >Term of Service</a
+                      >
+                    </li>
+                  </ul>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="sm:bg-[#f2f2f2] bg-[#fff]">
+            <div
+              class="sm:pl-23 sm:py-18 py:5 md:max-w-[56.3rem] md:mr-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto">
+              <div>
+                <div class="hidden md:block">
+                  <ul
+                    class="flex flex-col gap-10 pb-10 border-b-3 border-[#CDCDCD]">
+                    <li class="flex justify-between items-center gap-5">
+                      <div class="flex gap-13 items-center">
+                        <div>
+                          <picture>
+                            <source
+                              srcset="assets/images/6-bottles.webp"
+                              type="image/webp" />
+                            <img
+                              class="w-44"
+                              src="assets/images/6-bottles.png"
+                              alt="6 Bottle Pack"
+                              width="181"
+                              height="144"
+                              loading="eager"
+                              style="
+                                aspect-ratio: 181/144;
+                                object-fit: contain;
+                              " />
+                          </picture>
+                        </div>
+                        <div>
+                          <h3
+                            class="font-medium text-[2.13rem] leading-relaxed">
+                            Fitspresso <br />
+                            6 Bottle Pack
+                          </h3>
+                          <p class="text-[#976987] font-medium text-[1.63rem]">
+                            Most Popular!
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        class="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        $294
+                      </div>
+                    </li>
+                    <li class="flex justify-between items-center gap-5">
+                      <div class="flex gap-13 items-center">
+                        <div>
+                          <picture>
+                            <source
+                              srcset="assets/images/bonus-ebooks.webp"
+                              type="image/webp" />
+                            <img
+                              class="w-44"
+                              src="assets/images/bonus-ebooks.png"
+                              alt="Bonus eBooks"
+                              width="176"
+                              height="176"
+                              loading="eager" />
+                          </picture>
+                        </div>
+                        <div>
+                          <h3
+                            class="font-medium text-[2.13rem] leading-relaxed">
+                            Bonus eBooks
+                          </h3>
+                          <p class="text-[#976987] font-medium text-[1.63rem]">
+                            First Time Customer
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        class="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        Free
+                      </div>
+                    </li>
+                    <li class="flex justify-between items-center gap-5">
+                      <div class="flex gap-13 items-center">
+                        <div>
+                          <picture>
+                            <source
+                              srcset="assets/images/bonus-call.webp"
+                              type="image/webp" />
+                            <img
+                              class="w-44"
+                              src="assets/images/bonus-call.png"
+                              alt="Bonus Call"
+                              width="160"
+                              height="142"
+                              loading="eager"
+                              style="
+                                aspect-ratio: 160/142;
+                                object-fit: contain;
+                              " />
+                          </picture>
+                        </div>
+                        <div>
+                          <h3
+                            class="font-medium text-[2.13rem] leading-relaxed">
+                            Bonus Coaching Call
+                          </h3>
+                          <p class="text-[#976987] font-medium text-[1.63rem]">
+                            Limited Time
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        class="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        Free
+                      </div>
+                    </li>
+                  </ul>
+                  <ul
+                    class="pt-16 font-medium text-[2.19rem] text-[#373737] flex flex-col gap-5">
+                    <li class="flex justify-between items-center">
+                      <div>Shipping</div>
+                      <div class="uppercase">free</div>
+                    </li>
+                    <li class="flex justify-between items-center">
+                      <div>Total</div>
+                      <div class="uppercase">
+                        <small
+                          class="text-[1.63rem] font-normal text-[#656565] mr-2"
+                          >USD</small
+                        >
+                        $294
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                <ul
+                  class="hidden md:flex pt-15 items-center justify-between gap-5 text-[#976987] font-medium md:text-[1.5rem]">
+                  <li
+                    class="flex w-full font-semibold text-[1.69rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2">
+                    <img
+                      class="md:w-11.25 w-12"
+                      src="assets/images/circle-check.svg"
+                      alt="Check"
+                      width="48"
+                      height="48"
+                      loading="lazy" />
+                    <span>One-Time Purchase</span>
+                  </li>
+                  <li
+                    class="flex w-full font-semibold text-[1.69rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2">
+                    <img
+                      class="md:w-11.25 w-12"
+                      src="assets/images/circle-check.svg"
+                      alt="Check"
+                      width="48"
+                      height="48"
+                      loading="lazy" />
+                    <span>No Hidden Fees</span>
+                  </li>
+                  <li
+                    class="flex w-full font-semibold text-[1.63rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2">
+                    <img
+                      class="md:w-11.25 w-12"
+                      src="assets/images/circle-check.svg"
+                      alt="Check"
+                      width="48"
+                      height="48"
+                      loading="lazy" />
+                    <span>Fast, Secure Payment</span>
+                  </li>
+                </ul>
+                <div class="sm:mt-15 flex flex-col-reverse md:flex-col">
+                  <div class="flex flex-col gap-6 mt-10 sm:mt-0">
+                    <h3 class="mb-5 text-center font-bold text-[2.7rem]">
+                      250,000+ Customers! <br />
+                      Your Story Can Be Next
+                    </h3>
+                    <div
+                      class="bg-white p-11 border-2 border-[#916B86] md:border-[#CDCDCD] rounded-2xl">
+                      <div class="flex justify-between items-center">
+                        <div class="flex gap-6.5 items-center">
+                          <div>
+                            <picture>
+                              <source
+                                srcset="assets/images/olivia.webp"
+                                type="image/webp" />
+                              <img
+                                class="w-31.75 h-31.75 object-cover"
+                                src="assets/images/olivia.png"
+                                alt="Olivia Harris"
+                                width="127"
+                                height="127"
+                                loading="lazy" />
+                            </picture>
+                          </div>
+                          <div>
+                            <h4
+                              class="text-[#373737] font-bold text-[2rem] mb-4.5 leading-none">
+                              Olivia Harris
+                            </h4>
+                            <p
+                              class="flex items-center gap-1 font-medium text-[1.69rem] text-[#976987]">
+                              <img
+                                class="w-7.25"
+                                src="assets/images/circle-check.svg"
+                                alt="Verified"
+                                width="29"
+                                height="29"
+                                loading="lazy" />
+                              Verified Customer
+                            </p>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <div class="flex gap-2 items-center">
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                          </div>
+                          <span
+                            class="inline-block mt-4 px-4 py-1.5 bg-[#986988] text-white font-bold text-[1.45rem] rounded-[5rem] leading-none"
+                            >5 Stars</span
+                          >
+                        </div>
+                      </div>
+                      <p
+                        class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">
+                        "I can hardly believe it, I know longer need my glasses
+                        and I feel amazing. I'm a believer."
+                      </p>
+                    </div>
+
+                    <div
+                      class="bg-white p-11 border-2 border-[#916B86] md:border-[#CDCDCD] rounded-2xl">
+                      <div class="flex justify-between items-center">
+                        <div class="flex gap-6.5 items-center">
+                          <div>
+                            <picture>
+                              <source
+                                srcset="assets/images/emily.webp"
+                                type="image/webp" />
+                              <img
+                                class="w-31.75 h-31.75 object-cover"
+                                src="assets/images/emily.png"
+                                alt="Emily Parker"
+                                width="127"
+                                height="127"
+                                loading="lazy" />
+                            </picture>
+                          </div>
+                          <div>
+                            <h4
+                              class="text-[#373737] font-bold text-[2rem] mb-4.5 leading-none">
+                              Emily Parker
+                            </h4>
+                            <p
+                              class="flex items-center gap-1 font-medium text-[1.69rem] text-[#976987]">
+                              <img
+                                class="w-7.25"
+                                src="assets/images/circle-check.svg"
+                                alt="Verified"
+                                width="29"
+                                height="29"
+                                loading="lazy" />
+                              Verified Customer
+                            </p>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <div class="flex gap-2 items-center">
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                            <img
+                              class="w-7.25"
+                              src="assets/images/star.svg"
+                              alt="Star"
+                              width="29"
+                              height="29"
+                              loading="lazy" />
+                          </div>
+                          <span
+                            class="inline-block mt-4 px-4 py-1.5 bg-[#986988] text-white font-bold text-[1.45rem] rounded-[5rem] leading-none"
+                            >5 Stars</span
+                          >
+                        </div>
+                      </div>
+                      <p
+                        class="mt-7.5 italic font-medium text-[1.94rem] leading-[1.2] text-[#373737]">
+                        "I can hardly believe it, I know longer need my glasses
+                        and I feel amazing. I'm a believer."
+                      </p>
+                    </div>
+                  </div>
+
+                  <ul
+                    class="md:hidden pt-15 flex items-center justify-between gap-5 text-[#976987] font-medium text-xl">
+                    <li
+                      class="flex w-full font-semibold text-[1.69rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2 leading-none">
+                      <img
+                        class="w-8"
+                        src="assets/images/circle-check.svg"
+                        alt="Check"
+                        width="32"
+                        height="32"
+                        loading="lazy" />
+                      <span>One-Time Purchase</span>
+                    </li>
+                    <li
+                      class="flex w-full font-semibold text-[1.6rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2 leading-none">
+                      <img
+                        class="w-8"
+                        src="assets/images/circle-check.svg"
+                        alt="Check"
+                        width="32"
+                        height="32"
+                        loading="lazy" />
+                      <span>No Hidden Fees</span>
+                    </li>
+                    <li
+                      class="flex w-full font-semibold text-[1.69rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2 leading-none">
+                      <img
+                        class="w-8"
+                        src="assets/images/circle-check.svg"
+                        alt="Check"
+                        width="32"
+                        height="32"
+                        loading="lazy" />
+                      <span>Secure Payment</span>
+                    </li>
+                  </ul>
+
+                  <div
+                    class="bg-[#916B86] md:bg-white py-13 px-15 border-2 border-[#916B86] rounded-2xl mt-13.5">
+                    <div class="flex justify-center items-center gap-10">
+                      <div class="w-full text-center">
+                        <picture>
+                          <source
+                            srcset="assets/images/money-back.webp"
+                            type="image/webp" />
+                          <img
+                            class="w-66 mx-auto"
+                            src="assets/images/money-back.png"
+                            alt="Money Back Guarantee"
+                            width="264"
+                            height="264"
+                            loading="lazy" />
+                        </picture>
+                      </div>
+                      <div class="w-full">
+                        <h3
+                          class="text-[#F6C657] md:text-[#916B85] font-bold text-[3.25rem] leading-[1.2]">
+                          100% <br />
+                          Money-Back <br />
+                          Guarantee!
+                        </h3>
+                      </div>
+                    </div>
+                    <p
+                      class="mt-7.5 text-center text-[1.94rem] leading-[1.2] text-white md:text-[#373737]">
+                      There's absolutely zero risk in trying! You will love how
+                      RetinaClear makes you feel and transforms your eyesight!
+                      If you decide the product isn't for you, just let us know,
+                      and we will refund your money, no questions asked.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-18 md:pl-15 md:hidden">
+                <div>
+                  <label
+                    class="flex items-center gap-5 cursor-pointer select-none">
+                    <input type="checkbox" class="peer hidden" />
+
+                    <span
+                      class="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
+                      <img
+                        src="assets/images/check-dark.svg"
+                        alt="Checkmark"
+                        class="hidden"
+                        width="16"
+                        height="16"
+                        loading="lazy" />
+                    </span>
+
+                    <span class="text-[#656565] font-medium text-[1.8rem]">
+                      Get SMS Alerts About Your Order
+                    </span>
+                  </label>
+                  <p class="text-[1.7rem] text-[#656565] leading-[1.6]">
+                    Stay up to date on your purchase with order confirmation,
+                    shipping updates & special customer only discounts.
+                  </p>
+                </div>
+                <div class="mt-15">
+                  <p class="text-[1.7rem] text-[#656565] font-medium">
+                    &copy; 2025 RetinaClear. All Rights Reserved
+                  </p>
+                  <p class="text-[#666666] text-[1.3rem]">
+                    These Statements Have Not Been Evaluated By The Food And
+                    Drug Administration. This Product Is Not Intended To
+                    Diagnose, Treat, Cure Or Prevent Any Disease.
+                  </p>
+                </div>
+
+                <ul class="mt-16 flex gap-8">
+                  <li>
+                    <a
+                      class="font-medium underline text-[1.8rem] text-[#666666]"
+                      href="#"
+                      >Refund Policy</a
+                    >
+                  </li>
+                  <li>
+                    <a
+                      class="font-medium underline text-[1.8rem] text-[#666666]"
+                      href="#"
+                      >Privacy Policy</a
+                    >
+                  </li>
+                  <li>
+                    <a
+                      class="font-medium underline text-[1.8rem] text-[#666666]"
+                      href="#"
+                      >Term of Service</a
+                    >
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Font loading detection and optimization -->
+    <script>
+      // Detect when fonts are loaded to prevent FOUT
+      if ("fonts" in document) {
+        document.fonts.ready.then(function () {
+          document.documentElement.classList.add("fonts-loaded");
+        });
+      } else {
+        // Fallback for browsers that don't support Font Loading API
+        // Add class after a reasonable delay
+        setTimeout(function () {
+          document.documentElement.classList.add("fonts-loaded");
+        }, 1000);
+      }
+
+      // Optimize font loading for repeat visitors
+      if (sessionStorage.getItem("fontsLoaded")) {
+        document.documentElement.classList.add("fonts-loaded");
+      } else {
+        // Mark fonts as loaded for this session
+        window.addEventListener("load", function () {
+          sessionStorage.setItem("fontsLoaded", "1");
+        });
+      }
+    </script>
+
+    <!-- Defer non-critical scripts -->
+    <script>
+      // Performance optimized scripts - minified
+      let m = !1;
+      function lGM() {
+        if (!m) {
+          m = !0;
+          const e = "YOUR_GOOGLE_API_KEY";
+          if (e && "YOUR_GOOGLE_API_KEY" !== e) {
+            const t = document.createElement("script");
+            t.src = `https://maps.googleapis.com/maps/api/js?key=${e}&libraries=places&callback=initAutocomplete`;
+            t.async = !0;
+            t.defer = !0;
+            document.body.appendChild(t);
+          }
+        }
+      }
+      document.addEventListener(
+        "focusin",
+        function (e) {
+          ("address" === e.target.id || "billing-address" === e.target.id) &&
+            lGM();
+        },
+        { passive: !0 }
+      );
+      setTimeout(lGM, 5e3);
+    </script>
+
+    <script>
+      // Main application script - optimized and deferred
+      document.addEventListener("DOMContentLoaded", function () {
+        // Countdown timer
+        let minutes = 9,
+          seconds = 59;
+        function updateTimer() {
+          if (seconds === 0) {
+            if (minutes === 0) return;
+            minutes--;
+            seconds = 59;
+          } else {
+            seconds--;
+          }
+          document.getElementById("minutes").textContent = minutes.toString();
+          document.getElementById("seconds").textContent = seconds
+            .toString()
+            .padStart(2, "0");
+        }
+        setInterval(updateTimer, 1000);
+
+        // Debounce function for input formatting
+        function debounce(func, wait) {
+          let timeout;
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout);
+              func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+          };
+        }
+
+        // GeoIP detection to auto-fill country and state
+        async function detectLocationAndFill() {
+          // Check localStorage cache first
+          const cachedGeoData = localStorage.getItem("geoip_data");
+          const cacheExpiry = localStorage.getItem("geoip_expiry");
+
+          if (
+            cachedGeoData &&
+            cacheExpiry &&
+            new Date().getTime() < parseInt(cacheExpiry)
+          ) {
+            const data = JSON.parse(cachedGeoData);
+            fillGeoData(data);
+            return;
+          }
+
+          try {
+            // Using ipapi.co free tier for GeoIP detection
+            const response = await fetch("https://ipapi.co/json/");
+            const data = await response.json();
+
+            // Cache for 24 hours
+            localStorage.setItem("geoip_data", JSON.stringify(data));
+            localStorage.setItem(
+              "geoip_expiry",
+              new Date().getTime() + 86400000
+            );
+
+            fillGeoData(data);
+          } catch (error) {
+            console.log("GeoIP detection failed:", error);
+          }
+        }
+
+        function fillGeoData(data) {
+          if (data.country_code) {
+            // Set country
+            const countrySelect = document.getElementById("country");
+            const billingCountrySelect =
+              document.getElementById("billing-country");
+            const countryCode = data.country_code.toLowerCase();
+
+            // Map country codes to select values
+            const countryMap = {
+              us: "us",
+              ca: "ca",
+              gb: "uk",
+              au: "au",
+              nz: "nz",
+            };
+
+            if (countryMap[countryCode]) {
+              countrySelect.value = countryMap[countryCode];
+              billingCountrySelect.value = countryMap[countryCode];
+
+              // Trigger floating label update
+              countrySelect.dispatchEvent(new Event("change"));
+              billingCountrySelect.dispatchEvent(new Event("change"));
+            }
+          }
+
+          if (data.region) {
+            // Set state/province
+            const stateInput = document.getElementById("state");
+            const billingStateInput = document.getElementById("billing-state");
+
+            stateInput.value = data.region;
+            billingStateInput.value = data.region;
+
+            // Trigger floating label update
+            stateInput.dispatchEvent(new Event("input"));
+            billingStateInput.dispatchEvent(new Event("input"));
+          }
+
+          if (data.city) {
+            // Set city
+            const cityInput = document.getElementById("city");
+            const billingCityInput = document.getElementById("billing-city");
+
+            cityInput.value = data.city;
+            billingCityInput.value = data.city;
+
+            // Trigger floating label update
+            cityInput.dispatchEvent(new Event("input"));
+            billingCityInput.dispatchEvent(new Event("input"));
+          }
+        }
+
+        // Google Places Autocomplete
+        let shippingAutocomplete;
+        let billingAutocomplete;
+
+        function initAutocomplete() {
+          // Options for autocomplete
+          const options = {
+            types: ["address"],
+            fields: ["address_components", "formatted_address"],
+            componentRestrictions: { country: ["us", "ca", "gb", "au", "nz"] },
+          };
+
+          // Initialize autocomplete for shipping address
+          const shippingAddressInput = document.getElementById("address");
+          shippingAutocomplete = new google.maps.places.Autocomplete(
+            shippingAddressInput,
+            options
+          );
+
+          shippingAutocomplete.addListener("place_changed", function () {
+            fillInAddress("shipping", shippingAutocomplete);
+          });
+
+          // Initialize autocomplete for billing address
+          const billingAddressInput =
+            document.getElementById("billing-address");
+          billingAutocomplete = new google.maps.places.Autocomplete(
+            billingAddressInput,
+            options
+          );
+
+          billingAutocomplete.addListener("place_changed", function () {
+            fillInAddress("billing", billingAutocomplete);
+          });
+        }
+
+        function fillInAddress(type, autocomplete) {
+          const place = autocomplete.getPlace();
+
+          if (!place.address_components) {
+            return;
+          }
+
+          // Reset fields
+          const prefix = type === "billing" ? "billing-" : "";
+          const fields = {
+            street_number: "",
+            route: "",
+            locality: `${prefix}city`,
+            administrative_area_level_1: `${prefix}state`,
+            postal_code: `${prefix}zip`,
+            country: `${prefix}country`,
+          };
+
+          // Parse address components
+          let streetNumber = "";
+          let route = "";
+
+          for (const component of place.address_components) {
+            const addressType = component.types[0];
+
+            if (addressType === "street_number") {
+              streetNumber = component.long_name;
+            } else if (addressType === "route") {
+              route = component.long_name;
+            } else if (fields[addressType]) {
+              const input = document.getElementById(fields[addressType]);
+              if (input) {
+                if (addressType === "country") {
+                  // Map country names to select values
+                  const countryMap = {
+                    "United States": "us",
+                    Canada: "ca",
+                    "United Kingdom": "uk",
+                    Australia: "au",
+                    "New Zealand": "nz",
+                  };
+                  input.value = countryMap[component.long_name] || "";
+                } else if (addressType === "administrative_area_level_1") {
+                  // Use short name for states
+                  input.value = component.short_name;
+                } else {
+                  input.value = component.long_name;
+                }
+
+                // Trigger event to update floating labels
+                input.dispatchEvent(
+                  new Event(input.tagName === "SELECT" ? "change" : "input")
+                );
+              }
+            }
+          }
+
+          // Combine street number and route
+          const addressInput = document.getElementById(
+            type === "billing" ? "billing-address" : "address"
+          );
+          if (addressInput) {
+            addressInput.value = `${streetNumber} ${route}`.trim();
+            addressInput.dispatchEvent(new Event("input"));
+          }
+        }
+
+        // Delay GeoIP detection to improve initial load
+        let geoIPLoaded = false;
+        function loadGeoIPOnInteraction() {
+          if (!geoIPLoaded) {
+            geoIPLoaded = true;
+            addIpapiPreconnect();
+            setTimeout(detectLocationAndFill, 100);
+          }
+        }
+
+        // Load GeoIP on first user interaction
+        document.addEventListener("click", loadGeoIPOnInteraction, {
+          once: true,
+        });
+        document.addEventListener("focus", loadGeoIPOnInteraction, {
+          once: true,
+          capture: true,
+        });
+        document.addEventListener("touchstart", loadGeoIPOnInteraction, {
+          once: true,
+        });
+
+        // Add ipapi.co preconnect when about to use it
+        function addIpapiPreconnect() {
+          if (!document.querySelector('link[href*="ipapi.co"]')) {
+            const link = document.createElement("link");
+            link.rel = "preconnect";
+            link.href = "https://ipapi.co";
+            document.head.appendChild(link);
+          }
+        }
+
+        // Also load after a delay if no interaction
+        setTimeout(function () {
+          if (!geoIPLoaded) {
+            loadGeoIPOnInteraction();
+          }
+        }, 3000);
+
+        // Toggle billing address
+        const sameAddressCheckbox = document.getElementById("sameAddress");
+        const billingSection = document.getElementById("billing-section");
+
+        sameAddressCheckbox.addEventListener("change", function () {
+          if (this.checked) {
+            billingSection.classList.remove("show");
+          } else {
+            billingSection.classList.add("show");
+          }
+        });
+
+        // Format card number with debouncing
+        const cardNumberInput = document.getElementById("cardNumber");
+        const formatCardNumber = debounce(function (e) {
+          let value = e.target.value
+            .replace(/\s+/g, "")
+            .replace(/[^0-9]/gi, "");
+          let formattedValue = value.match(/.{1,4}/g)?.join(" ") || value;
+          e.target.value = formattedValue;
+
+          // Detect card type
+          const firstDigit = value.charAt(0);
+          const firstTwo = value.substring(0, 2);
+          if (firstDigit === "4") {
+            console.log("Visa card detected");
+          } else if (["51", "52", "53", "54", "55"].includes(firstTwo)) {
+            console.log("Mastercard detected");
+          } else if (["34", "37"].includes(firstTwo)) {
+            console.log("American Express detected");
+          }
+        }, 100);
+        cardNumberInput.addEventListener("input", formatCardNumber);
+
+        // Format expiry date with debouncing
+        const expiryInput = document.getElementById("expiry");
+        const formatExpiry = debounce(function (e) {
+          let value = e.target.value
+            .replace(/\s+/g, "")
+            .replace(/[^0-9]/gi, "");
+          if (value.length >= 2) {
+            value = value.substring(0, 2) + "/" + value.substring(2, 4);
+          }
+          e.target.value = value;
+        }, 100);
+        expiryInput.addEventListener("input", formatExpiry);
+
+        // Format phone number with debouncing
+        const phoneInput = document.getElementById("phone");
+        const formatPhone = debounce(function (e) {
+          let value = e.target.value.replace(/\D/g, "");
+          if (value.length >= 6) {
+            value =
+              value.substring(0, 3) +
+              "-" +
+              value.substring(3, 6) +
+              "-" +
+              value.substring(6, 10);
+          } else if (value.length >= 3) {
+            value = value.substring(0, 3) + "-" + value.substring(3);
+          }
+          e.target.value = value;
+        }, 100);
+        phoneInput.addEventListener("input", formatPhone);
+
+        // Form validation functions
+        function validateEmail(email) {
+          const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          return re.test(email);
+        }
+
+        function validatePhone(phone) {
+          const cleaned = phone.replace(/\D/g, "");
+          return cleaned.length === 10;
+        }
+
+        function validateZip(zip) {
+          const cleaned = zip.replace(/\D/g, "");
+          return cleaned.length === 5 || cleaned.length === 9;
+        }
+
+        function showError(inputId, message) {
+          const input = document.getElementById(inputId);
+          const errorDiv = document.getElementById(inputId + "-error");
+          input.classList.add("input-error");
+          if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.classList.remove("hidden");
+          }
+        }
+
+        function clearError(inputId) {
+          const input = document.getElementById(inputId);
+          const errorDiv = document.getElementById(inputId + "-error");
+          input.classList.remove("input-error");
+          if (errorDiv) {
+            errorDiv.classList.add("hidden");
+          }
+        }
+
+        // Required field validation
+        function validateRequired(inputId, fieldName) {
+          const input = document.getElementById(inputId);
+          if (!input.value.trim()) {
+            showError(inputId, fieldName + " is required");
+            return false;
+          } else {
+            clearError(inputId);
+            return true;
+          }
+        }
+
+        // Email validation
+        document.getElementById("email").addEventListener("blur", function () {
+          if (this.value) {
+            if (!validateEmail(this.value)) {
+              showError("email", "Please enter a valid email address");
+            } else {
+              clearError("email");
+            }
+          } else {
+            showError("email", "Email is required");
+          }
+        });
+
+        // Phone validation
+        document.getElementById("phone").addEventListener("blur", function () {
+          if (this.value) {
+            if (!validatePhone(this.value)) {
+              showError("phone", "Please enter a valid 10-digit phone number");
+            } else {
+              clearError("phone");
+            }
+          } else {
+            showError("phone", "Phone number is required");
+          }
+        });
+
+        // ZIP code validation
+        document.getElementById("zip").addEventListener("blur", function () {
+          if (this.value) {
+            if (!validateZip(this.value)) {
+              showError("zip", "Please enter a valid ZIP code");
+            } else {
+              clearError("zip");
+            }
+          } else {
+            showError("zip", "ZIP code is required");
+          }
+        });
+
+        // Address validation
+        document
+          .getElementById("address")
+          .addEventListener("blur", function () {
+            if (!this.value.trim()) {
+              showError("address", "Street address is required");
+            } else if (this.value.trim().length < 5) {
+              showError("address", "Please enter a valid street address");
+            } else {
+              clearError("address");
+            }
+          });
+
+        // City validation
+        document.getElementById("city").addEventListener("blur", function () {
+          if (!this.value.trim()) {
+            showError("city", "City is required");
+          } else if (this.value.trim().length < 2) {
+            showError("city", "Please enter a valid city name");
+          } else {
+            clearError("city");
+          }
+        });
+
+        // State validation
+        document.getElementById("state").addEventListener("blur", function () {
+          if (!this.value.trim()) {
+            showError("state", "State is required");
+          } else if (this.value.trim().length < 2) {
+            showError("state", "Please enter a valid state");
+          } else {
+            clearError("state");
+          }
+        });
+
+        // Apartment field validation
+        const apartmentInput = document.getElementById("apartment");
+        const apartmentError = document.getElementById("apartment-error");
+
+        apartmentInput.addEventListener("input", function (e) {
+          const specialCharsRegex = /^[a-zA-Z0-9\s\-#\.]*$/;
+          if (e.target.value && !specialCharsRegex.test(e.target.value)) {
+            apartmentError.classList.remove("hidden");
+            e.target.classList.add("input-error");
+          } else {
+            apartmentError.classList.add("hidden");
+            e.target.classList.remove("input-error");
+          }
+        });
+
+        // Form validation
+        document
+          .getElementById("checkout-form")
+          .addEventListener("submit", function (e) {
+            e.preventDefault();
+            // Add your form submission logic here
+            alert("Order submitted successfully!");
+          });
+      });
+
+      // Performance monitoring
+      if (window.performance && performance.mark) {
+        window.addEventListener("load", function () {
+          try {
+            const perfData = performance.getEntriesByType("navigation")[0];
+            console.log("Page Load Metrics:", {
+              "Total Load Time": perfData.loadEventEnd - perfData.fetchStart,
+              "DOM Ready":
+                perfData.domContentLoadedEventEnd - perfData.fetchStart,
+              "First Paint":
+                performance.getEntriesByName("first-paint")[0]?.startTime,
+            });
+          } catch (e) {}
+        });
+      }
+
+      // Register Service Worker for offline caching
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js").catch(function (err) {
+            console.log("ServiceWorker registration failed: ", err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

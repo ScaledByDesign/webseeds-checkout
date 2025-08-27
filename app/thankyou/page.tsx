@@ -118,251 +118,280 @@ export default function ThankYouPage() {
     `ORD-${Date.now().toString().slice(-6)}`
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="font-roboto bg-white">
+      {/* Skip Navigation */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-[#986988] text-white px-4 py-2 rounded">
+        Skip to main content
+      </a>
+
       {/* Header */}
-      <header className="bg-white py-6 border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
-          <Image src="/assets/images/Logo.svg" alt="Fitspresso Logo" width={140} height={40} style={{ width: 'auto', height: 'auto' }} priority />
-          <p className="text-gray-600 font-medium">Order #{orderNumber}</p>
+      <header className="py-8 md:py-15.5 border-b-3 border-[#CDCDCD]">
+        <div className="container-max">
+          <div className="container">
+            <div className="flex-col-reverse flex md:flex-row gap-10 justify-between items-center">
+              <div>
+                <Image
+                  className="max-w-full w-110"
+                  src="/assets/images/Logo.svg"
+                  alt="Fitspresso Logo"
+                  width={220}
+                  height={60}
+                  loading="eager"
+                />
+              </div>
+              <div>
+                <p className="font-medium text-[2.95rem] text-[#666]">Order #{orderNumber}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Thank You Section */}
-        <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="bg-green-500 rounded-full p-2">
-              <Image src="/assets/images/circle-check.svg" alt="Success" width={24} height={24} className="filter brightness-0 invert" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-1">
-                Thank you {customer.firstName}!
-              </h1>
-              <p className="text-gray-600">Your order is confirmed.</p>
-              {sessionId && (
-                <p className="text-sm text-gray-500 mt-1">Session: {sessionId}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Video Section */}
-          <div className="relative mb-8">
-            <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
-              <Image
-                src="/assets/images/thumbnail.webp"
-                alt="Video thumbnail"
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <button className="bg-red-600 hover:bg-red-700 text-white p-4 rounded-full shadow-lg transform hover:scale-105 transition-transform">
-                  <svg className="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded text-sm font-medium">
-                Click To Play ↗
-              </div>
-            </div>
-            <div className="bg-red-600 text-white text-center py-3 text-lg font-bold">
-              AN IMPORTANT MESSAGE
-            </div>
-            <div className="bg-gray-600 text-white text-center py-2 text-base">
-              From Kristi Before You Start Taking Fitspresso
-            </div>
-          </div>
-        </div>
-
-        {/* Customer & Shipping Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Customer & Billing Info */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Customer Information</h3>
-            <div className="space-y-2 text-gray-600">
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-800">Name:</span>
-                <span>{customer.firstName} {customer.lastName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-800">Email:</span>
-                <span>{customer.email}</span>
-              </div>
-              {customer.phone && (
-                <div className="flex justify-between">
-                  <span className="font-medium text-gray-800">Phone:</span>
-                  <span>{customer.phone}</span>
+      <main id="main-content">
+        <div className="container-max">
+          <div className="container">
+            <div className="pb-20">
+              {/* Thank You Section */}
+              <div className="flex justify-center items-center gap-9 my-20">
+                <div>
+                  <Image
+                    className="w-24 md:w-38"
+                    src="/assets/images/circle-check-big.svg"
+                    alt="Success Checkmark"
+                    width={152}
+                    height={152}
+                    loading="eager"
+                  />
                 </div>
-              )}
-              
-              {/* Billing Address within Customer Info */}
-              {customer.address && (
-                <>
-                  <div className="border-t pt-3 mt-4">
-                    <h4 className="font-medium text-gray-800 mb-2">Billing Address</h4>
-                    <div className="space-y-1 text-sm">
-                      <p>{customer.address}</p>
-                      <p>{customer.city}, {customer.state} {customer.zipCode}</p>
-                      <p>United States</p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+                <div>
+                  <h2 className="font-medium text-[#373738] text-5xl md:text-[5rem] leading-none mb-5">
+                    Thank you {customer.firstName}!
+                  </h2>
+                  <p className="text-[#666] text-4xl md:text-[4.5rem] leading-none">
+                    Your order is confirmed.
+                  </p>
+                </div>
+              </div>
 
-          {/* Shipping Information */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Shipping Information</h3>
-            <div className="space-y-2 text-gray-600">
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-800">Method:</span>
-                <span>Standard Shipping</span>
+              {/* Video Section */}
+              <div
+                id="videoWrapper"
+                className="w-full max-w-full mx-auto relative aspect-video cursor-pointer bg-[#f0f0f0]"
+                onClick={() => {
+                  // Video click handler - can be implemented later
+                  console.log('Video clicked')
+                }}
+              >
+                <Image
+                  id="videoThumbnail"
+                  src="/assets/images/thumbnail.png"
+                  alt="Video thumbnail"
+                  fill
+                  className="object-cover rounded-lg"
+                  loading="eager"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                />
               </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-800">Cost:</span>
-                <span className="text-green-600 font-semibold">FREE</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-800">Estimated Delivery:</span>
-                <span>5-7 Business Days</span>
-              </div>
-              
-              {/* Shipping Address */}
-              <div className="border-t pt-3 mt-4">
-                <h4 className="font-medium text-gray-800 mb-2">Shipping Address</h4>
-                <div className="space-y-1 text-sm">
+
+              {/* Customer & Shipping Info */}
+              <div className="md:px-20 grid grid-cols-1 md:grid-cols-2 gap-20 py-30">
+                <div>
+                  <h3 className="font-medium text-[#373738] text-[3.7rem] leading-[1.2] mb-12">Customer</h3>
+                  <p className="text-[#666] text-[2.95rem] leading-[1.4]">{customer.firstName} {customer.lastName}</p>
+                  <p className="text-[#666] text-[2.95rem] leading-[1.4]">{customer.email}</p>
+                  {customer.phone && (
+                    <p className="text-[#666] text-[2.95rem] leading-[1.4]">{customer.phone}</p>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-medium text-[#373738] text-[3.7rem] leading-[1.2] mb-12">Shipping</h3>
                   {customer.address ? (
                     <>
-                      <p>{customer.firstName} {customer.lastName}</p>
-                      <p>{customer.address}</p>
-                      <p>{customer.city}, {customer.state} {customer.zipCode}</p>
-                      <p>United States</p>
+                      <p className="text-[#666] text-[2.95rem] leading-[1.4]">{customer.address}</p>
+                      <p className="text-[#666] text-[2.95rem] leading-[1.4]">{customer.city}, {customer.state} {customer.zipCode}</p>
+                      <p className="text-[#666] text-[2.95rem] leading-[1.4]">United States</p>
                     </>
                   ) : (
-                    <p className="text-gray-500">Same as billing address</p>
+                    <>
+                      <p className="text-[#666] text-[2.95rem] leading-[1.4]">Address will be provided</p>
+                      <p className="text-[#666] text-[2.95rem] leading-[1.4]">United States</p>
+                    </>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Order Summary */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-800 mb-6">Order Summary</h3>
-          
-          <div className="space-y-4">
-            {/* All Products - Dynamic based on actual purchases */}
-            {allProducts.length > 0 ? (
-              allProducts.map((product, index) => (
-                <div key={`product-${index}`} className="flex items-center gap-4 pb-4 border-b border-gray-100">
-                  <Image src={product.image} alt={product.name} width={60} height={60} style={{ width: 'auto', height: 'auto' }} className="rounded" />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-800">{product.name}</h4>
-                    <p className="text-sm text-gray-600">{product.description}</p>
-                    <div className="flex gap-2 text-xs text-gray-500">
-                      {product.bottles && <span>{product.bottles} Bottles</span>}
-                      {product.transactionId !== 'BONUS' && <span>• Transaction: {product.transactionId}</span>}
-                      {product.type === 'main' && <span>• Most Popular!</span>}
-                      {product.type === 'upsell' && <span>• Upsell #{product.step}</span>}
-                      {product.type === 'bonus' && <span>• First Time Customer</span>}
+              {/* Order Summary */}
+              <div className="border-3 border-[#CDCDCD] rounded-4xl pt-20 overflow-hidden">
+                <h3 className="font-medium text-[#373738] text-[3.7rem] leading-[1.2] mb-18 pl-10 md:pl-22">
+                  Order Summary
+                </h3>
+                <ul className="flex flex-col gap-30 pb-10 md:pb-16 px-10 md:px-22 border-b-3 border-[#CDCDCD]">
+                  {/* Main Product */}
+                  <li className="flex justify-between items-center gap-5">
+                    <div className="flex gap-8 md:gap-13 items-center">
+                      <div className="max-w-40 md:max-w-44">
+                        <picture>
+                          <source srcSet="/assets/images/6-bottles.webp" type="image/webp" />
+                          <Image
+                            className="w-full max-w-40 md:max-w-44"
+                            src="/assets/images/6-bottles.png"
+                            alt="6 Bottle Pack"
+                            width={181}
+                            height={144}
+                            loading="lazy"
+                            style={{ aspectRatio: '181/144', objectFit: 'contain' }}
+                          />
+                        </picture>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
+                          Fitspresso<br />6 Bottle Super Pack
+                        </h3>
+                        <p className="text-[#976987] font-medium text-[1.63rem]">Most Popular!</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    {product.amount > 0 ? (
-                      <p className="font-semibold">${product.amount.toFixed(2)}</p>
-                    ) : (
-                      <p className="text-green-600 font-semibold">FREE</p>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              // Fallback if no products found
-              <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
-                <Image src="/assets/images/6-bottles.png" alt="Fitspresso" width={60} height={60} style={{ width: 'auto', height: 'auto' }} className="rounded" />
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-800">Fitspresso</h4>
-                  <p className="text-sm text-gray-600">6 Bottle Super Pack</p>
-                  <p className="text-xs text-gray-500">Most Popular</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">$294.00</p>
-                </div>
-              </div>
-            )}
+                    <div className="font-medium text-[2.38rem] text-[#373737] uppercase">$294</div>
+                  </li>
 
-            {/* Totals */}
-            <div className="border-t pt-4">
-              <div className="flex justify-between py-2">
-                <span className="text-gray-600">Shipping</span>
-                <span className="text-green-600 font-semibold">FREE</span>
+                  {/* Bonus eBooks */}
+                  <li className="flex justify-between items-center gap-5">
+                    <div className="flex gap-8 md:gap-13 items-center">
+                      <div className="max-w-40 md:max-w-44">
+                        <picture>
+                          <source srcSet="/assets/images/bonus-ebooks.webp" type="image/webp" />
+                          <Image
+                            className="w-full max-w-40 md:max-w-44"
+                            src="/assets/images/bonus-ebooks.png"
+                            alt="Bonus eBooks"
+                            width={176}
+                            height={176}
+                            loading="lazy"
+                          />
+                        </picture>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
+                          Bonus eBooks
+                        </h3>
+                        <p className="text-[#976987] font-medium text-[1.63rem]">First Time Customer</p>
+                      </div>
+                    </div>
+                    <div className="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
+                  </li>
+
+                  {/* Bonus Coaching Call */}
+                  <li className="flex justify-between items-center gap-5">
+                    <div className="flex gap-8 md:gap-13 items-center">
+                      <div className="max-w-40 md:max-w-44">
+                        <picture>
+                          <source srcSet="/assets/images/bonus-call.webp" type="image/webp" />
+                          <Image
+                            className="w-full max-w-40 md:max-w-44"
+                            src="/assets/images/bonus-call.png"
+                            alt="Bonus Call"
+                            width={160}
+                            height={142}
+                            loading="lazy"
+                            style={{ aspectRatio: '160/142', objectFit: 'contain' }}
+                          />
+                        </picture>
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
+                          Bonus Coaching Call
+                        </h3>
+                        <p className="text-[#976987] font-medium text-[1.63rem]">Limited Time</p>
+                      </div>
+                    </div>
+                    <div className="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
+                  </li>
+                </ul>
+
+                {/* Totals */}
+                <ul className="pt-16 font-medium text-[2.19rem] text-[#373737] flex flex-col gap-5 px-10 md:px-22">
+                  <li className="flex justify-between items-center">
+                    <div>Shipping</div>
+                    <div className="uppercase">free</div>
+                  </li>
+                  <li className="flex justify-between items-center">
+                    <div>Total</div>
+                    <div className="uppercase">
+                      <small className="text-[1.63rem] font-normal text-[#656565] mr-2">USD</small>
+                      ${totals.total.toFixed(0)}
+                    </div>
+                  </li>
+                </ul>
               </div>
-              <div className="flex justify-between py-2 text-lg font-bold">
-                <span>Total</span>
-                <span>USD ${totals.total.toFixed(2)}</span>
-              </div>
+
+              {/* Addons Section - only show if there are upsells */}
+              {upsellProducts.length > 0 && (
+                <div className="border-3 border-[#CDCDCD] mt-20 rounded-4xl pt-20 overflow-hidden">
+                  <h3 className="font-medium text-[#373738] text-[3.7rem] leading-[1.2] mb-18 pl-10 md:pl-22">
+                    Addons
+                  </h3>
+                  <ul className="flex flex-col gap-30 pb-10 md:pb-16 px-10 md:px-22 border-b-3 border-[#CDCDCD]">
+                    {upsellProducts.map((product, index) => (
+                      <li key={`upsell-${index}`} className="flex justify-between items-center gap-5">
+                        <div className="flex gap-8 md:gap-13 items-center">
+                          <div className="max-w-40 md:max-w-44">
+                            <picture>
+                              <source srcSet="/assets/images/6-bottles.webp" type="image/webp" />
+                              <Image
+                                className="w-full max-w-40 md:max-w-44"
+                                src={product.image || "/assets/images/6-bottles.png"}
+                                alt={product.name}
+                                width={181}
+                                height={144}
+                                loading="lazy"
+                                style={{ aspectRatio: '181/144', objectFit: 'contain' }}
+                              />
+                            </picture>
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-[2rem] md:text-[2.13rem] leading-relaxed">
+                              {product.name}
+                            </h3>
+                            <p className="text-[#976987] font-medium text-[1.63rem]">{product.description}</p>
+                          </div>
+                        </div>
+                        <div className="font-medium text-[2.38rem] text-[#373737] uppercase">
+                          ${product.amount.toFixed(0)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <ul className="md:pt-16 md:pb-13 p-10 md:px-22 font-medium text-[2.19rem] text-[#373737] bg-[#F2F2F2] flex flex-col gap-5">
+                    <li className="flex justify-between items-center">
+                      <div>Shipping</div>
+                      <div className="uppercase">free</div>
+                    </li>
+                    <li className="flex justify-between items-center">
+                      <div>Total</div>
+                      <div className="uppercase">
+                        <small className="text-[1.63rem] font-normal text-[#656565] mr-2">USD</small>
+                        ${upsellProducts.reduce((sum, p) => sum + p.amount, 0).toFixed(0)}
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Debug Info (only show in development) */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-8 bg-gray-100 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">Debug Info</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p><strong>Session ID:</strong> {sessionId || 'None'}</p>
+                    <p><strong>Order Data Available:</strong> {orderData ? 'Yes' : 'No'}</p>
+                    <p><strong>Products Found:</strong> {orderData?.order?.products?.length || 0}</p>
+                    <p><strong>Error:</strong> {error || 'None'}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Order Summary by Category - only show if there are upsells */}
-        {upsellProducts.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-6">Order Breakdown</h3>
-            
-            <div className="space-y-4 text-sm">
-              {/* Main Order Total */}
-              {mainProducts.length > 0 && (
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Main Order ({mainProducts[0].name})</span>
-                  <span className="font-semibold">${mainProducts.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}</span>
-                </div>
-              )}
-              
-              {/* Upsells Total */}
-              <div className="flex justify-between py-2">
-                <span className="text-gray-600">Additional Products ({upsellProducts.length} items)</span>
-                <span className="font-semibold">${upsellProducts.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}</span>
-              </div>
-              
-              {/* Bonuses */}
-              {bonusProducts.length > 0 && (
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Free Bonuses ({bonusProducts.length} items)</span>
-                  <span className="text-green-600 font-semibold">FREE</span>
-                </div>
-              )}
-              
-              <div className="border-t pt-4">
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">All Shipping</span>
-                  <span className="text-green-600 font-semibold">FREE</span>
-                </div>
-                <div className="flex justify-between py-2 text-lg font-bold">
-                  <span>Grand Total</span>
-                  <span>USD ${totals.total.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Debug Info (only show in development) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 bg-gray-100 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-2">Debug Info</h4>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p><strong>Session ID:</strong> {sessionId || 'None'}</p>
-              <p><strong>Order Data Available:</strong> {orderData ? 'Yes' : 'No'}</p>
-              <p><strong>Products Found:</strong> {orderData?.order?.products?.length || 0}</p>
-              <p><strong>Error:</strong> {error || 'None'}</p>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   )

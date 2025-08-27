@@ -44,6 +44,122 @@ export function TestCheckoutForm({
   const formDataRef = useRef(formData)
   formDataRef.current = formData
 
+  // Client-side validation function
+  const validateForm = (): Record<string, string> | null => {
+    const errors: Record<string, string> = {}
+    const currentData = formDataRef.current
+
+    // Check required fields
+    if (!currentData.firstName?.trim()) {
+      errors.firstName = 'First name is required'
+    }
+    if (!currentData.lastName?.trim()) {
+      errors.lastName = 'Last name is required'
+    }
+    if (!currentData.email?.trim()) {
+      errors.email = 'Email address is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentData.email)) {
+      errors.email = 'Please enter a valid email address'
+    }
+    if (!currentData.phone?.trim()) {
+      errors.phone = 'Phone number is required'
+    } else if (!/^\+?[\d\s\-\(\)]+$/.test(currentData.phone.replace(/\s/g, ''))) {
+      errors.phone = 'Please enter a valid phone number'
+    }
+    if (!currentData.billingAddress?.trim()) {
+      errors.billingAddress = 'Billing address is required'
+    }
+    if (!currentData.billingCity?.trim()) {
+      errors.billingCity = 'City is required'
+    }
+    if (!currentData.billingState?.trim()) {
+      errors.billingState = 'State is required'
+    }
+    if (!currentData.billingZipCode?.trim()) {
+      errors.billingZipCode = 'ZIP code is required'
+    } else if (!/^\d{5}(-\d{4})?$/.test(currentData.billingZipCode)) {
+      errors.billingZipCode = 'Please enter a valid ZIP code (e.g., 12345 or 12345-6789)'
+    }
+
+    return Object.keys(errors).length > 0 ? errors : null
+  }
+
+  // Handle form submission with payment token
+  const handleFormSubmission = useCallback(async (token: string) => {
+    try {
+      // Run client-side validation first
+      const validationErrors = validateForm()
+      if (validationErrors) {
+        console.log('❌ Client-side validation failed:', validationErrors)
+        onPaymentError('Please fix the form errors below', validationErrors)
+        return
+      }
+
+      setLoading(true)
+
+      // Use the ref to get the latest form data
+      const currentFormData = formDataRef.current
+
+      console.log('🔍 Current form data at submission:', currentFormData)
+      console.log('🔍 Using billing for shipping?', currentFormData.useBillingForShipping)
+
+      // Create FormData for the API (matching the working project structure)
+      const formData = new FormData()
+      formData.append('payment_token', token)
+      formData.append('firstName', currentFormData.firstName)
+      formData.append('lastName', currentFormData.lastName)
+      formData.append('email', currentFormData.email)
+      formData.append('phone', currentFormData.phone || '')
+      formData.append('address', currentFormData.useBillingForShipping ? currentFormData.billingAddress : currentFormData.shippingAddress)
+      formData.append('city', currentFormData.useBillingForShipping ? currentFormData.billingCity : currentFormData.shippingCity)
+      formData.append('state', currentFormData.useBillingForShipping ? currentFormData.billingState : currentFormData.shippingState)
+      formData.append('zipCode', currentFormData.useBillingForShipping ? currentFormData.billingZipCode : currentFormData.shippingZipCode)
+      formData.append('country', currentFormData.useBillingForShipping ? currentFormData.billingCountry : currentFormData.shippingCountry)
+
+      console.log('Submitting payment to API: /api/payment/process')
+      console.log('Form data being sent:', {
+        payment_token: token,
+        name: `${currentFormData.firstName} ${currentFormData.lastName}`,
+        email: currentFormData.email,
+        address: currentFormData.useBillingForShipping ? currentFormData.billingAddress : currentFormData.shippingAddress
+      })
+
+      // Submit to the payment API - use the new payment/process endpoint
+      const response = await fetch('/api/payment/process', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+      console.log('API Response:', result)
+      console.log('Response Status:', response.status)
+
+      if (result.success) {
+        console.log('✅ Payment processed successfully!')
+        onPaymentSuccess(result)
+      } else {
+        console.log('❌ Payment failed:', result.message || result.error)
+        if (result.errors) {
+          console.log('📋 Validation errors:')
+          Object.entries(result.errors).forEach(([field, error]) => {
+            console.log(`  - ${field}: ${error}`)
+          })
+
+          // Pass structured validation errors to parent
+          onPaymentError(result.message || 'Please fix the validation errors below', result.errors)
+        } else {
+          onPaymentError(result.message || result.error || 'Payment processing failed.')
+        }
+      }
+
+    } catch (error) {
+      console.error('Payment submission error:', error)
+      onPaymentError('Network error. Please check your connection and try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [onPaymentError, onPaymentSuccess, order])
+
   // Load CollectJS
   useEffect(() => {
     const loadCollectJS = async () => {
@@ -145,151 +261,7 @@ export function TestCheckoutForm({
     })
   }
 
-  // Client-side validation - use current form data ref for most up-to-date values
-  const validateForm = (): Record<string, string> | null => {
-    const errors: Record<string, string> = {}
-    const currentData = formDataRef.current
-    
-    // Check required fields
-    if (!currentData.firstName?.trim()) {
-      errors.firstName = 'First name is required'
-    }
-    if (!currentData.lastName?.trim()) {
-      errors.lastName = 'Last name is required'
-    }
-    if (!currentData.email?.trim()) {
-      errors.email = 'Email address is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentData.email)) {
-      errors.email = 'Please enter a valid email address'
-    }
-    if (!currentData.phone?.trim()) {
-      errors.phone = 'Phone number is required'
-    } else if (!/^\+?[\d\s\-\(\)]+$/.test(currentData.phone.replace(/\s/g, ''))) {
-      errors.phone = 'Please enter a valid phone number'
-    }
-    if (!currentData.billingAddress?.trim()) {
-      errors.billingAddress = 'Billing address is required'
-    }
-    if (!currentData.billingCity?.trim()) {
-      errors.billingCity = 'City is required'
-    }
-    if (!currentData.billingState?.trim()) {
-      errors.billingState = 'State is required'
-    }
-    if (!currentData.billingZipCode?.trim()) {
-      errors.billingZipCode = 'ZIP code is required'
-    } else if (!/^\d{5}(-\d{4})?$/.test(currentData.billingZipCode)) {
-      errors.billingZipCode = 'Please enter a valid ZIP code (e.g., 12345 or 12345-6789)'
-    }
 
-    return Object.keys(errors).length > 0 ? errors : null
-  }
-
-  const handleFormSubmission = useCallback(async (token: string) => {
-    try {
-      // Run client-side validation first
-      const validationErrors = validateForm()
-      if (validationErrors) {
-        console.log('❌ Client-side validation failed:', validationErrors)
-        onPaymentError('Please fix the form errors below', validationErrors)
-        return
-      }
-      
-      setLoading(true)
-      
-      // Use the ref to get the latest form data
-      const currentFormData = formDataRef.current
-      
-      console.log('🔍 Current form data at submission:', currentFormData)
-      console.log('🔍 Using billing for shipping?', currentFormData.useBillingForShipping)
-      
-      const requestPayload = {
-        customerInfo: {
-          email: currentFormData.email,
-          firstName: currentFormData.firstName,
-          lastName: currentFormData.lastName,
-          phone: currentFormData.phone,
-          // Use shipping address if different, otherwise use billing
-          address: currentFormData.useBillingForShipping ? currentFormData.billingAddress : currentFormData.shippingAddress,
-          city: currentFormData.useBillingForShipping ? currentFormData.billingCity : currentFormData.shippingCity,
-          state: currentFormData.useBillingForShipping ? currentFormData.billingState : currentFormData.shippingState,
-          zipCode: currentFormData.useBillingForShipping ? currentFormData.billingZipCode : currentFormData.shippingZipCode,
-          country: currentFormData.useBillingForShipping ? currentFormData.billingCountry : currentFormData.shippingCountry,
-        },
-        paymentToken: token,
-        products: order.items || [
-          {
-            id: 'fitspresso-6-pack',
-            name: 'Fitspresso 6 Bottle Super Pack',
-            price: 294,
-            quantity: 1,
-          }
-        ],
-        billingInfo: {
-          address: currentFormData.billingAddress,
-          city: currentFormData.billingCity,
-          state: currentFormData.billingState,
-          zipCode: currentFormData.billingZipCode,
-          country: currentFormData.billingCountry,
-        }
-      }
-
-      // Create FormData for the API (matching the working project structure)
-      const formData = new FormData()
-      formData.append('payment_token', token)
-      formData.append('firstName', currentFormData.firstName)
-      formData.append('lastName', currentFormData.lastName)
-      formData.append('email', currentFormData.email)
-      formData.append('phone', currentFormData.phone || '')
-      formData.append('address', currentFormData.useBillingForShipping ? currentFormData.billingAddress : currentFormData.shippingAddress)
-      formData.append('city', currentFormData.useBillingForShipping ? currentFormData.billingCity : currentFormData.shippingCity)
-      formData.append('state', currentFormData.useBillingForShipping ? currentFormData.billingState : currentFormData.shippingState)
-      formData.append('zipCode', currentFormData.useBillingForShipping ? currentFormData.billingZipCode : currentFormData.shippingZipCode)
-      formData.append('country', currentFormData.useBillingForShipping ? currentFormData.billingCountry : currentFormData.shippingCountry)
-      
-      console.log('Submitting payment to API: /api/payment/process')
-      console.log('Form data being sent:', {
-        payment_token: token,
-        name: `${currentFormData.firstName} ${currentFormData.lastName}`,
-        email: currentFormData.email,
-        address: currentFormData.useBillingForShipping ? currentFormData.billingAddress : currentFormData.shippingAddress
-      })
-
-      // Submit to the payment API - use the new payment/process endpoint
-      const response = await fetch('/api/payment/process', {
-        method: 'POST',
-        body: formData
-      })
-
-      const result = await response.json()
-      console.log('API Response:', result)
-      console.log('Response Status:', response.status)
-
-      if (result.success) {
-        console.log('✅ Payment processed successfully!')
-        onPaymentSuccess(result)
-      } else {
-        console.log('❌ Payment failed:', result.message || result.error)
-        if (result.errors) {
-          console.log('📋 Validation errors:')
-          Object.entries(result.errors).forEach(([field, error]) => {
-            console.log(`  - ${field}: ${error}`)
-          })
-          
-          // Pass structured validation errors to parent
-          onPaymentError(result.message || 'Please fix the validation errors below', result.errors)
-        } else {
-          onPaymentError(result.message || result.error || 'Payment processing failed.')
-        }
-      }
-      
-    } catch (error) {
-      console.error('Payment submission error:', error)
-      onPaymentError('Network error. Please check your connection and try again.')
-    } finally {
-      setLoading(false)
-    }
-  }, [apiEndpoint, formData, onPaymentError, onPaymentSuccess, order])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

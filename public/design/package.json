@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "dev": "tailwindcss -i ./src/input.css -o ./assets/style.css --watch",
+    "serve": "live-server --port=5173 --open=checkout.html",
+    "build": "tailwindcss -i ./src/input.css -o ./assets/style.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "live-server": "^1.2.2",
+    "tailwindcss": "^4.1.11"
+  }
+}

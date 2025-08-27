@@ -5,8 +5,8 @@ export const dynamic = 'force-dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
 import CountdownTimer from '@/components/CountdownTimer'
-import { ModernCheckoutForm } from '@/components/ModernCheckoutForm'
-import { TestCheckoutForm } from '@/components/TestCheckoutForm'
+import { DesignMatchingCheckoutForm } from '@/components/DesignMatchingCheckoutForm'
+
 import { CollectJSCheckoutForm } from '@/components/CollectJSCheckoutForm'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -37,7 +37,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
   const [showValidationModal, setShowValidationModal] = useState(false)
-  
+
   // Payment processing states
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle')
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -58,10 +58,10 @@ export default function CheckoutPage() {
 
   const handlePaymentSuccess = (result: any) => {
     console.log('🎉 Payment successful!', result)
-    
+
     if (result.success && result.transactionId) {
       console.log('✅ Payment completed successfully!')
-      
+
       // Store transaction details for success page
       sessionStorage.setItem('transaction_result', JSON.stringify({
         transactionId: result.transactionId,
@@ -72,7 +72,7 @@ export default function CheckoutPage() {
         vaultId: result.vaultId,
         sessionId: result.sessionId
       }))
-      
+
       // Check if we have a session for upsells
       if (result.sessionId && result.vaultId) {
         console.log('🎯 Redirecting to upsell with session:', result.sessionId)
@@ -201,7 +201,7 @@ export default function CheckoutPage() {
 
   const handlePaymentError = (errorMessage: string, errors?: Record<string, string>) => {
     console.error('Payment failed:', errorMessage)
-    
+
     if (errors) {
       const validationErrors = createUserFriendlyValidationErrors(errors)
       setValidationErrors(validationErrors)
@@ -215,71 +215,71 @@ export default function CheckoutPage() {
 
   const startPaymentStatusPolling = (sessionId: string) => {
     console.log('🔄 Starting payment status polling for session:', sessionId)
-    
+
     setSessionId(sessionId)
     setProcessingStatus('processing')
     setPollCount(0)
-    
+
     // Clear any existing polling
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current)
     }
-    
+
     const pollPaymentStatus = async () => {
       try {
         console.log(`📡 Polling status for session ${sessionId} (attempt ${pollCount + 1})`)
-        
+
         const response = await fetch(`/api/checkout/status/${sessionId}`)
         const data = await response.json()
-        
+
         console.log('📊 Status response:', data)
         setPollCount(prev => prev + 1)
-        
+
         if (data.status === 'succeeded') {
           console.log('✅ Payment succeeded! Redirecting to upsell...')
           setProcessingStatus('completed')
-          
+
           // Clear polling
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current)
             pollIntervalRef.current = null
           }
-          
+
           // Redirect to first upsell after brief delay
           setTimeout(() => {
             router.push(`/upsell/1?session=${sessionId}&transaction=${data.transactionId}`)
           }, 2000)
-          
+
         } else if (data.status === 'failed') {
           console.log('❌ Payment failed:', data.error)
           setProcessingStatus('failed')
           setError(data.error || 'Payment failed. Please try again.')
-          
+
           // Clear polling
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current)
             pollIntervalRef.current = null
           }
-          
+
         } else if (pollCount >= 60) { // Stop polling after 5 minutes
           console.log('⏰ Polling timeout')
           setProcessingStatus('failed')
           setError('Payment processing timeout. Please try again.')
-          
+
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current)
             pollIntervalRef.current = null
           }
         }
         // Otherwise keep polling (processing state)
-        
+
       } catch (error) {
         console.error('❌ Status polling error:', error)
-        
+
         if (pollCount > 10) { // Give up after too many failed attempts
           setProcessingStatus('failed')
           setError('Unable to verify payment status. Please contact support.')
-          
+
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current)
             pollIntervalRef.current = null
@@ -287,7 +287,7 @@ export default function CheckoutPage() {
         }
       }
     }
-    
+
     // Start polling immediately, then every 5 seconds
     pollPaymentStatus()
     pollIntervalRef.current = setInterval(pollPaymentStatus, 5000)
@@ -388,26 +388,47 @@ export default function CheckoutPage() {
     <>
       {/* Validation Modal */}
       <ValidationModal />
-      
-      <header className="py-6 md:py-8 border-b border-gray-cd">
-        <div className="container !px-0 !md:px-10">
-          <div className="flex flex-col-reverse md:flex-row justify-between items-center">
-            <div className="py-4 md:py-0 flex gap-3 justify-center md:justify-start items-end w-full md:w-auto">
-              <Image className="max-w-full w-110" src="/assets/images/Logo.svg" alt="Fitspresso Logo" width={110} height={40} priority />
-              <div className="gap-3 hidden md:flex items-center">
-                <p className="font-medium text-4xl text-gray-373737 whitespace-nowrap">Secure Checkout</p>
-                <Image className="w-7" src="/assets/images/lock.svg" alt="Secure" width={28} height={28} />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-2xl text-purple-976987">
-                Special Price Reserved For
-              </p>
-              <div className="bg-purple-976987 text-white px-4 py-2 rounded-lg">
-                <CountdownTimer 
-                  initialSeconds={599}
-                  className="text-white font-bold text-2xl" 
+
+      <header className="pb-4 py-0 md:py-8 lg:py-6 md:border-b-3 border-[#CDCDCD]">
+        <div className="container-max">
+          <div className="container !px-0 !md:px-10">
+            <div className="flex flex-col-reverse md:flex-row justify-between items-center">
+              <div className="pt-10 pb-5 sm:py-10 md:py-0 flex gap-2.75 justify-center md:justify-start items-end w-full md:w-auto">
+                <Image
+                  className="max-w-full w-110"
+                  src="/assets/images/Logo.svg"
+                  alt="Fitspresso Logo"
+                  width={220}
+                  height={60}
+                  priority
                 />
+                <div className="gap-2.75 -mt-3 hidden md:flex sm:flex">
+                  <p className="font-medium text-[2rem] text-[#373737] whitespace-nowrap">
+                    Secure Checkout
+                  </p>
+                  <Image
+                    className="w-6 -mt-3"
+                    src="/assets/images/lock.svg"
+                    alt="Secure"
+                    width={28}
+                    height={28}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-6.5 w-full md:w-auto justify-center bg-[#e4e4e4] md:bg-transparent">
+                <p className="font-medium sm:text-[3rem] text-[2.5rem] text-[#976987]">
+                  Special Price Reserved For
+                </p>
+                <div
+                  className="py-5.5 px-6 md:bg-[#986988] font-bold text-[#bf4e6f] md:text-white text-[4.5rem] leading-none rounded-2xl countdown-timer"
+                  role="timer"
+                  aria-live="polite"
+                  aria-label="Special offer time remaining">
+                  <CountdownTimer
+                    initialSeconds={599}
+                    className="font-bold text-[4.5rem] leading-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -415,28 +436,47 @@ export default function CheckoutPage() {
       </header>
 
       <main>
-        <div className="grid grid-col-1 md:grid-cols-2">
-          <div>
-            <div className="md:pr-16 py-8 md:py-12 md:max-w-[56.3rem] md:ml-auto sm:max-w-4xl max-w-full px-6 md:px-0 mx-auto md:mr-0">
+        <div className="container-max">
+          <div className="grid grid-cols-1 md:grid-cols-2">
+            <div>
+              <div className="md:pr-23 pt-0 md:pt-15 pb-18 md:max-w-[56.3rem] md:ml-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:mr-0">
               {/* Mobile order summary */}
-              <div className="md:hidden mb-8">
-                <ul className="flex flex-col gap-6 pb-6 border-b-2 border-gray-cd">
+              <div className="md:hidden mb-10">
+                <ul className="flex flex-col gap-16 pb-10 border-b-3 border-[#CDCDCD]">
                   <li className="flex justify-between items-center gap-5">
-                    <div className="flex gap-4 items-center">
+                    <div className="flex gap-13 items-center">
                       <div>
-                        <Image className="w-54" src="/assets/images/6-bottles.png" alt="6 Bottle Pack" width={54} height={54} />
+                        <picture>
+                          <source srcSet="/assets/images/6-bottles.webp" type="image/webp" />
+                          <Image
+                            className="w-54"
+                            src="/assets/images/6-bottles.png"
+                            alt="6 Bottle Pack"
+                            width={216}
+                            height={172}
+                            style={{
+                              aspectRatio: '181/144',
+                              objectFit: 'contain'
+                            }}
+                          />
+                        </picture>
                       </div>
                       <div>
-                        <h3 className="font-medium text-2.1rem leading-relaxed">
-                          Fitspresso <br /> 6 Bottle Super Pack
+                        <h3 className="font-bold text-[2.5rem] leading-tight">
+                          Fitspresso <br />
+                          6 Bottle Pack
                         </h3>
-                        <p className="text-purple-976987 font-medium text-1.7rem">Most Popular!</p>
+                        <p className="text-[#976987] font-medium text-[2.1rem]">
+                          Most Popular!
+                        </p>
                       </div>
                     </div>
-                    <div className="font-medium text-2.5rem text-gray-373737 uppercase">$294</div>
+                    <div className="font-medium text-[2.5rem] text-[#373737] uppercase">
+                      $294
+                    </div>
                   </li>
                 </ul>
-                <ul className="pt-6 font-medium text-2.5rem text-gray-373737 flex flex-col gap-3">
+                <ul className="pt-7 font-medium text-[2.5rem] text-[#373737] flex flex-col gap-5">
                   <li className="flex justify-between items-center">
                     <div>Shipping</div>
                     <div className="uppercase">free</div>
@@ -444,10 +484,74 @@ export default function CheckoutPage() {
                   <li className="flex justify-between items-center">
                     <div>Total</div>
                     <div className="uppercase">
-                      <small className="text-1.63rem font-normal text-gray-656565 mr-2">USD</small> $294
+                      <small className="text-[1.63rem] font-normal text-[#656565] mr-2">USD</small>
+                      $294
                     </div>
                   </li>
                 </ul>
+              </div>
+
+              {/* Express Checkout */}
+              <div>
+                <h3 className="text-center font-bold text-[2.07rem] text-[#969696]">
+                  Express Checkout
+                </h3>
+                <div className="flex justify-between gap-4 mt-6 flex-wrap md:flex-nowrap">
+                  <button
+                    className="cursor-pointer w-full md:w-1/3"
+                    aria-label="Pay with PayPal"
+                    type="button">
+                    <Image
+                      className="w-full hidden md:inline-block"
+                      src="/assets/images/PayPal.svg"
+                      alt="PayPal"
+                      width={100}
+                      height={40}
+                      loading="lazy"
+                    />
+                    <Image
+                      className="w-full inline-block md:hidden"
+                      src="/assets/images/paypal-big.svg"
+                      alt="PayPal"
+                      width={200}
+                      height={60}
+                      loading="eager"
+                    />
+                  </button>
+                  <div className="flex justify-between gap-4 items-center w-full md:w-2/3">
+                    <button
+                      className="cursor-pointer w-1/2 md:w-full"
+                      aria-label="Pay with Apple Pay"
+                      type="button">
+                      <Image
+                        className="w-full"
+                        src="/assets/images/applypay.svg"
+                        alt="Apple Pay"
+                        width={100}
+                        height={40}
+                        loading="lazy"
+                      />
+                    </button>
+                    <button
+                      className="cursor-pointer w-1/2 md:w-full"
+                      aria-label="Pay with Google Pay"
+                      type="button">
+                      <Image
+                        className="w-full"
+                        src="/assets/images/googlepay.svg"
+                        alt="Google Pay"
+                        width={100}
+                        height={40}
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-10 mb-21.5 border-b-3 border-[#CDCDCD] relative">
+                  <span className="absolute inline-block bg-white w-31 left-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">
+                    OR
+                  </span>
+                </div>
               </div>
 
               {/* Error Display */}
@@ -465,6 +569,13 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               )}
+
+              {/* Checkout Form */}
+              <DesignMatchingCheckoutForm
+                order={order}
+                onPaymentSuccess={handlePaymentSuccess}
+                onPaymentError={handlePaymentError}
+              />
 
               {/* Processing Overlay */}
               {processingStatus === 'processing' && (
@@ -509,27 +620,42 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Checkout Form */}
-              <TestCheckoutForm
-                order={order}
-                onPaymentSuccess={handlePaymentSuccess}
-                onPaymentError={handlePaymentError}
-                apiEndpoint="/api/checkout/process"
-              />
 
-              <div className="flex justify-between px-4 items-center gap-6 mt-8">
-                <div>
-                  <Image className="h-18" src="/assets/images/mcafee-seeklogo.svg" alt="McAfee" width={72} height={72} style={{ width: 'auto', height: 'auto' }} />
+
+              <div className="flex justify-between items-center mt-11 w-full px-7.5 gap-10">
+                <div className="w-1/3 flex justify-center">
+                  <Image
+                    className="h-32 object-contain"
+                    src="/assets/images/mcafee-seeklogo.svg"
+                    alt="McAfee Secure"
+                    width={72}
+                    height={72}
+                    loading="lazy"
+                  />
                 </div>
-                <div>
-                  <Image className="h-24" src="/assets/images/Norton.svg" alt="Norton" width={96} height={96} style={{ width: 'auto', height: 'auto' }} />
+                <div className="w-1/3 flex justify-center">
+                  <Image
+                    className="h-30 object-contain"
+                    src="/assets/images/Norton.svg"
+                    alt="Norton Secured"
+                    width={96}
+                    height={96}
+                    loading="lazy"
+                  />
                 </div>
-                <div>
-                  <Image className="h-19" src="/assets/images/Truste.svg" alt="TRUSTe" width={76} height={76} style={{ width: 'auto', height: 'auto' }} />
+                <div className="w-1/3 flex justify-center">
+                  <Image
+                    className="h-32 object-contain"
+                    src="/assets/images/Truste.svg"
+                    alt="TRUSTe Verified"
+                    width={76}
+                    height={76}
+                    loading="lazy"
+                  />
                 </div>
               </div>
 
-              <div className="md:mt-12 md:border-b-2 border-gray-cd"></div>
+              <div className="md:mt-35 md:border-b-3 border-[#CDCDCD]"></div>
 
               <div className="mt-8 pl-8 hidden md:block">
                 <div>
@@ -572,55 +698,108 @@ export default function CheckoutPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Right Column - Order Summary */}
-          <div className="bg-gray-f2">
-            {/* Keep the existing order summary content */}
-            <div className="md:pl-16 py-8 md:py-12 md:max-w-[56.3rem] md:mr-auto sm:max-w-4xl max-w-full px-6 md:px-0 mx-auto md:ml-0">
+          <div className="sm:bg-[#f2f2f2] bg-[#fff]">
+            <div className="sm:pl-23 sm:py-18 py:5 md:max-w-[56.3rem] md:mr-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto">
               <div>
                 <div className="hidden md:block">
-                  <ul className="flex flex-col gap-6 pb-6 border-b-2 border-gray-cd">
+                  <ul className="flex flex-col gap-10 pb-10 border-b-3 border-[#CDCDCD]">
                     <li className="flex justify-between items-center gap-5">
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-13 items-center">
                         <div>
-                          <Image className="w-44" src="/assets/images/6-bottles.png" alt="6 Bottle Pack" width={44} height={44} />
+                          <picture>
+                            <source srcSet="/assets/images/6-bottles.webp" type="image/webp" />
+                            <Image
+                              className="w-44"
+                              src="/assets/images/6-bottles.png"
+                              alt="6 Bottle Pack"
+                              width={181}
+                              height={144}
+                              loading="eager"
+                              style={{
+                                aspectRatio: '181/144',
+                                objectFit: 'contain'
+                              }}
+                            />
+                          </picture>
                         </div>
                         <div>
-                          <h3 className="font-medium text-2.13rem leading-relaxed">
-                            Fitspresso <br /> 6 Bottle Super Pack
+                          <h3 className="font-medium text-[2.13rem] leading-relaxed">
+                            Fitspresso <br />
+                            6 Bottle Pack
                           </h3>
-                          <p className="text-purple-976987 font-medium text-1.63rem">Most Popular!</p>
+                          <p className="text-[#976987] font-medium text-[1.63rem]">
+                            Most Popular!
+                          </p>
                         </div>
                       </div>
-                      <div className="font-medium text-2.38rem text-gray-373737 uppercase">$294</div>
+                      <div className="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        $294
+                      </div>
                     </li>
                     <li className="flex justify-between items-center gap-5">
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-13 items-center">
                         <div>
-                          <Image className="w-44" src="/assets/images/bonus-ebooks.png" alt="Bonus eBooks" width={44} height={44} />
+                          <picture>
+                            <source srcSet="/assets/images/bonus-ebooks.webp" type="image/webp" />
+                            <Image
+                              className="w-44"
+                              src="/assets/images/bonus-ebooks.png"
+                              alt="Bonus eBooks"
+                              width={176}
+                              height={176}
+                              loading="eager"
+                            />
+                          </picture>
                         </div>
                         <div>
-                          <h3 className="font-medium text-2.13rem leading-relaxed">Bonus eBooks</h3>
-                          <p className="text-purple-976987 font-medium text-1.63rem">First Time Customer</p>
+                          <h3 className="font-medium text-[2.13rem] leading-relaxed">
+                            Bonus eBooks
+                          </h3>
+                          <p className="text-[#976987] font-medium text-[1.63rem]">
+                            First Time Customer
+                          </p>
                         </div>
                       </div>
-                      <div className="font-medium text-2.38rem text-gray-373737 uppercase">Free</div>
+                      <div className="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        Free
+                      </div>
                     </li>
                     <li className="flex justify-between items-center gap-5">
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-13 items-center">
                         <div>
-                          <Image className="w-44" src="/assets/images/bonus-call.png" alt="Bonus Call" width={44} height={44} />
+                          <picture>
+                            <source srcSet="/assets/images/bonus-call.webp" type="image/webp" />
+                            <Image
+                              className="w-44"
+                              src="/assets/images/bonus-call.png"
+                              alt="Bonus Call"
+                              width={160}
+                              height={142}
+                              loading="eager"
+                              style={{
+                                aspectRatio: '160/142',
+                                objectFit: 'contain'
+                              }}
+                            />
+                          </picture>
                         </div>
                         <div>
-                          <Image className="w-15" src="/assets/images/shape-1.svg" alt="Shape" width={15} height={15} />
-                          <h3 className="font-medium text-2.13rem leading-relaxed">Bonus Coaching Call</h3>
-                          <p className="text-purple-976987 font-medium text-1.63rem">Limited Time</p>
+                          <h3 className="font-medium text-[2.13rem] leading-relaxed">
+                            Bonus Coaching Call
+                          </h3>
+                          <p className="text-[#976987] font-medium text-[1.63rem]">
+                            Limited Time
+                          </p>
                         </div>
                       </div>
-                      <div className="font-medium text-2.38rem text-gray-373737 uppercase">Free</div>
+                      <div className="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        Free
+                      </div>
                     </li>
                   </ul>
-                  <ul className="pt-6 font-medium text-2.19rem text-gray-373737 flex flex-col gap-3">
+                  <ul className="pt-16 font-medium text-[2.19rem] text-[#373737] flex flex-col gap-5">
                     <li className="flex justify-between items-center">
                       <div>Shipping</div>
                       <div className="uppercase">free</div>
@@ -628,24 +807,45 @@ export default function CheckoutPage() {
                     <li className="flex justify-between items-center">
                       <div>Total</div>
                       <div className="uppercase">
-                        <small className="text-1.63rem font-normal text-gray-656565 mr-2">USD</small> $294
+                        <small className="text-[1.63rem] font-normal text-[#656565] mr-2">USD</small>
+                        $294
                       </div>
                     </li>
                   </ul>
                 </div>
 
-                {/* Trust Badges */}
-                <ul className="hidden md:flex pt-8 items-center justify-between gap-3 text-purple-976987 font-medium md:text-1.5rem">
-                  <li className="flex w-full items-center gap-3.25 border-3 border-purple-986988 bg-white rounded-full px-5 py-2">
-                    <Image className="md:w-11.25 w-12" src="/assets/images/circle-check.svg" alt="Check" width={45} height={45} />
+                <ul className="hidden md:flex pt-15 items-center justify-between gap-5 text-[#976987] font-medium md:text-[1.5rem]">
+                  <li className="flex w-full font-semibold text-[1.69rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2">
+                    <Image
+                      className="md:w-11.25 w-12"
+                      src="/assets/images/circle-check.svg"
+                      alt="Check"
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                    />
                     <span>One-Time Purchase</span>
                   </li>
-                  <li className="flex w-full items-center gap-3.25 border-3 border-purple-986988 bg-white rounded-full px-5 py-2">
-                    <Image className="md:w-11.25 w-12" src="/assets/images/circle-check.svg" alt="Check" width={45} height={45} />
+                  <li className="flex w-full font-semibold text-[1.69rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2">
+                    <Image
+                      className="md:w-11.25 w-12"
+                      src="/assets/images/circle-check.svg"
+                      alt="Check"
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                    />
                     <span>No Hidden Fees</span>
                   </li>
-                  <li className="flex w-full items-center gap-3.25 border-3 border-purple-986988 bg-white rounded-full px-5 py-2">
-                    <Image className="md:w-11.25 w-12" src="/assets/images/circle-check.svg" alt="Check" width={45} height={45} />
+                  <li className="flex w-full font-semibold text-[1.63rem] items-center gap-3.25 border-2 border-[#986988] bg-white rounded-full px-5 py-2">
+                    <Image
+                      className="md:w-11.25 w-12"
+                      src="/assets/images/circle-check.svg"
+                      alt="Check"
+                      width={48}
+                      height={48}
+                      loading="lazy"
+                    />
                     <span>Fast, Secure Payment</span>
                   </li>
                 </ul>
@@ -752,6 +952,7 @@ export default function CheckoutPage() {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </main>
     </>

@@ -10,6 +10,9 @@ module.exports = {
       fontFamily: {
         'roboto': ['Roboto', 'sans-serif'],
       },
+      borderWidth: {
+        '3': '3px',
+      },
       colors: {
         // Custom grays
         gray: {
@@ -38,20 +41,36 @@ module.exports = {
         }
       },
       spacing: {
+        '2.75': '0.6875rem',
         '3.25': '0.8125rem',
+        '4.5': '1.125rem',
+        '5.5': '1.375rem',
+        '6.5': '1.625rem',
         '7': '1.75rem',
         '7.25': '1.8125rem',
+        '7.5': '1.875rem',
         '11.25': '2.8125rem',
         '13': '3.25rem',
         '15': '3.75rem',
         '15.5': '3.875rem',
+        '16': '4rem',
         '17': '4.25rem',
         '18': '4.5rem',
         '19': '4.75rem',
+        '20': '5rem',
+        '21.5': '5.375rem',
+        '22': '5.5rem',
+        '23': '5.75rem',
+        '24': '6rem',
+        '30': '7.5rem',
         '30': '7.5rem',
         '31': '7.75rem',
         '31.75': '7.9375rem',
+        '32': '8rem',
+        '35': '8.75rem',
         '38': '9.5rem',
+        '40': '10rem',
+        '44': '11rem',
         '44': '11rem',
         '54': '13.5rem',
         '66': '16.5rem',
@@ -65,6 +84,7 @@ module.exports = {
         '1.3rem': '1.3rem',
         '1.45rem': '1.45rem',
         '1.5rem': '1.5rem',
+        '1.6rem': '1.6rem',
         '1.63rem': '1.63rem',
         '1.69rem': '1.69rem',
         '1.7rem': '1.7rem',
@@ -77,10 +97,14 @@ module.exports = {
         '2.19rem': '2.19rem',
         '2.25rem': '2.25rem',
         '2.38rem': '2.38rem',
+        '2.4rem': '2.4rem',
         '2.5rem': '2.5rem',
+        '2.6rem': '2.6rem',
         '2.7rem': '2.7rem',
         '2.95rem': '2.95rem',
+        '3rem': '3rem',
         '3.25rem': '3.25rem',
+        '3.5rem': '3.5rem',
         '3.7rem': '3.7rem',
         '4.5rem': '4.5rem',
         '5rem': '5rem',
@@ -88,6 +112,15 @@ module.exports = {
       maxWidth: {
         '56.3rem': '56.3rem',
         '112.5rem': '112.5rem',
+      },
+      borderWidth: {
+        '3': '3px',
+      },
+      translate: {
+        '1/2': '50%',
+      },
+      borderRadius: {
+        '4xl': '2rem',
       }
     },
   },
