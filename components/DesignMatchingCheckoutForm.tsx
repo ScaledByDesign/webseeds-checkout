@@ -113,31 +113,10 @@ export function DesignMatchingCheckoutForm({
               placeholder: '000'
             }
           },
-          customCss: {
-            'font-family': 'Roboto, sans-serif',
-            'font-size': '31.04px',
-            'font-weight': '400',
-            'line-height': '1',
-            'color': '#666666',
-            'border': 'none',
-            'outline': 'none',
-            'background': 'transparent',
-            'width': '100%',
-            'padding': '38px 29px',
-            'margin': '0',
-            'box-sizing': 'border-box'
-          },
-          invalidCss: {
-            'color': '#dc2626'
-          },
-          validCss: {
-            'color': '#666666'
-          },
-          focusCss: {
-            'color': '#666666'
-          },
-          placeholderCss: {
-            'color': '#666666'
+          // Using styleSniffer instead of customCss - CollectJS will inherit container styles
+          fieldsAvailableCallback: () => {
+            setCollectJSLoaded(true)
+            console.log('✅ CollectJS fields ready with styleSniffer approach')
           },
           callback: async (response: any) => {
             if (response.token) {
@@ -199,10 +178,6 @@ export function DesignMatchingCheckoutForm({
               onPaymentError('Payment processing failed. Please check your card details.')
               setLoading(false)
             }
-          },
-          fieldsAvailableCallback: () => {
-            setCollectJSLoaded(true)
-            console.log('CollectJS fields are ready')
           },
           validationCallback: (field: string, status: boolean, message: string) => {
             console.log(`Field ${field} validation:`, status, message)
@@ -567,7 +542,7 @@ export function DesignMatchingCheckoutForm({
           <div className="floating-label-group always-float relative">
             <div
               id="card-number-field"
-              className="w-full border-2 border-[#CDCDCD] pl-9 pr-40 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+              className="collectjs-field collectjs-card-number"
             ></div>
             <label htmlFor="card-number-field" className="floating-label bg-transparent">Card Number</label>
             {/* Card brand icons matching design */}
@@ -601,7 +576,7 @@ export function DesignMatchingCheckoutForm({
             <div className="w-full floating-label-group always-float lg:mb-0">
               <div
                 id="card-expiry-field"
-                className="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                className="collectjs-field collectjs-expiry"
               ></div>
               <label htmlFor="card-expiry-field" className="floating-label bg-transparent">
                 Expiration Date <span className="text-[1.6rem] text-[#a2a2a2]">(MM/YY)</span>
@@ -612,7 +587,7 @@ export function DesignMatchingCheckoutForm({
             <div className="w-full floating-label-group always-float relative lg:mb-0">
               <div
                 id="card-cvv-field"
-                className="w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                className="collectjs-field collectjs-cvv"
               ></div>
               <label htmlFor="card-cvv-field" className="floating-label bg-transparent">Security Code</label>
               <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">

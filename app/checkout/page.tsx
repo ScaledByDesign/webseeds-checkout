@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic'
 
 import Image from 'next/image'
 import Link from 'next/link'
-import CountdownTimer from '@/components/CountdownTimer'
-import { DesignMatchingCheckoutForm } from '@/components/DesignMatchingCheckoutForm'
+
+import { NewDesignCheckoutForm } from '@/components/NewDesignCheckoutForm'
 
 import { CollectJSCheckoutForm } from '@/components/CollectJSCheckoutForm'
 import { useState, useEffect, useRef } from 'react'
@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
   const [showValidationModal, setShowValidationModal] = useState(false)
+  const [systemBannerMessage, setSystemBannerMessage] = useState<string | null>(null)
 
   // Payment processing states
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle')
@@ -202,14 +203,16 @@ export default function CheckoutPage() {
   const handlePaymentError = (errorMessage: string, errors?: Record<string, string>) => {
     console.error('Payment failed:', errorMessage)
 
-    if (errors) {
-      const validationErrors = createUserFriendlyValidationErrors(errors)
-      setValidationErrors(validationErrors)
+    if (errors && Object.keys(errors).length > 0) {
+      // Structured field errors → show detailed modal
+      const mapped = createUserFriendlyValidationErrors(errors)
+      setValidationErrors(mapped)
       setShowValidationModal(true)
     } else {
-      const validationErrors = createUserFriendlyValidationErrors(errorMessage)
-      setValidationErrors(validationErrors)
-      setShowValidationModal(true)
+      // Generic/system errors → show a non-blocking banner instead of modal
+      setSystemBannerMessage(errorMessage || 'We hit a snag. Please try again.')
+      // Auto-hide banner after 10s
+      setTimeout(() => setSystemBannerMessage(null), 10000)
     }
   }
 
@@ -313,17 +316,17 @@ export default function CheckoutPage() {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-          <div className="p-6">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-[56.3rem] w-full max-h-[80vh] overflow-y-auto">
+          <div className="p-8">
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-[2.2rem] font-semibold text-gray-900">
                   We need to fix a few things
                 </h3>
               </div>
@@ -340,13 +343,13 @@ export default function CheckoutPage() {
             {/* Errors List */}
             <div className="space-y-4">
               {validationErrors.map((error, index) => (
-                <div key={index} className="border border-red-200 rounded-lg p-4 bg-red-50">
-                  <h4 className="font-medium text-red-800 mb-2">
+                <div key={index} className="border border-red-200 rounded-xl p-5 bg-red-50">
+                  <h4 className="font-medium text-[1.9rem] text-red-800 mb-2">
                     {error.userFriendlyMessage}
                   </h4>
                   <ul className="space-y-1">
                     {error.suggestions.map((suggestion, suggestionIndex) => (
-                      <li key={suggestionIndex} className="text-sm text-red-700 flex items-start gap-2">
+                      <li key={suggestionIndex} className="text-[1.9rem] text-red-700 flex items-start gap-2">
                         <span className="w-1 h-1 bg-red-500 rounded-full mt-2 flex-shrink-0"></span>
                         <span>{suggestion}</span>
                       </li>
@@ -360,19 +363,19 @@ export default function CheckoutPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowValidationModal(false)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-[#986988] hover:brightness-95 text-white font-medium py-3 px-4 rounded-xl transition-colors text-[1.9rem]"
               >
                 Got it, let me fix this
               </button>
             </div>
 
             {/* Help Section */}
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
               <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <div className="text-sm text-blue-800">
+                <div className="text-[1.8rem] text-blue-800">
                   <p className="font-medium">Need help?</p>
                   <p>If you continue having issues, please contact our support team at support@fitspresso.com</p>
                 </div>
@@ -391,6 +394,19 @@ export default function CheckoutPage() {
 
       <header className="pb-4 py-0 md:py-8 lg:py-6 md:border-b-3 border-[#CDCDCD]">
         <div className="container-max">
+
+      {/* System Banner */}
+      {systemBannerMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#986988] text-white px-6 py-3 rounded-lg shadow-lg">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium">{systemBannerMessage}</span>
+          </div>
+        </div>
+      )}
+
           <div className="container !px-0 !md:px-10">
             <div className="flex flex-col-reverse md:flex-row justify-between items-center">
               <div className="pt-10 pb-5 sm:py-10 md:py-0 flex gap-2.75 justify-center md:justify-start items-end w-full md:w-auto">
@@ -400,9 +416,12 @@ export default function CheckoutPage() {
                   alt="Fitspresso Logo"
                   width={220}
                   height={60}
-                  priority
+
+
+
+                  loading="eager"
                 />
-                <div className="gap-2.75 -mt-3 hidden md:flex sm:flex">
+                <div className="gap-2.75 -mt-3 chidden md:flex hidden sm:flex">
                   <p className="font-medium text-[2rem] text-[#373737] whitespace-nowrap">
                     Secure Checkout
                   </p>
@@ -412,6 +431,7 @@ export default function CheckoutPage() {
                     alt="Secure"
                     width={28}
                     height={28}
+                    loading="eager"
                   />
                 </div>
               </div>
@@ -424,10 +444,7 @@ export default function CheckoutPage() {
                   role="timer"
                   aria-live="polite"
                   aria-label="Special offer time remaining">
-                  <CountdownTimer
-                    initialSeconds={599}
-                    className="font-bold text-[4.5rem] leading-none"
-                  />
+                  <span id="minutes">9</span>:<span id="seconds">59</span>
                 </div>
               </div>
             </div>
@@ -548,7 +565,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <div className="mt-10 mb-21.5 border-b-3 border-[#CDCDCD] relative">
-                  <span className="absolute inline-block bg-white w-31 left-1/2 -translate-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">
+                  <span className="absolute inline-block bg-white w-31 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">
                     OR
                   </span>
                 </div>
@@ -571,7 +588,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Checkout Form */}
-              <DesignMatchingCheckoutForm
+              <NewDesignCheckoutForm
                 order={order}
                 onPaymentSuccess={handlePaymentSuccess}
                 onPaymentError={handlePaymentError}
@@ -625,31 +642,31 @@ export default function CheckoutPage() {
               <div className="flex justify-between items-center mt-11 w-full px-7.5 gap-10">
                 <div className="w-1/3 flex justify-center">
                   <Image
-                    className="h-32 object-contain"
+                    className="h-40 object-contain"
                     src="/assets/images/mcafee-seeklogo.svg"
                     alt="McAfee Secure"
-                    width={72}
-                    height={72}
+                    width={120}
+                    height={120}
                     loading="lazy"
                   />
                 </div>
                 <div className="w-1/3 flex justify-center">
                   <Image
-                    className="h-30 object-contain"
+                    className="h-36 object-contain"
                     src="/assets/images/Norton.svg"
                     alt="Norton Secured"
-                    width={96}
-                    height={96}
+                    width={120}
+                    height={120}
                     loading="lazy"
                   />
                 </div>
                 <div className="w-1/3 flex justify-center">
                   <Image
-                    className="h-32 object-contain"
+                    className="h-40 object-contain"
                     src="/assets/images/Truste.svg"
                     alt="TRUSTe Verified"
-                    width={76}
-                    height={76}
+                    width={120}
+                    height={120}
                     loading="lazy"
                   />
                 </div>
@@ -657,28 +674,28 @@ export default function CheckoutPage() {
 
               <div className="md:mt-35 md:border-b-3 border-[#CDCDCD]"></div>
 
-              <div className="mt-8 pl-8 hidden md:block">
+              <div className="mt-18 pl-15 hidden md:block">
                 <div>
                   <label className="flex items-center gap-5 cursor-pointer select-none">
-                    <input type="checkbox" className="peer hidden" />
-                    <span className="w-9 h-9 border-[3px] border-gray-666666 flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                      <Image src="/assets/images/check-dark.svg" alt="Check" className="hidden" width={36} height={36} />
+                    <input type="checkbox" className="peer hidden" checked />
+                    <span className="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
+                      <Image src="/assets/images/check-dark.svg" alt="Checkmark" className="hidden" width={16} height={16} loading="lazy" />
                     </span>
-                    <span className="text-gray-656565 font-medium text-1.8rem">Get SMS Alerts About Your Order</span>
+                    <span className="text-[#656565] font-medium text-[1.8rem]">Get SMS Alerts About Your Order</span>
                   </label>
-                  <p className="text-1.7rem max-w-175 text-gray-656565 leading-[1.6]">
+                  <p className="text-[1.7rem] max-w-175 text-[#656565] leading-[1.6]">
                     Stay up to date on your purchase with order confirmation, shipping updates & special customer only discounts.
                   </p>
                 </div>
-                <div className="mt-6">
-                  <p className="text-1.7rem text-gray-656565 font-medium">&copy; 2025 Fitspresso. All Rights Reserved</p>
-                  <p className="text-gray-666666 text-1.3rem">
+                <div className="mt-15">
+                  <p className="text-[1.7rem] text-[#656565] font-medium">&copy; 2025 Fitspresso. All Rights Reserved</p>
+                  <p className="text-[#666666] text-[1.3rem]">
                     These Statements Have Not Been Evaluated By The Food And Drug Administration. This Product Is Not Intended To Diagnose, Treat,
                     Cure Or Prevent Any Disease.
                   </p>
                 </div>
 
-                <ul className="mt-6 flex gap-6">
+                <ul className="mt-16 flex gap-8">
                   <li>
                     <Link className="font-medium underline text-1.8rem text-gray-666666" href="#">
                       Refund Policy

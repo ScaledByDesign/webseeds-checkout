@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design CSS Variables - exact match from design */
+:root {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --color-white: #fff;
+  --spacing: 0.25rem;
+  --container-4xl: 56rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --leading-relaxed: 1.625;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-4xl: 2rem;
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  --default-font-family: var(--font-sans);
+}
+
 @layer base {
   .font-roboto {
     font-family: 'Roboto', sans-serif;
@@ -293,5 +322,130 @@
   img[src*="6-bottles"] {
     aspect-ratio: 181 / 144;
     object-fit: contain;
+  }
+
+  /* CollectJS StyleSniffer Approach - NMI Official Method */
+  /* Style the containers and let styleSniffer inherit to iframes */
+
+  .collectjs-field {
+    /* Match exact styling from form inputs above */
+    width: 100%;
+    border: 2px solid #CDCDCD;
+    border-radius: 12px; /* rounded-xl */
+    background-color: #F9F9F9; /* bg-[#F9F9F9] */
+    color: #666666; /* text-[#666666] */
+    line-height: 1; /* leading-none */
+    box-sizing: border-box;
+
+    /* Responsive font sizing - matches form inputs exactly */
+    font-size: 2.6rem; /* Mobile: text-[2.6rem] */
+    padding: 1.75rem 2.25rem; /* Mobile: py-7 px-9 */
+  }
+
+  /* Card number field specific styling - matches form input padding */
+  .collectjs-card-number {
+    padding-left: 2.25rem; /* pl-9 */
+    padding-right: 10rem; /* pr-40 - space for card brand icons */
+  }
+
+  /* CVV field specific styling - matches form input padding */
+  .collectjs-cvv {
+    padding-left: 2.25rem; /* pl-9 */
+    padding-right: 4.25rem; /* pr-17 - space for info icon */
+  }
+
+  /* Tablet responsive styling */
+  @media (min-width: 480px) and (max-width: 639px) {
+    .collectjs-field {
+      font-size: 2.2rem;
+      padding: 1.6rem 2rem;
+    }
+
+    .collectjs-card-number {
+      padding-right: 9rem;
+    }
+
+    .collectjs-cvv {
+      padding-right: 3.8rem;
+    }
+  }
+
+  /* Desktop responsive styling - matches form inputs exactly */
+  @media (min-width: 640px) {
+    .collectjs-field {
+      font-size: 1.94rem; /* Desktop: sm:text-[1.94rem] */
+      padding: 1.75rem 2.25rem; /* py-7 px-9 */
+    }
+
+    .collectjs-card-number {
+      padding-right: 10rem; /* pr-40 */
+    }
+
+    .collectjs-cvv {
+      padding-right: 4.25rem; /* pr-17 */
+    }
+  }
+
+  /* Large screens */
+  @media (min-width: 1200px) {
+    .collectjs-field {
+      font-size: 1.8rem;
+      max-width: 650px;
+    }
+  }
+
+  /* Focus styling to match form inputs */
+  .collectjs-field:focus-within {
+    outline: none; /* focus:outline-0 */
+  }
+
+  /* CollectJS iframe cleanup - minimal intervention */
+  .collectjs-field iframe {
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Countdown timer - exact match from design */
+  .countdown-timer {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Validation error styles - exact match from design */
+  .input-error {
+    border-color: #dc2626 !important;
+  }
+
+/* Header specific constraints to mirror design */
+@media (min-width: 1024px) {
+  header {
+    max-height: 120px;
+    overflow: hidden;
+  }
+  header .container {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  header img.w-110 {
+    max-width: 200px;
+    width: 200px;
+    height: 41.55px; /* maintain logo aspect ratio */
+    min-height: 41.55px;
+    display: block;
+  }
+  /* Thin the timer bubble slightly on lg to match design visuals */
+  header .py-5\.5 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+}
+
+  .error-message {
+    color: #dc2626;
+    font-size: 1.75rem;
+    margin-top: 0.5rem;
   }
 }

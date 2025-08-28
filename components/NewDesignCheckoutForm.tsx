@@ -16,15 +16,19 @@ declare global {
 
 interface FormData {
   email: string
-  firstName: string
-  lastName: string
   address: string
   apartment: string
   city: string
   state: string
-  zipCode: string
+  zip: string
   country: string
   phone: string
+  nameOnCard: string
+  useSameAddress: boolean
+  billingAddress?: string
+  billingCity?: string
+  billingState?: string
+  billingZip?: string
 }
 
 interface FormErrors {
@@ -47,15 +51,15 @@ export function NewDesignCheckoutForm({
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     email: '',
-    firstName: '',
-    lastName: '',
     address: '',
     apartment: '',
     city: '',
     state: '',
-    zipCode: '',
+    zip: '',
     country: 'us',
-    phone: ''
+    phone: '',
+    nameOnCard: '',
+    useSameAddress: true
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
@@ -94,8 +98,6 @@ export function NewDesignCheckoutForm({
                 const orderData = {
                   customer: {
                     email: formData.email,
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
                     phone: formData.phone
                   },
                   shipping: {
@@ -103,7 +105,7 @@ export function NewDesignCheckoutForm({
                     apartment: formData.apartment,
                     city: formData.city,
                     state: formData.state,
-                    zipCode: formData.zipCode,
+                    zipCode: formData.zip,
                     country: formData.country
                   },
                   payment: {
@@ -182,30 +184,304 @@ export function NewDesignCheckoutForm({
       ...prev,
       [name]: value
     }))
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
+
+    // Real-time apartment validation (matching design)
+    if (name === 'apartment' && value) {
+      const specialCharsRegex = /^[a-zA-Z0-9\s\-#\.]*$/
+      if (!specialCharsRegex.test(value)) {
+        setErrors(prev => ({
+          ...prev,
+          apartment: 'Apartment, Suite cannot contain any special characters'
+        }))
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          apartment: ''
+        }))
+      }
+    } else {
+      // Clear error when user starts typing
+      if (errors[name]) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: ''
+        }))
+      }
     }
+  }
+
+  // onBlur validation handlers - exact design behavior
+  const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value) {
+      if (!validateEmail(value)) {
+        setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }))
+      } else {
+        setErrors(prev => ({ ...prev, email: '' }))
+      }
+    } else {
+      setErrors(prev => ({ ...prev, email: 'Email is required' }))
+    }
+  }
+
+  const handleAddressBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, address: 'Street address is required' }))
+    } else if (value.length < 5) {
+      setErrors(prev => ({ ...prev, address: 'Please enter a valid street address' }))
+    } else {
+      setErrors(prev => ({ ...prev, address: '' }))
+    }
+  }
+
+  const handleCityBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, city: 'City is required' }))
+    } else if (value.length < 2) {
+      setErrors(prev => ({ ...prev, city: 'Please enter a valid city name' }))
+    } else {
+      setErrors(prev => ({ ...prev, city: '' }))
+    }
+  }
+
+  const handleStateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, state: 'State is required' }))
+    } else if (value.length < 2) {
+      setErrors(prev => ({ ...prev, state: 'Please enter a valid state' }))
+    } else {
+      setErrors(prev => ({ ...prev, state: '' }))
+    }
+  }
+
+  const handleZipBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value) {
+      if (!validateZip(value)) {
+        setErrors(prev => ({ ...prev, zip: 'Please enter a valid ZIP code' }))
+      } else {
+        setErrors(prev => ({ ...prev, zip: '' }))
+      }
+    } else {
+      setErrors(prev => ({ ...prev, zip: 'ZIP code is required' }))
+    }
+  }
+
+  const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value) {
+      if (!validatePhone(value)) {
+        setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }))
+      } else {
+        setErrors(prev => ({ ...prev, phone: '' }))
+      }
+    } else {
+      setErrors(prev => ({ ...prev, phone: 'Phone number is required' }))
+    }
+  }
+
+  // Billing address onBlur handlers
+  const handleBillingAddressBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, billingAddress: 'Billing address is required' }))
+    } else if (value.length < 5) {
+      setErrors(prev => ({ ...prev, billingAddress: 'Please enter a valid billing address' }))
+    } else {
+      setErrors(prev => ({ ...prev, billingAddress: '' }))
+    }
+  }
+
+  const handleBillingCityBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, billingCity: 'Billing city is required' }))
+    } else if (value.length < 2) {
+      setErrors(prev => ({ ...prev, billingCity: 'Please enter a valid billing city' }))
+    } else {
+      setErrors(prev => ({ ...prev, billingCity: '' }))
+    }
+  }
+
+  const handleBillingStateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, billingState: 'Billing state is required' }))
+    } else if (value.length < 2) {
+      setErrors(prev => ({ ...prev, billingState: 'Please enter a valid billing state' }))
+    } else {
+      setErrors(prev => ({ ...prev, billingState: '' }))
+    }
+  }
+
+  const handleBillingZipBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value) {
+      if (!validateZip(value)) {
+        setErrors(prev => ({ ...prev, billingZip: 'Please enter a valid billing ZIP code' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingZip: '' }))
+      }
+    } else {
+      setErrors(prev => ({ ...prev, billingZip: 'Billing ZIP code is required' }))
+    }
+  }
+
+  // Validation functions matching design exactly
+  const validateEmail = (email: string): boolean => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return re.test(email)
+  }
+
+  const validatePhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/\D/g, '')
+    return cleaned.length === 10
+  }
+
+  const validateZip = (zip: string): boolean => {
+    const cleaned = zip.replace(/\D/g, '')
+    // Real ZIP validation: 5 digits or 5+4 format
+    if (cleaned.length === 5) {
+      const zipNum = parseInt(cleaned)
+      return zipNum >= 10001 && zipNum <= 99999 // Valid US ZIP range
+    }
+    if (cleaned.length === 9) {
+      const zipNum = parseInt(cleaned.substring(0, 5))
+      return zipNum >= 10001 && zipNum <= 99999 // Valid US ZIP range
+    }
+    return false
+  }
+
+  const validateCVV = (cvv: string): boolean => {
+    const cleaned = cvv.replace(/\D/g, '')
+    // Real CVV validation: 3 digits for Visa/MC, 4 digits for Amex
+    return cleaned.length === 3 || cleaned.length === 4
+  }
+
+  const validateExpiryDate = (expiry: string): boolean => {
+    // Format: MM/YY
+    const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/
+    if (!regex.test(expiry)) return false
+
+    const [month, year] = expiry.split('/').map(num => parseInt(num))
+    const currentDate = new Date()
+    const currentYear = currentDate.getFullYear() % 100 // Get last 2 digits
+    const currentMonth = currentDate.getMonth() + 1
+
+    // Check if year is in the future or current year with future month
+    if (year > currentYear) return true
+    if (year === currentYear && month >= currentMonth) return true
+
+    return false // Expired date
   }
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    if (!formData.email) newErrors.email = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
-    
-    if (!formData.firstName) newErrors.firstName = 'First name is required'
-    if (!formData.lastName) newErrors.lastName = 'Last name is required'
-    if (!formData.address) newErrors.address = 'Address is required'
-    if (!formData.city) newErrors.city = 'City is required'
-    if (!formData.state) newErrors.state = 'State is required'
-    if (!formData.zipCode) newErrors.zipCode = 'ZIP code is required'
+    // Email validation - exact design rules
+    if (!formData.email) {
+      newErrors.email = 'Email is required'
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email address'
+    }
+
+    // Address validation - exact design rules
+    if (!formData.address.trim()) {
+      newErrors.address = 'Street address is required'
+    } else if (formData.address.trim().length < 5) {
+      newErrors.address = 'Please enter a valid street address'
+    }
+
+    // City validation - exact design rules
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required'
+    } else if (formData.city.trim().length < 2) {
+      newErrors.city = 'Please enter a valid city name'
+    }
+
+    // State validation - exact design rules
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required'
+    } else if (formData.state.trim().length < 2) {
+      newErrors.state = 'Please enter a valid state'
+    }
+
+    // ZIP validation - exact design rules
+    if (!formData.zip) {
+      newErrors.zip = 'ZIP code is required'
+    } else if (!validateZip(formData.zip)) {
+      newErrors.zip = 'Please enter a valid ZIP code'
+    }
+
+    // Phone validation - exact design rules
+    if (!formData.phone) {
+      newErrors.phone = 'Phone number is required'
+    } else if (!validatePhone(formData.phone)) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number'
+    }
+
+    // Name on Card validation
+    if (!formData.nameOnCard.trim()) {
+      newErrors.nameOnCard = 'Name on card is required'
+    } else if (formData.nameOnCard.trim().length < 2) {
+      newErrors.nameOnCard = 'Please enter a valid name'
+    }
+
+    // Payment field validation (since we're using regular inputs now)
+    const cardNumberElement = document.getElementById('cardNumber') as HTMLInputElement
+    const expiryElement = document.getElementById('expiry') as HTMLInputElement
+    const cvvElement = document.getElementById('cvv') as HTMLInputElement
+
+    if (cardNumberElement && !cardNumberElement.value.trim()) {
+      newErrors.cardNumber = 'Card number is required'
+    } else if (cardNumberElement && !/^[0-9\s]{13,19}$/.test(cardNumberElement.value.replace(/\s/g, ''))) {
+      newErrors.cardNumber = 'Please enter a valid card number'
+    }
+
+    if (expiryElement && !expiryElement.value.trim()) {
+      newErrors.expiry = 'Expiration date is required'
+    } else if (expiryElement && !validateExpiryDate(expiryElement.value)) {
+      newErrors.expiry = 'Please enter a valid future expiration date (MM/YY)'
+    }
+
+    if (cvvElement && !cvvElement.value.trim()) {
+      newErrors.cvv = 'Security code is required'
+    } else if (cvvElement && !validateCVV(cvvElement.value)) {
+      newErrors.cvv = 'Please enter a valid 3 or 4 digit security code'
+    }
+
+    // Country validation
     if (!formData.country) newErrors.country = 'Country is required'
-    if (!formData.phone) newErrors.phone = 'Phone number is required'
+
+    // Billing address validation (only if not using same address)
+    if (!formData.useSameAddress) {
+      if (!formData.billingAddress?.trim()) {
+        newErrors.billingAddress = 'Billing address is required'
+      } else if (formData.billingAddress.trim().length < 5) {
+        newErrors.billingAddress = 'Please enter a valid billing address'
+      }
+
+      if (!formData.billingCity?.trim()) {
+        newErrors.billingCity = 'Billing city is required'
+      } else if (formData.billingCity.trim().length < 2) {
+        newErrors.billingCity = 'Please enter a valid billing city'
+      }
+
+      if (!formData.billingState?.trim()) {
+        newErrors.billingState = 'Billing state is required'
+      } else if (formData.billingState.trim().length < 2) {
+        newErrors.billingState = 'Please enter a valid billing state'
+      }
+
+      if (!formData.billingZip?.trim()) {
+        newErrors.billingZip = 'Billing ZIP code is required'
+      } else if (!validateZip(formData.billingZip)) {
+        newErrors.billingZip = 'Please enter a valid billing ZIP code'
+      }
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -244,74 +520,46 @@ export function NewDesignCheckoutForm({
       {/* Contact Information */}
       <div>
         <h3 className="mb-6 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
-          Contact Information
+          Contact
         </h3>
         <div className="space-y-8">
-          <FloatingLabelInput
-            id="email"
-            name="email"
-            type="email"
-            label="Email Address (To receive order confirmation email)"
-            required
-            value={formData.email}
-            onChange={handleInputChange}
-            autoComplete="email"
-            error={errors.email}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-              </svg>
-            }
-          />
-        </div>
-      </div>
-
-      {/* Customer Information */}
-      <div>
-        <h3 className="mb-6 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
-          Customer Information
-        </h3>
-        <div className="space-y-8">
-          <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
-            <div className="w-full">
-              <FloatingLabelInput
-                id="firstName"
-                name="firstName"
-                label="First Name"
-                required
-                maxLength={50}
-                value={formData.firstName}
-                onChange={handleInputChange}
-                autoComplete="given-name"
-                error={errors.firstName}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                }
-              />
-            </div>
-            <div className="w-full">
-              <FloatingLabelInput
-                id="lastName"
-                name="lastName"
-                label="Last Name"
-                required
-                maxLength={50}
-                value={formData.lastName}
-                onChange={handleInputChange}
-                autoComplete="family-name"
-                error={errors.lastName}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                }
-              />
-            </div>
+          <div className="floating-label-group">
+            <input
+              type="email"
+              id="email"
+              name="email"
+              className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.email ? 'input-error' : ''}`}
+              placeholder=" "
+              required
+              autoComplete="email"
+              aria-required="true"
+              inputMode="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              onBlur={handleEmailBlur}
+            />
+            <label htmlFor="email" className="floating-label bg-transparent sm:hidden block">
+              Email{' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(To receive order confirmation email)</span>
+            </label>
+            <label htmlFor="email" className="floating-label bg-transparent hidden sm:block">
+              Email{' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(To receive order confirmation email)</span>
+            </label>
+            {errors.email && (
+              <div
+                id="email-error"
+                className="text-2xl mt-2 error-message"
+                style={{ color: '#dc2626' }}
+              >
+                {errors.email}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+
 
       {/* Shipping */}
       <div>
@@ -319,88 +567,151 @@ export function NewDesignCheckoutForm({
           Shipping
         </h3>
         <div className="space-y-8">
-          <FloatingLabelInput
-            id="address"
-            name="address"
-            label="Street Address"
-            required
-            maxLength={100}
-            value={formData.address}
-            onChange={handleInputChange}
-            autoComplete="address-line1"
-            error={errors.address}
-            icon={
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            }
-          />
+          <div className="floating-label-group">
+            <input
+              type="text"
+              id="address"
+              name="address"
+              className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.address ? 'input-error' : ''}`}
+              placeholder=" "
+              required
+              autoComplete="street-address"
+              aria-required="true"
+              value={formData.address}
+              onChange={handleInputChange}
+              onBlur={handleAddressBlur}
+            />
+            <label htmlFor="address" className="floating-label bg-transparent">
+              Street Address
+            </label>
+            {errors.address && (
+              <div
+                id="address-error"
+                className="text-2xl mt-2 error-message"
+                style={{ color: '#dc2626' }}
+              >
+                {errors.address}
+              </div>
+            )}
+          </div>
           
-          <FloatingLabelInput
-            id="apartment"
-            name="apartment"
-            label="Apartment, suite, etc (optional)"
-            value={formData.apartment}
-            onChange={handleInputChange}
-            autoComplete="address-line2"
-            pattern="[a-zA-Z0-9\s\-#\.]*"
-          />
+          <div className="floating-label-group">
+            <input
+              type="text"
+              id="apartment"
+              name="apartment"
+              className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.apartment ? 'input-error' : ''}`}
+              placeholder=" "
+              pattern="[a-zA-Z0-9\s\-#\.]*"
+              autoComplete="address-line2"
+              value={formData.apartment}
+              onChange={handleInputChange}
+            />
+            <label htmlFor="apartment" className="floating-label bg-transparent">
+              Apartment, suite, etc{' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(optional)</span>
+            </label>
+            {errors.apartment && (
+              <div
+                id="apartment-error"
+                className="text-2xl mt-2 error-message"
+                style={{ color: '#dc2626' }}
+              >
+                {errors.apartment}
+              </div>
+            )}
+          </div>
 
           <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
             <div className="w-full">
-              <FloatingLabelInput
-                id="city"
-                name="city"
-                label="City"
-                required
-                value={formData.city}
-                onChange={handleInputChange}
-                autoComplete="address-level2"
-                error={errors.city}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                }
-              />
+              <div className="floating-label-group">
+                <input
+                  type="text"
+                  id="city"
+                  name="city"
+                  className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.city ? 'input-error' : ''}`}
+                  placeholder=" "
+                  required
+                  autoComplete="address-level2"
+                  aria-required="true"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  onBlur={handleCityBlur}
+                />
+                <label htmlFor="city" className="floating-label bg-transparent">
+                  City
+                </label>
+                {errors.city && (
+                  <div
+                    id="city-error"
+                    className="text-2xl mt-2 error-message"
+                    style={{ color: '#dc2626' }}
+                  >
+                    {errors.city}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="w-full">
-              <FloatingLabelInput
-                id="state"
-                name="state"
-                label="State"
-                required
-                value={formData.state}
-                onChange={handleInputChange}
-                autoComplete="address-level1"
-                error={errors.state}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                }
-              />
+              <div className="floating-label-group">
+                <input
+                  type="text"
+                  id="state"
+                  name="state"
+                  className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.state ? 'input-error' : ''}`}
+                  placeholder=" "
+                  required
+                  autoComplete="address-level1"
+                  aria-required="true"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  onBlur={handleStateBlur}
+                />
+                <label htmlFor="state" className="floating-label bg-transparent">
+                  State
+                </label>
+                {errors.state && (
+                  <div
+                    id="state-error"
+                    className="text-2xl mt-2 error-message"
+                    style={{ color: '#dc2626' }}
+                  >
+                    {errors.state}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="w-full">
-              <FloatingLabelInput
-                id="zipCode"
-                name="zipCode"
-                label="ZIP Code"
-                required
-                maxLength={10}
-                value={formData.zipCode}
-                onChange={handleInputChange}
-                autoComplete="postal-code"
-                pattern="[0-9]{5}(-[0-9]{4})?"
-                inputMode="numeric"
-                error={errors.zipCode}
-                icon={
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                  </svg>
-                }
-              />
+              <div className="floating-label-group">
+                <input
+                  type="text"
+                  id="zip"
+                  name="zip"
+                  className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.zip ? 'input-error' : ''}`}
+                  placeholder=" "
+                  pattern="[0-9]{5}(-[0-9]{4})?"
+                  maxLength={10}
+                  required
+                  autoComplete="postal-code"
+                  aria-required="true"
+                  inputMode="numeric"
+                  value={formData.zip}
+                  onChange={handleInputChange}
+                  onBlur={handleZipBlur}
+                />
+                <label htmlFor="zip" className="floating-label bg-transparent">
+                  Zip Code
+                </label>
+                {errors.zip && (
+                  <div
+                    id="zip-error"
+                    className="text-2xl mt-2 error-message"
+                    style={{ color: '#dc2626' }}
+                  >
+                    {errors.zip}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -422,98 +733,359 @@ export function NewDesignCheckoutForm({
             <option value="nz">New Zealand</option>
           </FloatingLabelSelect>
 
-          <FloatingLabelInput
-            id="phone"
-            name="phone"
-            type="tel"
-            label="Phone Number (For delivery confirmation texts)"
-            required
-            maxLength={14}
-            value={formData.phone}
-            onChange={handleInputChange}
-            autoComplete="tel"
-            pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
-            inputMode="tel"
-            error={errors.phone}
-            rightIcon={
+          <div className="floating-label-group">
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              className={`w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.phone ? 'input-error' : ''}`}
+              placeholder=" "
+              pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
+              maxLength={14}
+              required
+              autoComplete="tel"
+              aria-required="true"
+              inputMode="tel"
+              value={formData.phone}
+              onChange={handleInputChange}
+              onBlur={handlePhoneBlur}
+            />
+            <label htmlFor="phone" className="floating-label bg-transparent sm:hidden block">
+              Phone Number{' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(For delivery confirmation texts)</span>
+            </label>
+            <label htmlFor="phone" className="floating-label bg-transparent hidden sm:block">
+              Phone Number {' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(For delivery confirmation texts)</span>
+            </label>
+            <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
               <Image
                 src="/assets/images/info.svg"
                 alt="Info"
                 width={40}
                 height={40}
-                className="w-10"
               />
-            }
-          />
+            </span>
+            {errors.phone && (
+              <div
+                id="phone-error"
+                className="text-2xl mt-2 error-message"
+                style={{ color: '#dc2626' }}
+              >
+                {errors.phone}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Payment */}
-      <div>
-        <h3 className="mb-6 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
+      {/* Payment - Exact 1:1 Copy from Design */}
+      <div className="mt-7.5 relative">
+        <h3 className="mt:40 sm:mt:0 mb-4 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
           Payment
         </h3>
+        <p className="flex gap-2 mb-10 items-center font-medium text-[1.94rem] text-[#6d6d6d] hidden md:block">
+          All transactions are secure and encrypted
+          <img
+            className="w-6 inline-block -mt-3"
+            src="/assets/images/lock.svg"
+            alt="Secure"
+            width="16"
+            height="16"
+            loading="lazy"
+          />
+        </p>
+        <p className="absolute right-0 transform top-5 flex gap-2 items-center font-medium text-[1.94rem] text-[#6d6d6d7] sm:hidden md:hidden lg:hidden xl:hidden block">
+          <img
+            className="w-6 inline-block"
+            src="/assets/images/lock.svg"
+            alt="Secure"
+            width="16"
+            height="16"
+            loading="lazy"
+          />
+          Secure & Encrypted
+        </p>
         <div className="space-y-8">
-          {/* Card Number */}
           <div className="floating-label-group relative">
-            <div
-              id="card-number-field"
-              className="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] min-h-[3.5rem]"
-            ></div>
-            <label
-              htmlFor="card-number-field"
-              className="floating-label bg-transparent absolute pointer-events-none left-9 top-1/2 transform -translate-y-1/2 transition-all duration-200 ease-in-out text-[1.94rem] sm:text-[1.94rem] text-[2.6rem] text-[#666666]"
-            >
+            <input
+              type="text"
+              id="cardNumber"
+              className={`w-full border-2 border-[#CDCDCD] pl-9 pr-40 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cardNumber ? 'input-error' : ''}`}
+              placeholder=" "
+              pattern="[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}"
+              maxLength={19}
+              required
+              autoComplete="cc-number"
+              aria-required="true"
+              inputMode="numeric"
+            />
+            <label htmlFor="cardNumber" className="floating-label bg-transparent">
               Card Number
+            </label>
+            {errors.cardNumber && (
+              <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                {errors.cardNumber}
+              </div>
+            )}
+            <div className="absolute top-1/2 right-4 -translate-y-1/2 flex gap-2">
+              <img
+                className="h-14"
+                src="/assets/images/visa.svg"
+                alt="Visa"
+                width="52"
+                height="52"
+                loading="lazy"
+              />
+              <img
+                className="h-14"
+                src="/assets/images/mastercard.svg"
+                alt="Mastercard"
+                width="52"
+                height="52"
+                loading="lazy"
+              />
+              <img
+                className="h-14"
+                src="/assets/images/american-express.svg"
+                alt="American Express"
+                width="52"
+                height="52"
+                loading="lazy"
+              />
+            </div>
+          </div>
+          <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
+            <div className="floating-label-group w-full lg:mb-0">
+              <input
+                type="text"
+                id="expiry"
+                className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''}`}
+                placeholder=" "
+                pattern="[0-9]{2}/[0-9]{2}"
+                maxLength={5}
+                required
+                autoComplete="cc-exp"
+                aria-required="true"
+                inputMode="numeric"
+              />
+              <label htmlFor="expiry" className="floating-label bg-transparent">
+                Expiration Date{' '}
+                <span className="text-[1.6rem] text-[#a2a2a2]">(MM/YY)</span>
+              </label>
+              {errors.expiry && (
+                <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                  {errors.expiry}
+                </div>
+              )}
+            </div>
+            <div className="floating-label-group relative w-full lg:mb-0">
+              <input
+                type="text"
+                id="cvv"
+                className={`w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''}`}
+                placeholder=" "
+                pattern="[0-9]{3,4}"
+                maxLength={4}
+                required
+                autoComplete="cc-csc"
+                aria-required="true"
+                inputMode="numeric"
+              />
+              <label htmlFor="cvv" className="floating-label bg-transparent">
+                Security Code
+              </label>
+              {errors.cvv && (
+                <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                  {errors.cvv}
+                </div>
+              )}
+              <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
+                <img
+                  src="/assets/images/info.svg"
+                  alt="Info"
+                  width="40"
+                  height="40"
+                  loading="lazy"
+                />
+              </span>
+            </div>
+          </div>
+          <div className="floating-label-group">
+            <input
+              type="text"
+              id="nameOnCard"
+              name="nameOnCard"
+              className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.nameOnCard ? 'input-error' : ''}`}
+              value={formData.nameOnCard}
+              onChange={handleInputChange}
+              placeholder=" "
+              required
+              autoComplete="cc-name"
+              aria-required="true"
+            />
+            <label htmlFor="nameOnCard" className="floating-label bg-transparent">
+              Name On Card
+            </label>
+            {errors.nameOnCard && (
+              <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                {errors.nameOnCard}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="flex items-center gap-4 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="hidden peer"
+                id="sameAddress"
+                checked={formData.useSameAddress}
+                onChange={(e) => setFormData(prev => ({ ...prev, useSameAddress: e.target.checked }))}
+              />
+              <span className="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center peer-checked:bg-[#666666] rounded-xl">
+                <img
+                  src="/assets/images/check.svg"
+                  alt="Checkmark"
+                  width="16"
+                  height="16"
+                  loading="lazy"
+                />
+              </span>
+              <span className="text-[#373738] font-medium text-[2.5rem]">
+                Use shipping address as payment
+                <span className="sm:block hidden">address</span>
+              </span>
             </label>
           </div>
 
-          <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
-            {/* Expiry Date */}
-            <div className="w-full floating-label-group relative">
-              <div
-                id="card-expiry-field"
-                className="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] min-h-[3.5rem]"
-              ></div>
-              <label
-                htmlFor="card-expiry-field"
-                className="floating-label bg-transparent absolute pointer-events-none left-9 top-1/2 transform -translate-y-1/2 transition-all duration-200 ease-in-out text-[1.94rem] sm:text-[1.94rem] text-[2.6rem] text-[#666666]"
-              >
-                MM / YY
-              </label>
+          {/* Billing Address Section - Conditional based on checkbox */}
+          {!formData.useSameAddress && (
+            <div id="billing-section" className="mt-8 pt-8 border-t-3 border-[#CDCDCD]">
+              <h4 className="mb-8 text-[#373738] font-medium text-[2.25rem]">
+                Billing Address
+              </h4>
+            <div className="space-y-8">
+              <div className="floating-label-group">
+                <input
+                  type="text"
+                  id="billing-address"
+                  name="billingAddress"
+                  className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.billingAddress ? 'input-error' : ''}`}
+                  placeholder=" "
+                  value={formData.billingAddress || ''}
+                  onChange={handleInputChange}
+                  onBlur={handleBillingAddressBlur}
+                />
+                <label htmlFor="billing-address" className="floating-label bg-transparent">
+                  Street Address
+                </label>
+                {errors.billingAddress && (
+                  <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                    {errors.billingAddress}
+                  </div>
+                )}
+              </div>
+              <div className="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
+                <div className="floating-label-group w-full">
+                  <input
+                    type="text"
+                    id="billing-city"
+                    name="billingCity"
+                    className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.billingCity ? 'input-error' : ''}`}
+                    placeholder=" "
+                    value={formData.billingCity || ''}
+                    onChange={handleInputChange}
+                    onBlur={handleBillingCityBlur}
+                  />
+                  <label htmlFor="billing-city" className="floating-label bg-transparent">
+                    City
+                  </label>
+                  {errors.billingCity && (
+                    <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                      {errors.billingCity}
+                    </div>
+                  )}
+                </div>
+                <div className="floating-label-group w-full">
+                  <input
+                    type="text"
+                    id="billing-state"
+                    name="billingState"
+                    className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.billingState ? 'input-error' : ''}`}
+                    placeholder=" "
+                    value={formData.billingState || ''}
+                    onChange={handleInputChange}
+                    onBlur={handleBillingStateBlur}
+                  />
+                  <label htmlFor="billing-state" className="floating-label bg-transparent">
+                    State
+                  </label>
+                  {errors.billingState && (
+                    <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                      {errors.billingState}
+                    </div>
+                  )}
+                </div>
+                <div className="floating-label-group w-full">
+                  <input
+                    type="text"
+                    id="billing-zip"
+                    name="billingZip"
+                    className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.billingZip ? 'input-error' : ''}`}
+                    placeholder=" "
+                    pattern="[0-9]{5}"
+                    value={formData.billingZip || ''}
+                    onChange={handleInputChange}
+                    onBlur={handleBillingZipBlur}
+                  />
+                  <label htmlFor="billing-zip" className="floating-label bg-transparent">
+                    Zip Code
+                  </label>
+                  {errors.billingZip && (
+                    <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                      {errors.billingZip}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="floating-label-group">
+                <select
+                  id="billing-country"
+                  className="w-full border-2 border-[#CDCDCD] px-9 py-6 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                >
+                  <option value="" disabled selected></option>
+                  <option value="us">United States</option>
+                  <option value="ca">Canada</option>
+                  <option value="uk">United Kingdom</option>
+                  <option value="au">Australia</option>
+                  <option value="nz">New Zealand</option>
+                </select>
+                <label htmlFor="billing-country" className="floating-label bg-transparent">
+                  Country
+                </label>
+              </div>
             </div>
-
-            {/* CVV */}
-            <div className="w-full floating-label-group relative">
-              <div
-                id="card-cvv-field"
-                className="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] min-h-[3.5rem]"
-              ></div>
-              <label
-                htmlFor="card-cvv-field"
-                className="floating-label bg-transparent absolute pointer-events-none left-9 top-1/2 transform -translate-y-1/2 transition-all duration-200 ease-in-out text-[1.94rem] sm:text-[1.94rem] text-[2.6rem] text-[#666666]"
-              >
-                Security Code
-              </label>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Submit Button */}
-      <div className="pt-8">
+      <div className="mt-25">
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#986988] hover:bg-[#876177] disabled:bg-gray-400 text-white font-bold py-7 px-8 rounded-xl text-[2rem] transition-colors duration-200"
+          className="py-12 w-full rounded-full bg-[#F6C657] text-center font-bold text-[3.7rem] text-[#373737] leading-none"
+          aria-label="Place Your Order - Total $294"
         >
           {loading ? (
             <div className="flex items-center justify-center gap-3">
-              <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+              <div className="animate-spin h-5 w-5 border-2 border-[#373737] border-t-transparent rounded-full"></div>
               Processing...
             </div>
           ) : (
-            'Complete Order'
+            'Place Your Order'
           )}
         </button>
       </div>
