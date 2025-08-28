@@ -228,12 +228,13 @@ export default function OptionsPage() {
             <div className="space-y-8">
               <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="flex items-start gap-4">
-                  <Image 
-                    src="/assets/images/olivia.png" 
-                    alt="Michael A" 
-                    width={80} 
+                  <img
+                    src="/assets/images/olivia.png"
+                    alt="Michael A"
+                    width={80}
                     height={80}
                     className="rounded-full"
+                    loading="lazy"
                   />
                   <div>
                     <p className="font-bold text-lg mb-2">Michael A. - Lost 42 lbs</p>
@@ -252,12 +253,13 @@ export default function OptionsPage() {
 
               <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="flex items-start gap-4">
-                  <Image 
-                    src="/assets/images/emily.png" 
-                    alt="Laura C" 
-                    width={80} 
+                  <img
+                    src="/assets/images/emily.png"
+                    alt="Laura C"
+                    width={80}
                     height={80}
                     className="rounded-full"
+                    loading="lazy"
                   />
                   <div>
                     <p className="font-bold text-lg mb-2">Laura C. - Lost 38 lbs</p>
@@ -276,12 +278,13 @@ export default function OptionsPage() {
 
               <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="flex items-start gap-4">
-                  <Image 
-                    src="/assets/images/olivia.png" 
-                    alt="James R" 
-                    width={80} 
+                  <img
+                    src="/assets/images/olivia.png"
+                    alt="James R"
+                    width={80}
                     height={80}
                     className="rounded-full"
+                    loading="lazy"
                   />
                   <div>
                     <p className="font-bold text-lg mb-2">James R. - Lost 51 lbs</p>
@@ -305,12 +308,13 @@ export default function OptionsPage() {
         <section className="py-12 bg-gradient-to-r from-green-50 to-green-100">
           <div className="container max-w-4xl">
             <div className="text-center">
-              <Image 
-                src="/assets/images/money-back.png" 
-                alt="60 Day Guarantee" 
-                width={150} 
+              <img
+                src="/assets/images/money-back.png"
+                alt="60 Day Guarantee"
+                width={150}
                 height={150}
                 className="mx-auto mb-6"
+                loading="lazy"
               />
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 No-Risk 60-Day 100% Money-Back Guarantee
