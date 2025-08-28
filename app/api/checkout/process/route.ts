@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { databaseSessionManager } from '@/src/lib/database-session-manager';
 import { directPaymentProcessor } from '@/src/lib/direct-payment-processor';
 import { captureCheckoutEvent } from '@/src/lib/sentry';
+import { createSession } from '@/src/lib/cookie-session';
 
 // Validation schemas
 const customerInfoSchema = z.object({
@@ -267,6 +268,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
         message: paymentResult.error || 'Payment processing failed',
         error: paymentResult.error,
       }, { status: 400 });
+    }
+
+    // Create upsell session cookie for authenticated upsell flow
+    if (paymentResult.vaultId) {
+      console.log('🍪 Creating upsell session cookie...');
+      try {
+        await createSession({
+          id: verifiedSession.id,
+          vaultId: paymentResult.vaultId,
+          customerId: validatedData.customerInfo.email,
+          email: validatedData.customerInfo.email,
+          firstName: validatedData.customerInfo.firstName,
+          lastName: validatedData.customerInfo.lastName,
+          transactionId: paymentResult.transactionId,
+          state: validatedData.customerInfo.state || 'CA'
+        });
+        console.log('✅ Upsell session cookie created successfully');
+      } catch (error) {
+        console.error('⚠️ Failed to create upsell session cookie:', error);
+        // Don't fail the entire request for this
+      }
     }
 
     // Success response

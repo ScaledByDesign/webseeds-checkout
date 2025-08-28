@@ -35,9 +35,13 @@ const nextConfig = {
   
   // Performance optimizations
   experimental: {
-    optimizeCss: true,
+    // Disable CSS optimization to fix Vercel build issues with critters
+    // optimizeCss: true,
     optimizePackageImports: ['react', 'react-dom'],
   },
+
+  // Vercel-specific optimizations
+  swcMinify: true,
   
   // Webpack configuration
   webpack: (config, { isServer }) => {

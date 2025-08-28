@@ -392,16 +392,7 @@ export function NewDesignCheckoutForm({
                 } else {
                   // Pass sessionId to error handler for duplicate transaction handling
                   console.log('📋 API error response:', data)
-                  if (typeof onPaymentError === 'function') {
-                    // Check if onPaymentError accepts sessionId parameter
-                    if (onPaymentError.length > 1) {
-                      onPaymentError(data.message || 'Payment processing failed.', data.errors, data.sessionId)
-                    } else {
-                      onPaymentError(data.message || 'Payment processing failed.')
-                    }
-                  } else {
-                    onPaymentError(data.message || 'Payment processing failed.')
-                  }
+                  onPaymentError(data.message || 'Payment processing failed.', data.errors, data.sessionId)
                 }
               } catch (error) {
                 console.error('Order submission error:', error)
