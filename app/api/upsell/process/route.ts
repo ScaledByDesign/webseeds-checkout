@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession, getSessionById } from '@/src/lib/cookie-session'
 import { funnelSessionManager } from '@/src/lib/funnel-session'
 
-// NMI API Configuration
-const NMI_API_URL = process.env.NMI_API_URL || 'https://secure.networkmerchants.com/api/transact.php'
+// NMI API Configuration - using existing env variables
+const NMI_API_URL = process.env.NMI_ENDPOINT || process.env.NEXT_PUBLIC_NMI_API_URL || 'https://secure.nmi.com/api/transact.php'
 const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY || ''
 
 interface UpsellRequest {

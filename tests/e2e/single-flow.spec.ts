@@ -57,13 +57,13 @@ class SingleFlowHelper {
     // Fill payment info in iframes - use specific input selectors
     try {
       const cardFrame = this.page.frameLocator('#card-number-field iframe');
-      await cardFrame.locator('input[name="ccnumber"]').fill(TEST_PAYMENT.cardNumber, { timeout: 10000 });
+      await cardFrame.locator('input#ccnumber').fill(TEST_PAYMENT.cardNumber, { timeout: 10000 });
       
       const expiryFrame = this.page.frameLocator('#card-expiry-field iframe');
-      await expiryFrame.locator('input[name="ccexp"]').fill(TEST_PAYMENT.expiry, { timeout: 10000 });
+      await expiryFrame.locator('input#ccexp').fill(TEST_PAYMENT.expiry, { timeout: 10000 });
       
       const cvvFrame = this.page.frameLocator('#card-cvv-field iframe');
-      await cvvFrame.locator('input[name="cvv"]').fill(TEST_PAYMENT.cvv, { timeout: 10000 });
+      await cvvFrame.locator('input#cvv').fill(TEST_PAYMENT.cvv, { timeout: 10000 });
       
       console.log('💳 Payment info filled');
     } catch (error) {

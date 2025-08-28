@@ -60,13 +60,13 @@ test.describe('Checkout API Integration', () => {
     await page.waitForTimeout(3000);
     
     const cardFrame = page.frameLocator('#card-number-field iframe');
-    await cardFrame.locator('input[name="ccnumber"]').fill('4111111111111111');
+    await cardFrame.locator('input#ccnumber').fill('4111111111111111');
     
     const expiryFrame = page.frameLocator('#card-expiry-field iframe');
-    await expiryFrame.locator('input[name="ccexp"]').fill('1225');
+    await expiryFrame.locator('input#ccexp').fill('1225');
     
     const cvvFrame = page.frameLocator('#card-cvv-field iframe');
-    await cvvFrame.locator('input[name="cvv"]').fill('123');
+    await cvvFrame.locator('input#cvv').fill('123');
     
     // Submit form
     await page.click('button[type="submit"]');

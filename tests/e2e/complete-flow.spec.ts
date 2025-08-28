@@ -63,13 +63,13 @@ class CompleteCheckoutFlow {
     
     // Fill payment details in CollectJS iframes
     const cardNumberFrame = this.page.frameLocator('#card-number-field iframe');
-    await cardNumberFrame.locator('input[name="ccnumber"]').fill(TEST_PAYMENT.cardNumber);
+    await cardNumberFrame.locator('input#ccnumber').fill(TEST_PAYMENT.cardNumber);
     
     const expiryFrame = this.page.frameLocator('#card-expiry-field iframe');
-    await expiryFrame.locator('input[name="ccexp"]').fill(`${TEST_PAYMENT.expiryMonth}${TEST_PAYMENT.expiryYear}`);
+    await expiryFrame.locator('input#ccexp').fill(`${TEST_PAYMENT.expiryMonth}${TEST_PAYMENT.expiryYear}`);
     
     const cvvFrame = this.page.frameLocator('#card-cvv-field iframe');
-    await cvvFrame.locator('input[name="cvv"]').fill(TEST_PAYMENT.cvv);
+    await cvvFrame.locator('input#cvv').fill(TEST_PAYMENT.cvv);
   }
 
   async submitCheckout() {

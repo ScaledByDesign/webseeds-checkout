@@ -85,25 +85,6 @@ export default function CardUpdateModal({
     nameOnCard: ''
   });
 
-  // Load CollectJS when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setUpdateError('');
-      setCollectJSReady(false);
-      
-      // Load CollectJS with a delay to ensure modal is rendered
-      setTimeout(() => {
-        loadCollectJS();
-      }, 500);
-    }
-    
-    // Cleanup when modal closes
-    return () => {
-      if (!isOpen) {
-        cleanup();
-      }
-    };
-  }, [isOpen, loadCollectJS, cleanup]);
 
   // Sync fallback form data with CollectJS when available
   useEffect(() => {
@@ -169,6 +150,61 @@ export default function CardUpdateModal({
     setUpdateError('');
   }, []);
 
+  const handleVaultUpdate = useCallback(async (paymentToken: string) => {
+    if (!sessionId) {
+      console.error('❌ Cannot update vault: No session ID available');
+      setUpdateError('Session not available');
+      return;
+    }
+
+    console.log('🚀 Starting vault update process...');
+    console.log('📋 Update details:', {
+      sessionId,
+      paymentToken: paymentToken.substring(0, 10) + '...',
+      nameOnCard: fallbackCardData.nameOnCard
+    });
+
+    setUpdateLoading(true);
+    setUpdateError('');
+    
+    try {
+      console.log('🔄 Sending vault update request to API...');
+      
+      const response = await fetch('/api/vault/update-card', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          sessionId,
+          payment_token: paymentToken,
+          name_on_card: fallbackCardData.nameOnCard || 'Customer'
+        })
+      });
+      
+      console.log('📡 Vault update API response status:', response.status);
+      
+      const result = await response.json();
+      console.log('📦 Vault update API result:', result);
+      
+      if (result.success) {
+        console.log('✅ Vault updated successfully! New payment method is now active.');
+        console.log('🎯 Calling onSuccess callback to trigger upsell retry...');
+        onSuccess();
+      } else {
+        console.error('❌ Vault update failed:', result.error);
+        setUpdateError(result.error || 'Failed to update payment method');
+      }
+    } catch (error) {
+      console.error('❌ Vault update network error:', error);
+      setUpdateError('Network error occurred while updating payment method');
+    } finally {
+      console.log('🔄 Vault update process completed, setting loading to false');
+      setUpdateLoading(false);
+    }
+  }, [sessionId, fallbackCardData.nameOnCard, onSuccess]);
+
   const configureCollectJS = useCallback(() => {
     console.log('🔄 Configuring CollectJS for card update...');
     
@@ -222,7 +258,7 @@ export default function CardUpdateModal({
       console.error('❌ Error configuring CollectJS:', error);
       setUpdateError('Failed to initialize payment system');
     }
-  }, [onUpdate]);
+  }, [handleVaultUpdate]);
 
   const loadCollectJS = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -256,60 +292,25 @@ export default function CardUpdateModal({
     document.head.appendChild(script);
   }, [cleanup, configureCollectJS]);
 
-  const handleVaultUpdate = async (paymentToken: string) => {
-    if (!sessionId) {
-      console.error('❌ Cannot update vault: No session ID available');
-      setUpdateError('Session not available');
-      return;
+  // Load CollectJS when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setUpdateError('');
+      setCollectJSReady(false);
+      
+      // Load CollectJS with a delay to ensure modal is rendered
+      setTimeout(() => {
+        loadCollectJS();
+      }, 500);
     }
-
-    console.log('🚀 Starting vault update process...');
-    console.log('📋 Update details:', {
-      sessionId,
-      paymentToken: paymentToken.substring(0, 10) + '...',
-      nameOnCard: fallbackCardData.nameOnCard
-    });
-
-    setUpdateLoading(true);
-    setUpdateError('');
     
-    try {
-      console.log('🔄 Sending vault update request to API...');
-      
-      const response = await fetch('/api/vault/update-card', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          sessionId,
-          payment_token: paymentToken,
-          name_on_card: fallbackCardData.nameOnCard || 'Customer'
-        })
-      });
-      
-      console.log('📡 Vault update API response status:', response.status);
-      
-      const result = await response.json();
-      console.log('📦 Vault update API result:', result);
-      
-      if (result.success) {
-        console.log('✅ Vault updated successfully! New payment method is now active.');
-        console.log('🎯 Calling onSuccess callback to trigger upsell retry...');
-        onSuccess();
-      } else {
-        console.error('❌ Vault update failed:', result.error);
-        setUpdateError(result.error || 'Failed to update payment method');
+    // Cleanup when modal closes
+    return () => {
+      if (!isOpen) {
+        cleanup();
       }
-    } catch (error) {
-      console.error('❌ Vault update network error:', error);
-      setUpdateError('Network error occurred while updating payment method');
-    } finally {
-      console.log('🔄 Vault update process completed, setting loading to false');
-      setUpdateLoading(false);
-    }
-  };
+    };
+  }, [isOpen, loadCollectJS, cleanup]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

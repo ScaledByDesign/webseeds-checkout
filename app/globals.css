@@ -339,18 +339,18 @@
 
     /* Responsive font sizing - matches form inputs exactly */
     font-size: 2.6rem; /* Mobile: text-[2.6rem] */
-    padding: 1.75rem 2.25rem; /* Mobile: py-7 px-9 */
+    padding: 1.75rem 2.5rem 1.75rem 3rem; /* Mobile: py-7 px-9 with 3rem left padding to indent CollectJS inputs */
   }
 
   /* Card number field specific styling - matches form input padding */
   .collectjs-card-number {
-    padding-left: 2.25rem; /* pl-9 */
+    padding-left: 3rem; /* 3rem left padding to indent CollectJS inputs */
     padding-right: 10rem; /* pr-40 - space for card brand icons */
   }
 
   /* CVV field specific styling - matches form input padding */
   .collectjs-cvv {
-    padding-left: 2.25rem; /* pl-9 */
+    padding-left: 3rem; /* 3rem left padding to indent CollectJS inputs */
     padding-right: 4.25rem; /* pr-17 - space for info icon */
   }
 
@@ -358,14 +358,16 @@
   @media (min-width: 480px) and (max-width: 639px) {
     .collectjs-field {
       font-size: 2.2rem;
-      padding: 1.6rem 2rem;
+      padding: 1.6rem 2.5rem 1.6rem 3rem; /* 3rem left padding to indent CollectJS inputs */
     }
 
     .collectjs-card-number {
+      padding-left: 3rem; /* 3rem left padding to indent CollectJS inputs */
       padding-right: 9rem;
     }
 
     .collectjs-cvv {
+      padding-left: 3rem; /* 3rem left padding to indent CollectJS inputs */
       padding-right: 3.8rem;
     }
   }
@@ -374,14 +376,16 @@
   @media (min-width: 640px) {
     .collectjs-field {
       font-size: 1.94rem; /* Desktop: sm:text-[1.94rem] */
-      padding: 1.75rem 2.25rem; /* py-7 px-9 */
+      padding: 1.75rem 2.5rem 1.75rem 3rem; /* py-7 with 3rem left padding to indent CollectJS inputs */
     }
 
     .collectjs-card-number {
+      padding-left: 3rem; /* 3rem left padding to indent CollectJS inputs */
       padding-right: 10rem; /* pr-40 */
     }
 
     .collectjs-cvv {
+      padding-left: 3rem; /* 3rem left padding to indent CollectJS inputs */
       padding-right: 4.25rem; /* pr-17 */
     }
   }
@@ -399,14 +403,29 @@
     outline: none; /* focus:outline-0 */
   }
 
-  /* CollectJS iframe cleanup - minimal intervention */
+  /* CollectJS iframe styling with padding */
   .collectjs-field iframe {
     border: none !important;
     background: transparent !important;
     width: 100% !important;
     height: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 2.5rem 0rem !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Target CollectJS iframes directly for additional padding control */
+  #card-number-field iframe {
+    padding: 0.5rem 4rem 1rem 2.30rem !important;
+    line-height: 1.2 !important;
+    min-height: 3.5rem !important;
+  }
+
+  #card-expiry-field iframe, 
+  #card-cvv-field iframe {
+    padding: .3rem 4rem 1rem 2.30rem !important;
+    line-height: 1.2 !important;
+    min-height: 3.5rem !important;
   }
 
   /* Countdown timer - exact match from design */
@@ -447,5 +466,36 @@
     color: #dc2626;
     font-size: 1.75rem;
     margin-top: 0.5rem;
+  }
+}
+
+/* Simple input validation styles - KISS approach */
+@layer utilities {
+  /* Use HTML5 validation pseudo-classes for automatic validation */
+  input:required:valid:not(:focus):not(:placeholder-shown) {
+    @apply border-green-500 !important;
+  }
+  
+  input:required:invalid:not(:focus):not(:placeholder-shown) {
+    @apply border-red-500 !important;
+  }
+  
+  /* Email-specific validation */
+  input[type="email"]:valid:not(:focus):not(:placeholder-shown) {
+    @apply border-green-500 !important;
+  }
+  
+  input[type="email"]:invalid:not(:focus):not(:placeholder-shown) {
+    @apply border-red-500 !important;
+  }
+  
+  /* Phone/tel validation */
+  input[type="tel"]:valid:not(:focus):not(:placeholder-shown) {
+    @apply border-green-500 !important;
+  }
+  
+  /* Focus state always takes precedence */
+  input:focus {
+    @apply border-blue-500 !important;
   }
 }

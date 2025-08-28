@@ -147,42 +147,48 @@ export const inngest = new Inngest({
     ...notificationEvents
   }),
   middleware: [
-    // Temporarily disabled Sentry middleware due to API compatibility issues
-    // TODO: Re-enable with proper Sentry v8 API
-    /*
+    // Sentry middleware with v8 compatible API
     {
       name: 'sentry-tracing',
       init() {
         return {
           onFunctionRun(ctx) {
-            // Use Sentry v8 compatible API
-            Sentry.withScope(scope => {
-              scope.setTag('inngest.function', ctx.fn?.id || 'unknown');
-              scope.setTag('inngest.event', ctx.event?.name || 'unknown');
-              scope.setContext('inngest', {
-                runId: ctx.runId,
-                attempt: ctx.attempt,
-                functionId: ctx.fn?.id || 'unknown',
-                eventName: ctx.event?.name || 'unknown',
+            // Use Sentry v8 compatible API with proper error handling
+            try {
+              Sentry.withScope(scope => {
+                scope.setTag('inngest.function', ctx.fn?.id || 'unknown');
+                scope.setTag('inngest.event', ctx.event?.name || 'unknown');
+                scope.setContext('inngest', {
+                  runId: ctx.runId,
+                  attempt: ctx.attempt,
+                  functionId: ctx.fn?.id || 'unknown',
+                  eventName: ctx.event?.name || 'unknown',
+                });
               });
-            });
+            } catch (error) {
+              console.warn('Sentry context setup failed:', error);
+            }
 
             return {
               transformOutput(ctx) {
                 return ctx.output;
               },
               transformError(ctx) {
-                Sentry.captureException(ctx.error, {
-                  tags: {
-                    'inngest.function': ctx.fn.id,
-                    'inngest.event': ctx.event.name,
-                  },
-                  extra: {
-                    runId: ctx.runId,
-                    attempt: ctx.attempt,
-                    event: ctx.event,
-                  },
-                });
+                try {
+                  Sentry.captureException(ctx.error, {
+                    tags: {
+                      'inngest.function': ctx.fn?.id || 'unknown',
+                      'inngest.event': ctx.event?.name || 'unknown',
+                    },
+                    extra: {
+                      runId: ctx.runId,
+                      attempt: ctx.attempt,
+                      event: ctx.event,
+                    },
+                  });
+                } catch (sentryError) {
+                  console.warn('Sentry error capture failed:', sentryError);
+                }
                 throw ctx.error;
               },
             };
@@ -190,7 +196,6 @@ export const inngest = new Inngest({
         };
       },
     },
-    */
   ],
 });
 

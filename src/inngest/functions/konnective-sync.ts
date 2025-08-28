@@ -1,6 +1,6 @@
 import { inngest } from '@/src/lib/inngest';
 import { KonnectiveService } from '@/src/services/konnective/KonnectiveService';
-import { funnelSessionManager } from '@/src/lib/funnel-session';
+import { databaseSessionManager } from '@/src/lib/database-session-manager';
 import { captureIntegrationError } from '@/src/lib/sentry';
 import * as Sentry from '@sentry/nextjs';
 
@@ -37,7 +37,7 @@ export const konnectiveSync = inngest.createFunction(
     try {
       // Step 1: Get session data and validate
       const sessionValidation = await step.run('validate-session-data', async () => {
-        const session = funnelSessionManager.getSession(sessionId);
+        const session = await databaseSessionManager.getSession(sessionId);
         
         if (!session) {
           throw new Error('Session not found for Konnective sync');
@@ -45,8 +45,8 @@ export const konnectiveSync = inngest.createFunction(
 
         return {
           session,
-          billingInfo: session.billingInfo,
-          shippingInfo: session.shippingInfo,
+          billingInfo: session.customer_info,
+          shippingInfo: session.customer_info,
         };
       });
 
@@ -359,7 +359,7 @@ export const konnectiveUpsellSync = inngest.createFunction(
     try {
       // Step 1: Get original session and order data
       const sessionData = await step.run('get-session-data', async () => {
-        const session = funnelSessionManager.getSession(sessionId);
+        const session = await databaseSessionManager.getSession(sessionId);
         
         if (!session) {
           throw new Error('Session not found for upsell sync');
@@ -367,8 +367,8 @@ export const konnectiveUpsellSync = inngest.createFunction(
 
         return {
           session,
-          originalTransactionId: session.transactionId,
-          customerInfo: session.customerInfo,
+          originalTransactionId: session.transaction_id,
+          customerInfo: session.customer_info,
         };
       });
 
@@ -391,12 +391,12 @@ export const konnectiveUpsellSync = inngest.createFunction(
 
         if (sessionData.customerInfo) {
           upsellOrder.billingInfo = {
-            firstName: sessionData.customerInfo.firstName,
-            lastName: sessionData.customerInfo.lastName,
+            firstName: sessionData.customerInfo.firstName || sessionData.customerInfo.first_name || '',
+            lastName: sessionData.customerInfo.lastName || sessionData.customerInfo.last_name || '',
             address: sessionData.customerInfo.address || '',
             city: sessionData.customerInfo.city || '',
             state: sessionData.customerInfo.state || '',
-            zipCode: sessionData.customerInfo.zipCode || '',
+            zipCode: sessionData.customerInfo.zipCode || sessionData.customerInfo.zip_code || '',
             country: sessionData.customerInfo.country || 'US',
           };
         }

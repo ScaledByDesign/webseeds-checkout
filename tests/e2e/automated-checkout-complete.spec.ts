@@ -207,19 +207,19 @@ test.describe('Automated Checkout with CollectJS', () => {
     for (const frame of frames) {
       if (frame.url().includes('secure.networkmerchants.com')) {
         try {
-          const cardInput = await frame.locator('input#ccnumber, input[name="ccnumber"]').first();
+          const cardInput = await frame.locator('input#ccnumber, input#ccnumber').first();
           if (await cardInput.count() > 0) {
             await cardInput.fill('4111111111111111');
             filled++;
           }
           
-          const expInput = await frame.locator('input#ccexp, input[name="ccexp"]').first();
+          const expInput = await frame.locator('input#ccexp, input#ccexp').first();
           if (await expInput.count() > 0) {
             await expInput.fill('1225');
             filled++;
           }
           
-          const cvvInput = await frame.locator('input#cvv, input[name="cvv"]').first();
+          const cvvInput = await frame.locator('input#cvv, input#cvv').first();
           if (await cvvInput.count() > 0) {
             await cvvInput.fill('123');
             filled++;

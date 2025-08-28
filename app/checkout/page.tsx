@@ -6,8 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { NewDesignCheckoutForm } from '@/components/NewDesignCheckoutForm'
-
-import { CollectJSCheckoutForm } from '@/components/CollectJSCheckoutForm'
+import CardUpdateModal from '@/components/CardUpdateModal'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -40,11 +39,20 @@ export default function CheckoutPage() {
   const [autoFillTrigger, setAutoFillTrigger] = useState(0)
   const [systemBannerMessage, setSystemBannerMessage] = useState<string | null>(null)
 
+  // Card update modal state
+  const [showCardUpdateModal, setShowCardUpdateModal] = useState(false)
+  const [cardUpdateErrorMessage, setCardUpdateErrorMessage] = useState('')
+
   // Payment processing states
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [pollCount, setPollCount] = useState(0)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Timer state - matching design implementation
+  const [timerMinutes, setTimerMinutes] = useState(9)
+  const [timerSeconds, setTimerSeconds] = useState(59)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Handle error messages from URL parameters
   useEffect(() => {
@@ -78,15 +86,20 @@ export default function CheckoutPage() {
       // Check if we have a session for upsells
       if (result.sessionId && result.vaultId) {
         console.log('🎯 Redirecting to upsell with session:', result.sessionId)
+        // Store session for upsell flow
+        sessionStorage.setItem('checkout_session', result.sessionId)
+        sessionStorage.setItem('main_transaction', result.transactionId)
+
         // Redirect to first upsell page
         setTimeout(() => {
-          window.location.href = `/upsell/1?session=${result.sessionId}&transaction=${result.transactionId}`
-        }, 1000)
+          router.push(`/upsell/1?session=${result.sessionId}&transaction=${result.transactionId}`)
+        }, 1500)
       } else {
         // No upsell flow, go directly to thank you
+        console.log('🎯 No vault ID, skipping upsells, going to thank you')
         setTimeout(() => {
-          window.location.href = '/thankyou'
-        }, 1000)
+          router.push(`/thankyou?session=${result.sessionId || 'direct'}&transaction=${result.transactionId}`)
+        }, 1500)
       }
     } else if (result.success && result.sessionId) {
       // Handle the old flow with session polling
@@ -204,16 +217,63 @@ export default function CheckoutPage() {
   const handlePaymentError = (errorMessage: string, errors?: Record<string, string>) => {
     console.error('Payment failed:', errorMessage)
 
-    if (errors && Object.keys(errors).length > 0) {
+    // Check if it's a duplicate transaction error
+    const lowerError = errorMessage.toLowerCase()
+    if (lowerError.includes('duplicate') && lowerError.includes('refid')) {
+      console.log('🔍 Duplicate transaction detected:', errorMessage)
+      
+      // Extract REFID if present
+      const refidMatch = errorMessage.match(/REFID:(\d+)/i)
+      const refid = refidMatch ? refidMatch[1] : null
+      
+      // For true duplicates (with REFID), auto-proceed to next step
+      if (refid) {
+        console.log('✅ True duplicate with REFID:', refid, '- auto-proceeding to next step')
+        
+        // Show a brief notification before proceeding
+        setSystemBannerMessage('Payment already processed. Proceeding to next step...')
+        
+        // Store the REFID for reference
+        sessionStorage.setItem('duplicate_refid', refid)
+        
+        // Auto-proceed after a brief delay
+        setTimeout(() => {
+          // Navigate to upsell or thank you page
+          const storedSession = sessionStorage.getItem('checkout_session')
+          const storedTransaction = sessionStorage.getItem('main_transaction')
+          
+          if (storedSession) {
+            router.push(`/upsell/1?session=${storedSession}&transaction=${storedTransaction || refid}`)
+          } else {
+            router.push(`/thankyou?transaction=${refid}`)
+          }
+        }, 2000)
+      } else {
+        // Show card update modal for generic duplicate errors
+        setCardUpdateErrorMessage('This appears to be a duplicate transaction. Please update your payment method to continue.')
+        setShowCardUpdateModal(true)
+      }
+    } else if (errors && Object.keys(errors).length > 0) {
       // Structured field errors → show detailed modal
       const mapped = createUserFriendlyValidationErrors(errors)
       setValidationErrors(mapped)
       setShowValidationModal(true)
     } else {
-      // Generic/system errors → show a non-blocking banner instead of modal
-      setSystemBannerMessage(errorMessage || 'We hit a snag. Please try again.')
-      // Auto-hide banner after 10s
-      setTimeout(() => setSystemBannerMessage(null), 10000)
+      // Check if it's a card error that should show the update modal
+      if (lowerError.includes('declined') || 
+          lowerError.includes('expired') || 
+          lowerError.includes('invalid card') ||
+          lowerError.includes('insufficient') ||
+          lowerError.includes('cvv')) {
+        // Show card update modal for card-related errors
+        setCardUpdateErrorMessage(errorMessage)
+        setShowCardUpdateModal(true)
+      } else {
+        // Generic/system errors → show a non-blocking banner instead of modal
+        setSystemBannerMessage(errorMessage || 'We hit a snag. Please try again.')
+        // Auto-hide banner after 10s
+        setTimeout(() => setSystemBannerMessage(null), 10000)
+      }
     }
   }
 
@@ -297,6 +357,41 @@ export default function CheckoutPage() {
     pollIntervalRef.current = setInterval(pollPaymentStatus, 5000)
   }
 
+  // Countdown timer implementation - matching design
+  useEffect(() => {
+    const updateTimer = () => {
+      setTimerSeconds(prevSeconds => {
+        if (prevSeconds === 0) {
+          setTimerMinutes(prevMinutes => {
+            if (prevMinutes === 0) {
+              // Timer expired
+              if (timerRef.current) {
+                clearInterval(timerRef.current)
+                timerRef.current = null
+              }
+              handleTimerExpire()
+              return 0
+            }
+            return prevMinutes - 1
+          })
+          return 59
+        } else {
+          return prevSeconds - 1
+        }
+      })
+    }
+
+    // Start the timer
+    timerRef.current = setInterval(updateTimer, 1000)
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [])
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -308,7 +403,9 @@ export default function CheckoutPage() {
 
   const handleTimerExpire = () => {
     setIsExpired(true)
-    alert('Special price has expired! The regular price will now apply.')
+    console.log('⏰ Timer expired!')
+    // You can add additional logic here when timer expires
+    // For now, just mark as expired - the UI can show different pricing
   }
 
   const handleAutoFill = () => {
@@ -449,7 +546,7 @@ export default function CheckoutPage() {
                   role="timer"
                   aria-live="polite"
                   aria-label="Special offer time remaining">
-                  <span id="minutes">9</span>:<span id="seconds">59</span>
+                  <span id="minutes">{timerMinutes}</span>:<span id="seconds">{timerSeconds.toString().padStart(2, '0')}</span>
                 </div>
               </div>
             </div>
@@ -594,38 +691,6 @@ export default function CheckoutPage() {
 
 
 
-              <div className="flex justify-between items-center mt-11 w-full px-7.5 gap-10">
-                <div className="w-1/3 flex justify-center">
-                  <Image
-                    className="h-40 object-contain"
-                    src="/assets/images/mcafee-seeklogo.svg"
-                    alt="McAfee Secure"
-                    width={120}
-                    height={120}
-                    loading="lazy"
-                  />
-                </div>
-                <div className="w-1/3 flex justify-center">
-                  <Image
-                    className="h-36 object-contain"
-                    src="/assets/images/Norton.svg"
-                    alt="Norton Secured"
-                    width={120}
-                    height={120}
-                    loading="lazy"
-                  />
-                </div>
-                <div className="w-1/3 flex justify-center">
-                  <Image
-                    className="h-40 object-contain"
-                    src="/assets/images/Truste.svg"
-                    alt="TRUSTe Verified"
-                    width={120}
-                    height={120}
-                    loading="lazy"
-                  />
-                </div>
-              </div>
 
               <div className="md:mt-35 md:border-b-3 border-[#CDCDCD]"></div>
 
@@ -634,7 +699,7 @@ export default function CheckoutPage() {
                   <label className="flex items-center gap-5 cursor-pointer select-none">
                     <input type="checkbox" className="peer hidden" defaultChecked />
                     <span className="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                      <Image src="/assets/images/check-dark.svg" alt="Checkmark" className="hidden" width={16} height={16} loading="lazy" />
+                      <Image src="/assets/images/check-dark.svg" alt="Checkmark" className="hidden" width={16} height={16} style={{height: "auto"}} loading="lazy" />
                     </span>
                     <span className="text-[#656565] font-medium text-[1.8rem]">Get SMS Alerts About Your Order</span>
                   </label>
@@ -927,6 +992,23 @@ export default function CheckoutPage() {
         </div>
         </div>
       </main>
+
+      {/* Card Update Modal for handling payment errors */}
+      <CardUpdateModal
+        isOpen={showCardUpdateModal}
+        onClose={() => setShowCardUpdateModal(false)}
+        sessionId={sessionId}
+        onSuccess={() => {
+          setShowCardUpdateModal(false)
+          // Reload the page to retry the transaction
+          window.location.reload()
+        }}
+        onError={(errorMsg) => {
+          console.error('Card update failed:', errorMsg)
+          setSystemBannerMessage(errorMsg)
+        }}
+        errorMessage={cardUpdateErrorMessage}
+      />
     </>
   )
 }

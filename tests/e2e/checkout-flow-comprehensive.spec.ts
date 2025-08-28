@@ -193,15 +193,15 @@ class CheckoutFlowHelper {
     try {
       // Fill card number
       const cardFrame = this.page.frameLocator('#card-number-field iframe');
-      await cardFrame.locator('input[name="ccnumber"]').fill(paymentMethod.cardNumber);
+      await cardFrame.locator('input#ccnumber').fill(paymentMethod.cardNumber);
       
       // Fill expiry date
       const expiryFrame = this.page.frameLocator('#card-expiry-field iframe');
-      await expiryFrame.locator('input[name="ccexp"]').fill(`${paymentMethod.expiryMonth}${paymentMethod.expiryYear}`);
+      await expiryFrame.locator('input#ccexp').fill(`${paymentMethod.expiryMonth}${paymentMethod.expiryYear}`);
       
       // Fill CVV
       const cvvFrame = this.page.frameLocator('#card-cvv-field iframe');
-      await cvvFrame.locator('input[name="cvv"]').fill(paymentMethod.cvv);
+      await cvvFrame.locator('input#cvv').fill(paymentMethod.cvv);
       
       console.log('✅ Payment information filled');
     } catch (error) {

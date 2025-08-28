@@ -24,6 +24,13 @@ export interface PaymentProcessorData {
     quantity: number;
   }>;
   couponCode?: string;
+  billingInfo?: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
 }
 
 export interface PaymentResult {
@@ -45,15 +52,26 @@ export class DirectPaymentProcessor {
   }
 
   async processPayment(data: PaymentProcessorData): Promise<PaymentResult> {
-    console.log('🚀 Starting direct payment processing for session:', data.sessionId);
+    const startTime = Date.now();
+    console.log('🚀 DIRECT PAYMENT PROCESSOR STARTED');
+    console.log('📋 INPUT DATA ANALYSIS:');
+    console.log(`  🆔 Session ID: ${data.sessionId}`);
+    console.log(`  🎫 Payment Token: ${data.paymentToken ? `${data.paymentToken.substring(0, 15)}...` : 'Missing'}`);
+    console.log(`  💰 Amount: $${data.amount}`);
+    console.log(`  👤 Customer: ${data.customerInfo?.firstName} ${data.customerInfo?.lastName}`);
+    console.log(`  📧 Email: ${data.customerInfo?.email}`);
+    console.log(`  🛒 Products: ${data.products?.length || 0} items`);
+    console.log(`  🏠 Billing Info: ${data.billingInfo ? 'Provided' : 'Using shipping'}`);
 
     try {
       // Step 1: Validate and get session
-      console.log('📋 Step 1: Validating session...');
+      console.log('📋 STEP 1: Validating session...');
       const session = await databaseSessionManager.getSession(data.sessionId);
-      
+
       if (!session) {
-        console.error('❌ Session not found:', data.sessionId);
+        console.error('❌ SESSION VALIDATION FAILED:');
+        console.error(`  🆔 Session ID: ${data.sessionId}`);
+        console.error(`  📋 Reason: Session not found in database`);
         return {
           success: false,
           sessionId: data.sessionId,
@@ -61,19 +79,40 @@ export class DirectPaymentProcessor {
         };
       }
 
+      console.log('✅ SESSION FOUND:');
+      console.log(`  🆔 ID: ${session.id}`);
+      console.log(`  📧 Email: ${session.email}`);
+      console.log(`  📊 Status: ${session.status}`);
+      console.log(`  📅 Created: ${session.created_at}`);
+
       // Update session to processing
+      console.log('📋 Updating session status to processing...');
       await databaseSessionManager.updateSessionStatus(data.sessionId, 'processing');
-      console.log('✅ Session validated and set to processing');
+      console.log('✅ Session status updated to processing');
 
       // Step 2: Create customer vault
-      console.log('🏦 Step 2: Creating customer vault...');
-      const vaultResult = await this.vaultService.createCustomerVault({
+      console.log('🏦 STEP 2: Creating customer vault...');
+      const vaultData = {
         paymentToken: data.paymentToken,
         customerInfo: data.customerInfo,
-      });
+        sessionId: data.sessionId,
+        billingInfo: data.billingInfo,
+      };
+
+      console.log('📤 VAULT CREATION INPUT:');
+      console.log(`  🎫 Payment Token: ${vaultData.paymentToken.substring(0, 15)}...`);
+      console.log(`  👤 Customer: ${vaultData.customerInfo.firstName} ${vaultData.customerInfo.lastName}`);
+      console.log(`  📧 Email: ${vaultData.customerInfo.email}`);
+      console.log(`  🏠 Billing: ${vaultData.billingInfo ? 'Separate address' : 'Using customer info'}`);
+
+      const vaultResult = await this.vaultService.createVault(vaultData);
 
       if (!vaultResult.success) {
-        console.error('❌ Vault creation failed:', vaultResult.error);
+        console.error('❌ VAULT CREATION FAILED:');
+        console.error(`  📋 Error: ${vaultResult.error}`);
+        console.error(`  🆔 Session: ${data.sessionId}`);
+        console.error(`  ⏱️ Failed after: ${Date.now() - startTime}ms`);
+
         await databaseSessionManager.updateSessionStatus(data.sessionId, 'failed');
         return {
           success: false,
@@ -82,24 +121,47 @@ export class DirectPaymentProcessor {
         };
       }
 
+      console.log('✅ VAULT CREATION SUCCESS:');
+      console.log(`  🏦 Vault ID: ${vaultResult.vaultId}`);
+      console.log(`  💳 Last Four: ${vaultResult.lastFour || 'N/A'}`);
+      console.log(`  🎫 Card Type: ${vaultResult.cardType || 'N/A'}`);
+
       // Update session with vault ID
-      await databaseSessionManager.updateSession(data.sessionId, { 
-        vault_id: vaultResult.vaultId 
+      console.log('📋 Updating session with vault ID...');
+      await databaseSessionManager.updateSession(data.sessionId, {
+        vault_id: vaultResult.vaultId
       });
-      console.log('✅ Customer vault created:', vaultResult.vaultId);
+      console.log('✅ Session updated with vault ID');
 
       // Step 3: Process payment
-      console.log('💳 Step 3: Processing payment...');
-      const paymentResult = await this.nmiService.processPayment({
+      console.log('💳 STEP 3: Processing payment...');
+      const paymentData = {
         vaultId: vaultResult.vaultId!,
         amount: data.amount,
         customerInfo: data.customerInfo,
         products: data.products,
         orderId: `order_${data.sessionId}`,
-      });
+        billingInfo: data.billingInfo,
+      };
+
+      console.log('📤 PAYMENT PROCESSING INPUT:');
+      console.log(`  🏦 Vault ID: ${paymentData.vaultId}`);
+      console.log(`  💰 Amount: $${paymentData.amount}`);
+      console.log(`  🆔 Order ID: ${paymentData.orderId}`);
+      console.log(`  👤 Customer: ${paymentData.customerInfo.firstName} ${paymentData.customerInfo.lastName}`);
+      console.log(`  🛒 Products: ${paymentData.products.length} items`);
+      console.log(`  🏠 Billing: ${paymentData.billingInfo ? 'Separate address' : 'Using customer info'}`);
+
+      const paymentResult = await this.nmiService.processPayment(paymentData);
 
       if (!paymentResult.success) {
-        console.error('❌ Payment processing failed:', paymentResult.error);
+        console.error('❌ PAYMENT PROCESSING FAILED:');
+        console.error(`  📋 Error: ${paymentResult.error}`);
+        console.error(`  🆔 Error Code: ${paymentResult.errorCode || 'N/A'}`);
+        console.error(`  🏦 Vault ID: ${vaultResult.vaultId}`);
+        console.error(`  💰 Amount: $${data.amount}`);
+        console.error(`  ⏱️ Failed after: ${Date.now() - startTime}ms`);
+
         await databaseSessionManager.updateSessionStatus(data.sessionId, 'failed');
         return {
           success: false,
@@ -108,37 +170,59 @@ export class DirectPaymentProcessor {
         };
       }
 
+      console.log('✅ PAYMENT PROCESSING SUCCESS:');
+      console.log(`  💳 Transaction ID: ${paymentResult.transactionId}`);
+      console.log(`  🔐 Auth Code: ${paymentResult.authCode || 'N/A'}`);
+      console.log(`  🏠 AVS Response: ${paymentResult.avsResponse || 'N/A'}`);
+      console.log(`  🔒 CVV Response: ${paymentResult.cvvResponse || 'N/A'}`);
+      console.log(`  ⏱️ Processing time: ${Date.now() - startTime}ms`);
+
       // Update session with transaction ID
-      await databaseSessionManager.updateSession(data.sessionId, { 
+      console.log('📋 Updating session to completed status...');
+      await databaseSessionManager.updateSession(data.sessionId, {
         transaction_id: paymentResult.transactionId,
         status: 'completed',
         current_step: 'upsell-1'
       });
-      console.log('✅ Payment processed successfully:', paymentResult.transactionId);
+      console.log('✅ Session updated to completed');
 
-      console.log('🎉 Payment processing completed successfully!');
+      const nextStep = `/upsell/1?session=${data.sessionId}&transaction=${paymentResult.transactionId}`;
+      console.log(`➡️ Next step: ${nextStep}`);
+      console.log('🎉 PAYMENT PROCESSING COMPLETED SUCCESSFULLY!');
+
       return {
         success: true,
         sessionId: data.sessionId,
         transactionId: paymentResult.transactionId,
         vaultId: vaultResult.vaultId,
-        nextStep: '/checkout/upsell'
+        nextStep: nextStep
       };
 
     } catch (error) {
-      console.error('❌ Payment processing error:', error);
-      
+      const processingTime = Date.now() - startTime;
+      console.error('💥 PAYMENT PROCESSOR ERROR:');
+      console.error(`  ❌ Error Type: ${error instanceof Error ? error.constructor.name : 'Unknown'}`);
+      console.error(`  📋 Error Message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`  🆔 Session ID: ${data.sessionId}`);
+      console.error(`  ⏱️ Failed after: ${processingTime}ms`);
+      console.error(`  📍 Stack Trace:`, error instanceof Error ? error.stack : 'No stack trace');
+
       // Update session to failed
       try {
+        console.log('📋 Updating session status to failed...');
         await databaseSessionManager.updateSessionStatus(data.sessionId, 'failed');
+        console.log('✅ Session status updated to failed');
       } catch (updateError) {
         console.error('❌ Failed to update session status:', updateError);
       }
 
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`🔄 Returning error response: ${errorMessage}`);
+
       return {
         success: false,
         sessionId: data.sessionId,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: errorMessage
       };
     }
   }

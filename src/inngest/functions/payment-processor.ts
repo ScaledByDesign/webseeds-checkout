@@ -86,23 +86,18 @@ export const paymentProcessor = inngest.createFunction(
           if (result.success) {
             // Update session with vault ID
             await databaseSessionManager.updateSession(sessionId, { vault_id: result.vaultId! });
-            span.setStatus('ok');
-          } else {
-            span.setStatus('internal_error');
+            // Vault creation successful
           }
 
           return result;
 
         } catch (error) {
-          span.setStatus('internal_error');
           capturePaymentError(error as Error, {
             sessionId,
             step: 'vault_creation',
             amount,
           });
           throw error;
-        } finally {
-          span.finish();
         }
       });
 
@@ -132,7 +127,7 @@ export const paymentProcessor = inngest.createFunction(
           });
         });
 
-        // transaction.setStatus('failed_precondition');
+        // Vault creation failed - no further processing needed
         return {
           success: false,
           error: vaultResult.error,
@@ -175,14 +170,14 @@ export const paymentProcessor = inngest.createFunction(
           if (result.success) {
             // Update session with transaction ID
             await databaseSessionManager.updateSession(sessionId, { transaction_id: result.transactionId! });
-            // span.setStatus('ok');
+            // Track payment amount in Sentry with v8 compatible API
             try {
-              Sentry.setMeasurement('payment.amount', amount, 'usd');
+              Sentry.withScope(scope => {
+                scope.setMeasurement('payment.amount', amount, 'usd');
+              });
             } catch (error) {
               console.warn('Sentry measurement failed:', error);
             }
-          } else {
-            // span.setStatus('invalid_argument');
           }
 
           return {
@@ -191,7 +186,6 @@ export const paymentProcessor = inngest.createFunction(
           };
 
         } catch (error) {
-          span.setStatus('internal_error');
           capturePaymentError(error as Error, {
             sessionId,
             step: 'payment_processing',
@@ -199,8 +193,6 @@ export const paymentProcessor = inngest.createFunction(
             paymentMethod: 'nmi',
           });
           throw error;
-        } finally {
-          span.finish();
         }
       });
 
@@ -236,7 +228,7 @@ export const paymentProcessor = inngest.createFunction(
           });
         });
 
-        // transaction.setStatus('invalid_argument');
+        // Payment processing failed - transaction recorded
         return {
           success: false,
           error: paymentResult.error,
@@ -291,7 +283,7 @@ export const paymentProcessor = inngest.createFunction(
         };
       });
 
-      // transaction.setStatus('ok');
+      // Payment processing completed successfully
       return successResult;
 
     } catch (error) {
@@ -317,10 +309,10 @@ export const paymentProcessor = inngest.createFunction(
         });
       });
 
-      // transaction.setStatus('internal_error');
+      // Unexpected error occurred during payment processing
       throw error;
     } finally {
-      // transaction.finish();
+      // Payment processing workflow completed
     }
   }
 );
@@ -445,7 +437,7 @@ export const upsellProcessor = inngest.createFunction(
         });
       });
 
-      // transaction.setStatus('ok');
+      // Upsell payment processing completed successfully
       return {
         success: true,
         transactionId: upsellResult.transactionId,
@@ -459,10 +451,10 @@ export const upsellProcessor = inngest.createFunction(
         amount,
       });
 
-      // transaction.setStatus('internal_error');
+      // Unexpected error occurred during upsell processing
       throw error;
     } finally {
-      // transaction.finish();
+      // Upsell processing workflow completed
     }
   }
 );

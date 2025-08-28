@@ -171,13 +171,20 @@ export class NMIService {
       }
     }
 
-    // Add billing information
+    // Add billing information - use billing if provided, otherwise use shipping (customerInfo)
     if (params.billingInfo) {
       data.address1 = params.billingInfo.address;
       data.city = params.billingInfo.city;
       data.state = params.billingInfo.state;
       data.zip = params.billingInfo.zipCode;
       data.country = params.billingInfo.country || 'US';
+    } else if (params.customerInfo) {
+      // Fallback to shipping address from customerInfo
+      data.address1 = params.customerInfo.address || '';
+      data.city = params.customerInfo.city || '';
+      data.state = params.customerInfo.state || '';
+      data.zip = params.customerInfo.zipCode || '';
+      data.country = params.customerInfo.country || 'US';
     }
 
     return data;
@@ -203,12 +210,20 @@ export class NMIService {
       }
     }
 
+    // Add billing information - use billing if provided, otherwise use shipping (customerInfo)
     if (params.billingInfo) {
       data.address1 = params.billingInfo.address;
       data.city = params.billingInfo.city;
       data.state = params.billingInfo.state;
       data.zip = params.billingInfo.zipCode;
       data.country = params.billingInfo.country || 'US';
+    } else if (params.customerInfo) {
+      // Fallback to shipping address from customerInfo
+      data.address1 = params.customerInfo.address || '';
+      data.city = params.customerInfo.city || '';
+      data.state = params.customerInfo.state || '';
+      data.zip = params.customerInfo.zipCode || '';
+      data.country = params.customerInfo.country || 'US';
     }
 
     return data;

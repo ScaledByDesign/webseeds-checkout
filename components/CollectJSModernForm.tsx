@@ -29,12 +29,12 @@ interface CollectJSModernFormProps {
   apiEndpoint?: string
 }
 
-export function CollectJSModernForm({ 
-  order, 
-  onPaymentSuccess, 
-  onPaymentError, 
+export function CollectJSModernForm({
+  order,
+  onPaymentSuccess,
+  onPaymentError,
   autoFillTrigger = 0,
-  apiEndpoint = '/api/test-checkout'
+  apiEndpoint = '/api/checkout/process'
 }: CollectJSModernFormProps) {
   const [loading, setLoading] = useState(false)
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)

@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// NMI Gateway configuration
-const NMI_API_URL = process.env.NEXT_PUBLIC_NMI_API_URL || 'https://secure.nmi.com/api/transact.php';
-const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY || '6ZAAf76qD8RfbX4fkB6jQ58XVde9AJa4';
+// NMI Gateway configuration - using existing env variables
+const NMI_API_URL = process.env.NMI_ENDPOINT || process.env.NEXT_PUBLIC_NMI_API_URL || 'https://secure.nmi.com/api/transact.php';
+const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY || '';
 
 // Request validation schema
 const nmiDirectSchema = z.object({

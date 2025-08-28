@@ -73,9 +73,9 @@ async function fillPaymentFieldsCrossBrowser(page: any, browserName: string) {
     const expiryFrame = page.frameLocator('#card-expiry-field iframe');
     const cvvFrame = page.frameLocator('#card-cvv-field iframe');
     
-    await cardFrame.locator('input[name="ccnumber"]').fill(PAYMENT_METHODS.visa.cardNumber);
-    await expiryFrame.locator('input[name="ccexp"]').fill(`${PAYMENT_METHODS.visa.expiryMonth}${PAYMENT_METHODS.visa.expiryYear}`);
-    await cvvFrame.locator('input[name="cvv"]').fill(PAYMENT_METHODS.visa.cvv);
+    await cardFrame.locator('input#ccnumber').fill(PAYMENT_METHODS.visa.cardNumber);
+    await expiryFrame.locator('input#ccexp').fill(`${PAYMENT_METHODS.visa.expiryMonth}${PAYMENT_METHODS.visa.expiryYear}`);
+    await cvvFrame.locator('input#cvv').fill(PAYMENT_METHODS.visa.cvv);
     
     console.log(`✅ Payment fields filled successfully on ${browserName}`);
   } catch (error) {
@@ -199,7 +199,7 @@ test.describe('Cross-Browser Iframe Behavior', () => {
     
     // Test iframe focus and input
     const cardFrame = page.frameLocator('#card-number-field iframe');
-    const cardInput = cardFrame.locator('input[name="ccnumber"]');
+    const cardInput = cardFrame.locator('input#ccnumber');
     
     // Verify iframe is interactive
     await expect(cardInput).toBeVisible();
