@@ -75,7 +75,10 @@ export function NewDesignCheckoutForm({
   const [errors, setErrors] = useState<FormErrors>({})
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
   const [fieldsValid, setFieldsValid] = useState(false)
+  const [floatingStates, setFloatingStates] = useState<{[key: string]: boolean}>({})
+  const [focusedField, setFocusedField] = useState<string | null>(null)
   const collectJSInitializedRef = useRef(false)
+  const addressInputRef = useRef<HTMLInputElement>(null)
   
   // Load CollectJS script if not already present
   useEffect(() => {
@@ -177,18 +180,20 @@ export function NewDesignCheckoutForm({
           country: prev.country || mappedCountry,
           state: prev.state || data.region_code || '',
           city: prev.city || data.city || '',
-          zip: prev.zip || data.postal || '',
+          // Removed auto zip population as it's often incorrect
+          // zip: prev.zip || data.postal || '',
           // Also fill billing address fields if they're empty
           billingCity: prev.billingCity || data.city || '',
           billingState: prev.billingState || data.region_code || '',
-          billingZip: prev.billingZip || data.postal || ''
+          // Removed auto billing zip population as well
+          // billingZip: prev.billingZip || data.postal || ''
         }))
         
         console.log('✅ GeoIP detection successful:', {
           country: data.country_name,
           state: data.region,
           city: data.city,
-          zip: data.postal
+          zip: 'Not auto-filled (user must enter)'
         })
       }
     }
@@ -533,6 +538,125 @@ export function NewDesignCheckoutForm({
     }
   }, [formData, order, apiEndpoint, onPaymentSuccess, onPaymentError])
 
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    const initializeGooglePlaces = () => {
+      if (window.google && window.google.maps && window.google.maps.places && addressInputRef.current) {
+        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+          types: ['address'],
+          componentRestrictions: { country: ['us', 'ca', 'gb', 'au'] }, // Support major countries
+          fields: ['address_components', 'formatted_address']
+        })
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace()
+          if (place.address_components) {
+            let streetNumber = ''
+            let streetName = ''
+            let city = ''
+            let state = ''
+            let postalCode = ''
+            let country = ''
+
+            place.address_components.forEach((component: any) => {
+              const types = component.types
+              if (types.includes('street_number')) {
+                streetNumber = component.long_name
+              }
+              if (types.includes('route')) {
+                streetName = component.long_name
+              }
+              if (types.includes('locality')) {
+                city = component.long_name
+              }
+              if (types.includes('administrative_area_level_1')) {
+                state = component.short_name
+              }
+              if (types.includes('postal_code')) {
+                postalCode = component.long_name
+              }
+              if (types.includes('country')) {
+                country = component.short_name
+              }
+            })
+
+            const fullAddress = `${streetNumber} ${streetName}`.trim()
+
+            setFormData(prev => ({
+              ...prev,
+              address: fullAddress || place.formatted_address || '',
+              city: city || prev.city,
+              state: state || prev.state,
+              zip: postalCode || prev.zip,
+              country: country || prev.country
+            }))
+
+            // Update floating states
+            setFloatingStates(prev => ({
+              ...prev,
+              address: true,
+              city: !!city,
+              state: !!state,
+              zip: !!postalCode
+            }))
+
+            console.log('✅ Google Places autocomplete filled:', {
+              address: fullAddress,
+              city,
+              state,
+              zip: postalCode,
+              country
+            })
+          }
+        })
+      }
+    }
+
+    // Try to initialize immediately if Google is already loaded
+    if (window.google) {
+      initializeGooglePlaces()
+    } else {
+      // Wait for Google Maps to load
+      const checkGoogle = setInterval(() => {
+        if (window.google) {
+          initializeGooglePlaces()
+          clearInterval(checkGoogle)
+        }
+      }, 100)
+
+      // Clean up interval after 10 seconds
+      setTimeout(() => clearInterval(checkGoogle), 10000)
+    }
+  }, [])
+
+  // Handle floating label state
+  const handleFieldFocus = (fieldName: string) => {
+    console.log(`🎯 Field focused: ${fieldName}`)
+    setFocusedField(fieldName)
+    // Always set floating state to true when focused
+    setFloatingStates(prev => ({ ...prev, [fieldName]: true }))
+  }
+
+  const handleFieldBlur = (fieldName: string, value: string) => {
+    console.log(`🎯 Field blurred: ${fieldName}, value: "${value}"`)
+    setFocusedField(null)
+    // Keep floating if field has value, otherwise let it drop
+    const hasValue = value.trim() !== ''
+    setFloatingStates(prev => ({ ...prev, [fieldName]: hasValue }))
+  }
+
+  const shouldFloat = (fieldName: string, value: string) => {
+    // Float if: 1) currently focused, 2) has value, or 3) explicitly set to float
+    const isFocused = focusedField === fieldName
+    const hasValue = value.trim() !== ''
+    const isExplicitlyFloating = floatingStates[fieldName]
+
+    const result = isFocused || hasValue || isExplicitlyFloating
+    console.log(`🎯 shouldFloat(${fieldName}): focused=${isFocused}, hasValue=${hasValue}, explicit=${isExplicitlyFloating} => ${result}`)
+
+    return result
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     console.log(`📝 handleInputChange called: ${name} = "${value}"`)
@@ -540,6 +664,9 @@ export function NewDesignCheckoutForm({
       ...prev,
       [name]: value
     }))
+
+    // Update floating state based on value
+    setFloatingStates(prev => ({ ...prev, [name]: value.trim() !== '' }))
 
     // Real-time apartment validation (matching design)
     if (name === 'apartment' && value) {
@@ -608,9 +735,9 @@ export function NewDesignCheckoutForm({
   const handleZipBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
-      setErrors(prev => ({ ...prev, zip: 'ZIP code is required' }))
+      setErrors(prev => ({ ...prev, zip: 'Postal code is required' }))
     } else if (!validateZip(value)) {
-      setErrors(prev => ({ ...prev, zip: 'Invalid ZIP code' }))
+      setErrors(prev => ({ ...prev, zip: 'Please enter a valid postal code' }))
     } else {
       setErrors(prev => ({ ...prev, zip: '' }))
     }
@@ -621,7 +748,7 @@ export function NewDesignCheckoutForm({
     if (!value) {
       setErrors(prev => ({ ...prev, phone: 'Phone is required' }))
     } else if (!validatePhone(value)) {
-      setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }))
+      setErrors(prev => ({ ...prev, phone: 'Please enter a valid phone number' }))
     } else {
       setErrors(prev => ({ ...prev, phone: '' }))
     }
@@ -658,9 +785,9 @@ export function NewDesignCheckoutForm({
   const handleBillingZipBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
-      setErrors(prev => ({ ...prev, billingZip: 'Billing ZIP is required' }))
+      setErrors(prev => ({ ...prev, billingZip: 'Billing postal code is required' }))
     } else if (!validateZip(value)) {
-      setErrors(prev => ({ ...prev, billingZip: 'Invalid ZIP code' }))
+      setErrors(prev => ({ ...prev, billingZip: 'Please enter a valid billing postal code' }))
     } else {
       setErrors(prev => ({ ...prev, billingZip: '' }))
     }
@@ -673,24 +800,53 @@ export function NewDesignCheckoutForm({
   }
 
   const validatePhone = (phone: string): boolean => {
-    // Remove all non-digit characters
+    const trimmed = phone.trim()
+
+    // Allow empty for optional phone fields
+    if (!trimmed) return false
+
+    // Remove all non-digit characters for length check
     const cleaned = phone.replace(/\D/g, '')
 
-    // US phone numbers: 10 digits or 11 digits starting with 1
-    // Accepts formats like: 512 917 9292, 512-917-9292, (512)917-9292, +1 512 917 9292
-    if (cleaned.length === 10) {
-      return true // Standard 10-digit US number
-    }
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return true // 11-digit number with country code 1
-    }
-    return false
+    // International phone validation - much more flexible
+    // Support various international formats:
+    // - US/Canada: 10-11 digits (5551234567, 15551234567)
+    // - UK: 10-11 digits (02012345678, 442012345678)
+    // - Australia: 9-10 digits (0412345678, 61412345678)
+    // - Germany: 10-12 digits
+    // - France: 10 digits
+    // - And many others
+
+    // Basic validation: 7-15 digits (covers most international formats)
+    // Also allow common formatting characters: +, -, (, ), spaces
+    const internationalPhoneRegex = /^[\+]?[\d\s\-\(\)]{7,20}$/
+
+    // Must have at least 7 digits and at most 15 digits (ITU-T E.164 standard)
+    const hasValidDigitCount = cleaned.length >= 7 && cleaned.length <= 15
+
+    return internationalPhoneRegex.test(trimmed) && hasValidDigitCount
   }
 
   const validateZip = (zip: string): boolean => {
-    const cleaned = zip.replace(/\D/g, '')
-    // Standard ZIP validation: 5 digits or 9 digits (ZIP+4)
-    return cleaned.length === 5 || cleaned.length === 9
+    const trimmed = zip.trim()
+
+    // Allow empty for international customers who may not have postal codes
+    if (!trimmed) return false
+
+    // International postal code validation - much more flexible
+    // Support various formats:
+    // - US: 12345 or 12345-6789
+    // - Canada: A1A 1A1 or A1A1A1
+    // - UK: SW1A 1AA, M1 1AA, B33 8TH
+    // - Australia: 1234
+    // - Germany: 12345
+    // - France: 12345
+    // - And many others
+
+    // Basic validation: 3-10 characters, alphanumeric with spaces and hyphens
+    const internationalPostalRegex = /^[A-Za-z0-9\s\-]{3,10}$/
+
+    return internationalPostalRegex.test(trimmed)
   }
 
   const validateCVV = (cvv: string): boolean => {
@@ -700,20 +856,34 @@ export function NewDesignCheckoutForm({
   }
 
   const validateExpiryDate = (expiry: string): boolean => {
-    // Format: MM/YY
+    // Format: MM/YY - strict validation
     const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/
     if (!regex.test(expiry)) return false
 
-    const [month, year] = expiry.split('/').map(num => parseInt(num))
+    const [monthStr, yearStr] = expiry.split('/')
+    const month = parseInt(monthStr, 10)
+    const year = parseInt(yearStr, 10)
+
+    // Validate month range (1-12)
+    if (month < 1 || month > 12) return false
+
     const currentDate = new Date()
-    const currentYear = currentDate.getFullYear() % 100 // Get last 2 digits
     const currentMonth = currentDate.getMonth() + 1
 
-    // Check if year is in the future or current year with future month
-    if (year > currentYear) return true
-    if (year === currentYear && month >= currentMonth) return true
+    // Handle year wraparound (e.g., current year 2024 -> 24, max year 2039 -> 39)
+    const currentFullYear = currentDate.getFullYear()
+    const inputFullYear = year + (year < 50 ? 2000 : 1900) // Assume 00-49 is 2000s, 50-99 is 1900s
 
-    return false // Expired date
+    // Check if year is too far in the past
+    if (inputFullYear < currentFullYear) return false
+
+    // Check if year is too far in the future (more than 15 years)
+    if (inputFullYear > currentFullYear + 15) return false
+
+    // Check if it's current year but past month
+    if (inputFullYear === currentFullYear && month < currentMonth) return false
+
+    return true // Valid future date within 15 years
   }
 
   const validateForm = (): boolean => {
@@ -741,18 +911,18 @@ export function NewDesignCheckoutForm({
       newErrors.state = 'State is required'
     }
 
-    // ZIP validation - standard
+    // Postal code validation - international friendly
     if (!formData.zip.trim()) {
-      newErrors.zip = 'ZIP code is required'
+      newErrors.zip = 'Postal code is required'
     } else if (!validateZip(formData.zip)) {
-      newErrors.zip = 'Invalid ZIP code'
+      newErrors.zip = 'Please enter a valid postal code'
     }
 
-    // Phone validation - standard
+    // Phone validation - international friendly
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone is required'
     } else if (!validatePhone(formData.phone)) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number'
+      newErrors.phone = 'Please enter a valid phone number'
     }
 
     // Name on Card validation - standard
@@ -804,9 +974,9 @@ export function NewDesignCheckoutForm({
       }
 
       if (!formData.billingZip?.trim()) {
-        newErrors.billingZip = 'Billing ZIP code is required'
+        newErrors.billingZip = 'Billing postal code is required'
       } else if (!validateZip(formData.billingZip)) {
-        newErrors.billingZip = 'Please enter a valid billing ZIP code'
+        newErrors.billingZip = 'Please enter a valid billing postal code'
       }
     }
 
@@ -955,75 +1125,7 @@ export function NewDesignCheckoutForm({
       name="checkout-form"
       noValidate
     >
-      {/* Express Checkout Section - Exact from Design */}
-      <div>
-        <h3 className="text-center font-bold text-[2.07rem] text-[#969696]">
-          Express Checkout
-        </h3>
-        <div className="flex justify-between gap-4 mt-6 flex-wrap md:flex-nowrap">
-          <button
-            className="cursor-pointer w-full md:w-1/3"
-            aria-label="Pay with PayPal"
-            type="button"
-            onClick={() => console.log('PayPal checkout not yet implemented')}
-          >
-            <img
-              className="w-full hidden md:inline-block"
-              src="/assets/images/PayPal.svg"
-              alt="PayPal"
-              width="100"
-              height="40"
-              loading="lazy"
-            />
-            <img
-              className="w-full inline-block md:hidden"
-              src="/assets/images/paypal-big.svg"
-              alt="PayPal"
-              width="200"
-              height="60"
-              loading="eager"
-              fetchPriority="high"
-            />
-          </button>
-          <div className="flex justify-between gap-4 items-center w-full md:w-2/3">
-            <button
-              className="cursor-pointer w-1/2 md:w-full"
-              aria-label="Pay with Apple Pay"
-              type="button"
-              onClick={() => console.log('Apple Pay checkout not yet implemented')}
-            >
-              <img
-                className="w-full"
-                src="/assets/images/applypay.svg"
-                alt="Apple Pay"
-                width="100"
-                height="40"
-                loading="lazy"
-              />
-            </button>
-            <button
-              className="cursor-pointer w-1/2 md:w-full"
-              aria-label="Pay with Google Pay"
-              type="button"
-              onClick={() => console.log('Google Pay checkout not yet implemented')}
-            >
-              <img
-                className="w-full"
-                src="/assets/images/googlepay.svg"
-                alt="Google Pay"
-                width="100"
-                height="40"
-                loading="lazy"
-              />
-            </button>
-          </div>
-        </div>
-        <div className="mt-10 mb-21.5 border-b-3 border-[#CDCDCD] relative">
-          <span className="absolute inline-block bg-white w-31 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">
-            OR
-          </span>
-        </div>
-      </div>
+
 
       {/* Contact Information */}
       <div>
@@ -1031,7 +1133,7 @@ export function NewDesignCheckoutForm({
           Contact
         </h3>
         <div className="space-y-8">
-          <div className="floating-label-group">
+          <div className={`floating-label-group ${shouldFloat('email', formData.email) ? 'always-float' : ''}`}>
             <input
               type="email"
               id="email"
@@ -1044,7 +1146,11 @@ export function NewDesignCheckoutForm({
               inputMode="email"
               value={formData.email}
               onChange={handleInputChange}
-              onBlur={handleEmailBlur}
+              onFocus={() => handleFieldFocus('email')}
+              onBlur={(e) => {
+                handleFieldBlur('email', e.target.value)
+                handleEmailBlur(e)
+              }}
             />
             <label htmlFor="email" className="floating-label bg-transparent sm:hidden block">
               Email{' '}
@@ -1077,6 +1183,7 @@ export function NewDesignCheckoutForm({
         <div className="space-y-8">
           <div className="floating-label-group">
             <input
+              ref={addressInputRef}
               type="text"
               id="address"
               name="address"
@@ -1087,7 +1194,11 @@ export function NewDesignCheckoutForm({
               aria-required="true"
               value={formData.address}
               onChange={handleInputChange}
-              onBlur={handleAddressBlur}
+              onFocus={() => handleFieldFocus('address')}
+              onBlur={(e) => {
+                handleFieldBlur('address', e.target.value)
+                handleAddressBlur(e)
+              }}
             />
             <label htmlFor="address" className="floating-label bg-transparent">
               Street Address
@@ -1103,7 +1214,7 @@ export function NewDesignCheckoutForm({
             )}
           </div>
 
-          <div className="floating-label-group">
+          <div className={`floating-label-group ${shouldFloat('apartment', formData.apartment) ? 'always-float' : ''}`}>
             <input
               type="text"
               id="apartment"
@@ -1114,6 +1225,8 @@ export function NewDesignCheckoutForm({
               autoComplete="address-line2"
               value={formData.apartment}
               onChange={handleInputChange}
+              onFocus={() => handleFieldFocus('apartment')}
+              onBlur={(e) => handleFieldBlur('apartment', e.target.value)}
             />
             <label htmlFor="apartment" className="floating-label bg-transparent">
               Apartment, suite, etc{' '}
@@ -1132,7 +1245,7 @@ export function NewDesignCheckoutForm({
 
           <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
             <div className="w-full">
-              <div className="floating-label-group">
+              <div className={`floating-label-group ${shouldFloat('city', formData.city) ? 'always-float' : ''}`}>
                 <input
                   type="text"
                   id="city"
@@ -1144,7 +1257,11 @@ export function NewDesignCheckoutForm({
                   aria-required="true"
                   value={formData.city}
                   onChange={handleInputChange}
-                  onBlur={handleCityBlur}
+                  onFocus={() => handleFieldFocus('city')}
+                  onBlur={(e) => {
+                    handleFieldBlur('city', e.target.value)
+                    handleCityBlur(e)
+                  }}
                 />
                 <label htmlFor="city" className="floating-label bg-transparent">
                   City
@@ -1161,7 +1278,7 @@ export function NewDesignCheckoutForm({
               </div>
             </div>
             <div className="w-full">
-              <div className="floating-label-group">
+              <div className={`floating-label-group ${shouldFloat('state', formData.state) ? 'always-float' : ''}`}>
                 <input
                   type="text"
                   id="state"
@@ -1173,7 +1290,11 @@ export function NewDesignCheckoutForm({
                   aria-required="true"
                   value={formData.state}
                   onChange={handleInputChange}
-                  onBlur={handleStateBlur}
+                  onFocus={() => handleFieldFocus('state')}
+                  onBlur={(e) => {
+                    handleFieldBlur('state', e.target.value)
+                    handleStateBlur(e)
+                  }}
                 />
                 <label htmlFor="state" className="floating-label bg-transparent">
                   State
@@ -1190,7 +1311,7 @@ export function NewDesignCheckoutForm({
               </div>
             </div>
             <div className="w-full">
-              <div className="floating-label-group">
+              <div className={`floating-label-group ${shouldFloat('zip', formData.zip) ? 'always-float' : ''}`}>
                 <input
                   type="text"
                   id="zip"
@@ -1205,7 +1326,11 @@ export function NewDesignCheckoutForm({
                   inputMode="numeric"
                   value={formData.zip}
                   onChange={handleInputChange}
-                  onBlur={handleZipBlur}
+                  onFocus={() => handleFieldFocus('zip')}
+                  onBlur={(e) => {
+                    handleFieldBlur('zip', e.target.value)
+                    handleZipBlur(e)
+                  }}
                 />
                 <label htmlFor="zip" className="floating-label bg-transparent">
                   Zip Code
@@ -1241,7 +1366,7 @@ export function NewDesignCheckoutForm({
             <option value="nz">New Zealand</option>
           </FloatingLabelSelect>
 
-          <div className="floating-label-group">
+          <div className={`floating-label-group ${shouldFloat('phone', formData.phone) ? 'always-float' : ''}`}>
             <input
               type="tel"
               id="phone"
@@ -1256,7 +1381,11 @@ export function NewDesignCheckoutForm({
               inputMode="tel"
               value={formData.phone}
               onChange={handleInputChange}
-              onBlur={handlePhoneBlur}
+              onFocus={() => handleFieldFocus('phone')}
+              onBlur={(e) => {
+                handleFieldBlur('phone', e.target.value)
+                handlePhoneBlur(e)
+              }}
             />
             <label htmlFor="phone" className="floating-label bg-transparent sm:hidden block">
               Phone Number{' '}
@@ -1331,9 +1460,9 @@ export function NewDesignCheckoutForm({
                 {errors.cardNumber}
               </div>
             )}
-            <div className="absolute top-1/2 right-4 -translate-y-1/2 flex gap-2">
+            <div className="absolute top-1/2 right-4 -translate-y-1/2 flex gap-2 z-10 pointer-events-none">
               <img
-                className="h-14"
+                className="h-14 opacity-90"
                 src="/assets/images/visa.svg"
                 alt="Visa"
                 width="52"
@@ -1341,7 +1470,7 @@ export function NewDesignCheckoutForm({
                 loading="lazy"
               />
               <img
-                className="h-14"
+                className="h-14 opacity-90"
                 src="/assets/images/mastercard.svg"
                 alt="Mastercard"
                 width="52"
@@ -1349,7 +1478,7 @@ export function NewDesignCheckoutForm({
                 loading="lazy"
               />
               <img
-                className="h-14"
+                className="h-14 opacity-90"
                 src="/assets/images/american-express.svg"
                 alt="American Express"
                 width="52"
@@ -1401,7 +1530,7 @@ export function NewDesignCheckoutForm({
               </span>
             </div>
           </div>
-          <div className="floating-label-group">
+          <div className={`floating-label-group ${shouldFloat('nameOnCard', formData.nameOnCard) ? 'always-float' : ''}`}>
             <input
               type="text"
               id="nameOnCard"
@@ -1409,6 +1538,8 @@ export function NewDesignCheckoutForm({
               className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.nameOnCard ? 'input-error' : ''}`}
               value={formData.nameOnCard}
               onChange={handleInputChange}
+              onFocus={() => handleFieldFocus('nameOnCard')}
+              onBlur={(e) => handleFieldBlur('nameOnCard', e.target.value)}
               placeholder=" "
               required
               autoComplete="cc-name"
@@ -1447,7 +1578,7 @@ export function NewDesignCheckoutForm({
                 Billing Address
               </h4>
             <div className="space-y-8">
-              <div className="floating-label-group">
+              <div className={`floating-label-group ${shouldFloat('billingAddress', formData.billingAddress || '') ? 'always-float' : ''}`}>
                 <input
                   type="text"
                   id="billing-address"
@@ -1456,7 +1587,11 @@ export function NewDesignCheckoutForm({
                   placeholder=" "
                   value={formData.billingAddress || ''}
                   onChange={handleInputChange}
-                  onBlur={handleBillingAddressBlur}
+                  onFocus={() => handleFieldFocus('billingAddress')}
+                  onBlur={(e) => {
+                    handleFieldBlur('billingAddress', e.target.value)
+                    handleBillingAddressBlur(e)
+                  }}
                 />
                 <label htmlFor="billing-address" className="floating-label bg-transparent">
                   Street Address
@@ -1468,7 +1603,7 @@ export function NewDesignCheckoutForm({
                 )}
               </div>
               <div className="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
-                <div className="floating-label-group w-full">
+                <div className={`floating-label-group w-full ${shouldFloat('billingCity', formData.billingCity || '') ? 'always-float' : ''}`}>
                   <input
                     type="text"
                     id="billing-city"
@@ -1477,7 +1612,11 @@ export function NewDesignCheckoutForm({
                     placeholder=" "
                     value={formData.billingCity || ''}
                     onChange={handleInputChange}
-                    onBlur={handleBillingCityBlur}
+                    onFocus={() => handleFieldFocus('billingCity')}
+                    onBlur={(e) => {
+                      handleFieldBlur('billingCity', e.target.value)
+                      handleBillingCityBlur(e)
+                    }}
                   />
                   <label htmlFor="billing-city" className="floating-label bg-transparent">
                     City
@@ -1488,7 +1627,7 @@ export function NewDesignCheckoutForm({
                     </div>
                   )}
                 </div>
-                <div className="floating-label-group w-full">
+                <div className={`floating-label-group w-full ${shouldFloat('billingState', formData.billingState || '') ? 'always-float' : ''}`}>
                   <input
                     type="text"
                     id="billing-state"
@@ -1497,7 +1636,11 @@ export function NewDesignCheckoutForm({
                     placeholder=" "
                     value={formData.billingState || ''}
                     onChange={handleInputChange}
-                    onBlur={handleBillingStateBlur}
+                    onFocus={() => handleFieldFocus('billingState')}
+                    onBlur={(e) => {
+                      handleFieldBlur('billingState', e.target.value)
+                      handleBillingStateBlur(e)
+                    }}
                   />
                   <label htmlFor="billing-state" className="floating-label bg-transparent">
                     State
@@ -1508,7 +1651,7 @@ export function NewDesignCheckoutForm({
                     </div>
                   )}
                 </div>
-                <div className="floating-label-group w-full">
+                <div className={`floating-label-group w-full ${shouldFloat('billingZip', formData.billingZip || '') ? 'always-float' : ''}`}>
                   <input
                     type="text"
                     id="billing-zip"
@@ -1518,7 +1661,11 @@ export function NewDesignCheckoutForm({
                     pattern="[0-9]{5}"
                     value={formData.billingZip || ''}
                     onChange={handleInputChange}
-                    onBlur={handleBillingZipBlur}
+                    onFocus={() => handleFieldFocus('billingZip')}
+                    onBlur={(e) => {
+                      handleFieldBlur('billingZip', e.target.value)
+                      handleBillingZipBlur(e)
+                    }}
                   />
                   <label htmlFor="billing-zip" className="floating-label bg-transparent">
                     Zip Code

@@ -749,7 +749,7 @@ export default function CheckoutPage() {
 
           {/* Right Column - Order Summary */}
           <div className="sm:bg-[#f2f2f2] bg-[#fff]">
-            <div className="sm:pl-23 sm:py-18 py:5 md:max-w-[56.3rem] md:mr-auto sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto">
+            <div className="sm:pl-23 sm:py-18 py:5 md:max-w-[56.3rem] sm:max-w-4xl max-w-full px-10 md:px-0 mx-auto md:mx-0">
               <div>
                 <div className="hidden md:block">
                   <ul className="flex flex-col gap-10 pb-10 border-b-3 border-[#CDCDCD]">
