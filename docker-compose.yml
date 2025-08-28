@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: webseeds-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - webseeds-network
+
+
+  # Inngest Dev Server
+  inngest:
+    image: inngest/inngest:latest
+    container_name: webseeds-inngest
+    ports:
+      - "8288:8288"
+      - "50052:50052"
+      - "50053:50053"
+    environment:
+      - INNGEST_DEV=1
+      - INNGEST_LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      inngest dev
+      --no-discovery
+      -u http://host.docker.internal:3255/api/inngest
+      --port 8288
+    volumes:
+      - ./inngest:/app/inngest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8288/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - webseeds-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  webseeds-network:
+    driver: bridge

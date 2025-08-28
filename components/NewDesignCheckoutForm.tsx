@@ -73,7 +73,7 @@ export function NewDesignCheckoutForm({
     if (existing) return
 
     const script = document.createElement('script')
-    script.src = process.env.NEXT_PUBLIC_COLLECT_JS_URL || 'https://secure.nmi.com/token/Collect.js'
+    script.src = process.env.NEXT_PUBLIC_NMI_COLLECT_JS_URL || 'https://secure.networkmerchants.com/token/Collect.js'
     script.async = true
     const tk = process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY
     if (tk) script.setAttribute('data-tokenization-key', tk)
@@ -110,6 +110,39 @@ export function NewDesignCheckoutForm({
         nameOnCard: 'John Doe',
         useSameAddress: true
       })
+
+      // Also auto-fill CollectJS credit card fields
+      setTimeout(() => {
+        try {
+          // Try to fill CollectJS iframe fields by dispatching events
+          const fillCollectJSField = (fieldId: string, value: string) => {
+            const iframe = document.querySelector(`iframe[src*="${fieldId}"]`) as HTMLIFrameElement
+            if (iframe && iframe.contentDocument) {
+              const input = iframe.contentDocument.querySelector('input')
+              if (input) {
+                input.value = value
+                input.dispatchEvent(new Event('input', { bubbles: true }))
+                input.dispatchEvent(new Event('change', { bubbles: true }))
+                return true
+              }
+            }
+            return false
+          }
+
+          // Try to fill the fields
+          const cardFilled = fillCollectJSField('ccnumber', '4111111111111111')
+          const expFilled = fillCollectJSField('ccexp', '1228')
+          const cvvFilled = fillCollectJSField('cvv', '123')
+
+          if (cardFilled || expFilled || cvvFilled) {
+            console.log('✅ Auto-filled some CollectJS credit card fields')
+          } else {
+            console.log('ℹ️ CollectJS fields not accessible for auto-fill (security restriction)')
+          }
+        } catch (error) {
+          console.log('ℹ️ CollectJS auto-fill not available (expected due to iframe security):', error)
+        }
+      }, 1000) // Longer delay to ensure CollectJS iframes are fully loaded
     }
   }, [autoFillTrigger])
 
@@ -117,6 +150,13 @@ export function NewDesignCheckoutForm({
   useEffect(() => {
     const initializeCollectJS = () => {
       if (typeof window !== 'undefined' && window.CollectJS) {
+        // Check if we're in development mode
+        const isDev = process.env.NODE_ENV === 'development';
+        
+        if (isDev) {
+          console.log('🔧 Development mode: Test card data will be pre-filled');
+        }
+        
         window.CollectJS.configure({
           variant: 'inline',
           styleSniffer: true,
@@ -125,17 +165,17 @@ export function NewDesignCheckoutForm({
             ccnumber: {
               selector: '#card-number-field',
               title: 'Card Number',
-              placeholder: '0000 0000 0000 0000'
+              placeholder: isDev ? '4111 1111 1111 1111 (Test)' : '0000 0000 0000 0000'
             },
             ccexp: {
               selector: '#card-expiry-field',
               title: 'Expiry Date',
-              placeholder: 'MM / YY'
+              placeholder: isDev ? '12/25 (Test)' : 'MM / YY'
             },
             cvv: {
               selector: '#card-cvv-field',
               title: 'Security Code',
-              placeholder: '000'
+              placeholder: isDev ? '123 (Test)' : '000'
             }
           },
           callback: async (response: any) => {
@@ -577,6 +617,107 @@ export function NewDesignCheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8" id="checkout-form">
+      {/* Express Checkout Section */}
+      <div className="mb-8">
+        <p className="text-[2.2rem] sm:text-[1.75rem] font-medium mb-4 text-gray-700 text-center">Express Checkout</p>
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+          {/* PayPal Button */}
+          <button
+            type="button"
+            className="w-full md:w-1/3 cursor-pointer"
+            aria-label="Pay with PayPal"
+            onClick={() => console.log('PayPal checkout not yet implemented')}
+          >
+            <img
+              className="w-full h-[60px] object-contain"
+              src="/assets/images/PayPal.svg"
+              alt="PayPal"
+              width="200"
+              height="60"
+            />
+          </button>
+          <div className="flex justify-between gap-4 items-center w-full md:w-2/3">
+            {/* Apple Pay Button */}
+            <button
+              type="button"
+              className="cursor-pointer w-1/2 md:w-full"
+              aria-label="Pay with Apple Pay"
+              onClick={() => console.log('Apple Pay checkout not yet implemented')}
+            >
+              <img
+                className="w-full h-[40px] object-contain"
+                src="/assets/images/applypay.svg"
+                alt="Apple Pay"
+                width="100"
+                height="40"
+              />
+            </button>
+            {/* Google Pay Button */}
+            <button
+              type="button"
+              className="cursor-pointer w-1/2 md:w-full"
+              aria-label="Pay with Google Pay"
+              onClick={() => console.log('Google Pay checkout not yet implemented')}
+            >
+              <img
+                className="w-full h-[40px] object-contain"
+                src="/assets/images/googlepay.svg"
+                alt="Google Pay"
+                width="100"
+                height="40"
+              />
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-center mt-6">
+          <div className="border-t border-gray-300 flex-grow"></div>
+          <span className="mx-4 text-gray-500 text-[1.6rem]">OR</span>
+          <div className="border-t border-gray-300 flex-grow"></div>
+        </div>
+      </div>
+
+      {/* Development Helper Buttons */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800 mb-2">🔧 Development Mode</p>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                // Trigger auto-fill
+                setFormData({
+                  email: 'test@example.com',
+                  address: '123 Test Street',
+                  apartment: 'Apt 101',
+                  city: 'Test City',
+                  state: 'CA',
+                  zip: '12345',
+                  country: 'us',
+                  phone: '5551234567',
+                  nameOnCard: 'John Doe',
+                  useSameAddress: true
+                });
+                console.log('✅ Customer data auto-filled');
+              }}
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+            >
+              Fill Customer Data
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                alert('Test Payment Card:\\n\\nCard: 4111 1111 1111 1111\\nExpiry: 12/25\\nCVV: 123\\n\\nNote: Payment fields may auto-fill in dev mode.');
+              }}
+              className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+            >
+              Show Test Card
+            </button>
+            <span className="text-xs text-yellow-700 self-center">
+              Payment fields should auto-fill with test data
+            </span>
+          </div>
+        </div>
+      )}
       {/* Contact Information */}
       <div>
         <h3 className="mb-6 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">

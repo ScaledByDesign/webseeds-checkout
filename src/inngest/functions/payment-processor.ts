@@ -1,7 +1,7 @@
 import { inngest } from '@/src/lib/inngest';
 import { NMIService } from '@/src/services/nmi/NMIService';
 import { NMICustomerVaultService } from '@/src/services/nmi/NMICustomerVaultService';
-import { funnelSessionManager } from '@/src/lib/funnel-session';
+import { databaseSessionManager } from '@/src/lib/database-session-manager';
 import { capturePaymentError } from '@/src/lib/sentry';
 import * as Sentry from '@sentry/nextjs';
 
@@ -16,28 +16,31 @@ export const paymentProcessor = inngest.createFunction(
   async ({ event, step }) => {
     const { sessionId, paymentToken, amount, customerInfo, products, couponCode } = event.data;
 
-    // Create Sentry transaction for the entire workflow
-    const transaction = Sentry.startTransaction({
-      name: 'checkout.payment.process',
-      op: 'payment',
-      data: {
-        sessionId,
-        amount,
-        productCount: products.length,
-      },
-    });
+    // Set Sentry context for the entire workflow (temporarily disabled)
+    try {
+      Sentry.withScope(scope => {
+        scope.setTag('operation', 'payment.process');
+        scope.setContext('payment', {
+          sessionId,
+          amount,
+          productCount: products.length,
+        });
+      });
+    } catch (error) {
+      console.warn('Sentry context failed, continuing without telemetry:', error);
+    }
 
     try {
       // Step 1: Validate session and update status
       const sessionValidation = await step.run('validate-session', async () => {
-        const session = funnelSessionManager.getSession(sessionId);
-        
+        const session = await databaseSessionManager.getSession(sessionId);
+
         if (!session) {
           throw new Error('Session not found or expired');
         }
 
         if (session.status !== 'processing') {
-          funnelSessionManager.setSessionStatus(sessionId, 'processing');
+          await databaseSessionManager.updateSessionStatus(sessionId, 'processing');
         }
 
         return {
@@ -52,10 +55,10 @@ export const paymentProcessor = inngest.createFunction(
 
       // Step 2: Create Customer Vault
       const vaultResult = await step.run('create-customer-vault', async () => {
-        const span = transaction.startChild({
-          op: 'payment.vault.create',
-          description: 'Create NMI Customer Vault',
-        });
+        // const span = transaction.startChild({
+        //   op: 'payment.vault.create',
+        //   description: 'Create NMI Customer Vault',
+        // });
 
         try {
           const vaultService = NMICustomerVaultService.getInstance();
@@ -82,7 +85,7 @@ export const paymentProcessor = inngest.createFunction(
           
           if (result.success) {
             // Update session with vault ID
-            funnelSessionManager.setVaultId(sessionId, result.vaultId!);
+            await databaseSessionManager.updateSession(sessionId, { vault_id: result.vaultId! });
             span.setStatus('ok');
           } else {
             span.setStatus('internal_error');
@@ -105,7 +108,7 @@ export const paymentProcessor = inngest.createFunction(
 
       if (!vaultResult.success) {
         await step.run('handle-vault-failure', async () => {
-          funnelSessionManager.setSessionStatus(sessionId, 'failed');
+          await databaseSessionManager.updateSessionStatus(sessionId, 'failed');
           
           Sentry.captureMessage('Customer vault creation failed', {
             level: 'error',
@@ -129,7 +132,7 @@ export const paymentProcessor = inngest.createFunction(
           });
         });
 
-        transaction.setStatus('failed_precondition');
+        // transaction.setStatus('failed_precondition');
         return {
           success: false,
           error: vaultResult.error,
@@ -139,10 +142,10 @@ export const paymentProcessor = inngest.createFunction(
 
       // Step 3: Process Initial Payment
       const paymentResult = await step.run('process-initial-payment', async () => {
-        const span = transaction.startChild({
-          op: 'payment.process',
-          description: 'Process NMI Payment',
-        });
+        // const span = transaction.startChild({
+        //   op: 'payment.process',
+        //   description: 'Process NMI Payment',
+        // });
 
         try {
           const nmiService = NMIService.getInstance();
@@ -171,11 +174,15 @@ export const paymentProcessor = inngest.createFunction(
 
           if (result.success) {
             // Update session with transaction ID
-            funnelSessionManager.setTransactionId(sessionId, result.transactionId!);
-            span.setStatus('ok');
-            Sentry.setMeasurement('payment.amount', amount, 'usd');
+            await databaseSessionManager.updateSession(sessionId, { transaction_id: result.transactionId! });
+            // span.setStatus('ok');
+            try {
+              Sentry.setMeasurement('payment.amount', amount, 'usd');
+            } catch (error) {
+              console.warn('Sentry measurement failed:', error);
+            }
           } else {
-            span.setStatus('invalid_argument');
+            // span.setStatus('invalid_argument');
           }
 
           return {
@@ -199,7 +206,7 @@ export const paymentProcessor = inngest.createFunction(
 
       if (!paymentResult.success) {
         await step.run('handle-payment-failure', async () => {
-          funnelSessionManager.setSessionStatus(sessionId, 'failed');
+          await databaseSessionManager.updateSessionStatus(sessionId, 'failed');
 
           Sentry.captureMessage('Payment processing failed', {
             level: 'error',
@@ -229,7 +236,7 @@ export const paymentProcessor = inngest.createFunction(
           });
         });
 
-        transaction.setStatus('invalid_argument');
+        // transaction.setStatus('invalid_argument');
         return {
           success: false,
           error: paymentResult.error,
@@ -241,8 +248,10 @@ export const paymentProcessor = inngest.createFunction(
       // Step 4: Update session and trigger success events
       const successResult = await step.run('handle-payment-success', async () => {
         // Update session status
-        funnelSessionManager.setSessionStatus(sessionId, 'completed');
-        funnelSessionManager.setCurrentStep(sessionId, 'upsell-1');
+        await databaseSessionManager.updateSession(sessionId, {
+          status: 'completed',
+          current_step: 'upsell-1'
+        });
 
         // Send payment success event for Konnective sync
         await inngest.send({
@@ -282,13 +291,13 @@ export const paymentProcessor = inngest.createFunction(
         };
       });
 
-      transaction.setStatus('ok');
+      // transaction.setStatus('ok');
       return successResult;
 
     } catch (error) {
       // Handle any unexpected errors
       await step.run('handle-unexpected-error', async () => {
-        funnelSessionManager.setSessionStatus(sessionId, 'failed');
+        await databaseSessionManager.updateSessionStatus(sessionId, 'failed');
 
         capturePaymentError(error as Error, {
           sessionId,
@@ -308,10 +317,10 @@ export const paymentProcessor = inngest.createFunction(
         });
       });
 
-      transaction.setStatus('internal_error');
+      // transaction.setStatus('internal_error');
       throw error;
     } finally {
-      transaction.finish();
+      // transaction.finish();
     }
   }
 );
@@ -328,23 +337,23 @@ export const upsellProcessor = inngest.createFunction(
   async ({ event, step }) => {
     const { sessionId, vaultId, productId, amount, upsellStep } = event.data;
 
-    const transaction = Sentry.startTransaction({
-      name: 'checkout.upsell.process',
-      op: 'upsell',
-      data: {
-        sessionId,
-        productId,
-        amount,
-        upsellStep,
-      },
-    });
+    // const transaction = Sentry.startTransaction({
+    //   name: 'checkout.upsell.process',
+    //   op: 'upsell',
+    //   data: {
+    //     sessionId,
+    //     productId,
+    //     amount,
+    //     upsellStep,
+    //   },
+    // });
 
     try {
       // Step 1: Validate session and vault
       const validation = await step.run('validate-upsell', async () => {
-        const session = funnelSessionManager.getSession(sessionId);
-        
-        if (!session || !session.vaultId) {
+        const session = await databaseSessionManager.getSession(sessionId);
+
+        if (!session || !session.vault_id) {
           throw new Error('Invalid session or missing vault');
         }
 
@@ -372,7 +381,10 @@ export const upsellProcessor = inngest.createFunction(
 
       if (!upsellResult.success) {
         await step.run('handle-upsell-failure', async () => {
-          funnelSessionManager.declineUpsell(sessionId, productId);
+          // Add to declined upsells
+          const session = await databaseSessionManager.getSession(sessionId);
+          const upsellsDeclined = [...(session?.upsells_declined || []), productId];
+          await databaseSessionManager.updateSession(sessionId, { upsells_declined: upsellsDeclined });
 
           await inngest.send({
             name: 'webseed/upsell.payment.failed',
@@ -395,11 +407,17 @@ export const upsellProcessor = inngest.createFunction(
 
       // Step 3: Update session and move to next step
       await step.run('complete-upsell', async () => {
-        funnelSessionManager.acceptUpsell(sessionId, productId);
+        // Add to accepted upsells and update step
+        const session = await databaseSessionManager.getSession(sessionId);
+        const upsellsAccepted = [...(session?.upsells_accepted || []), productId];
 
         // Determine next step
         const nextStep = upsellStep === 1 ? 'upsell-2' : 'success';
-        funnelSessionManager.setCurrentStep(sessionId, nextStep as any);
+
+        await databaseSessionManager.updateSession(sessionId, {
+          upsells_accepted: upsellsAccepted,
+          current_step: nextStep
+        });
 
         // Send success event for CRM sync
         await inngest.send({
@@ -427,7 +445,7 @@ export const upsellProcessor = inngest.createFunction(
         });
       });
 
-      transaction.setStatus('ok');
+      // transaction.setStatus('ok');
       return {
         success: true,
         transactionId: upsellResult.transactionId,
@@ -441,10 +459,10 @@ export const upsellProcessor = inngest.createFunction(
         amount,
       });
 
-      transaction.setStatus('internal_error');
+      // transaction.setStatus('internal_error');
       throw error;
     } finally {
-      transaction.finish();
+      // transaction.finish();
     }
   }
 );

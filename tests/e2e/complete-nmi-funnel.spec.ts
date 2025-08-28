@@ -16,14 +16,14 @@ import { Page } from '@playwright/test';
 // Test customer data for NMI
 const TEST_CUSTOMER = {
   email: 'test@example.com',
-  firstName: 'John',
-  lastName: 'Doe',
   address: '123 Test Street',
+  apartment: '',
   city: 'Test City', 
   state: 'CA',
-  zipCode: '12345',
-  country: 'US',
-  phone: '1234567890'
+  zip: '12345',
+  country: 'us',
+  phone: '1234567890',
+  nameOnCard: 'John Doe'
 };
 
 // NMI Test payment data (Sandbox)

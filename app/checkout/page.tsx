@@ -513,69 +513,7 @@ export default function CheckoutPage() {
                 </ul>
               </div>
 
-              {/* Express Checkout */}
-              <div>
-                <h3 className="text-center font-bold text-[2.07rem] text-[#969696]">
-                  Express Checkout
-                </h3>
-                <div className="flex justify-between gap-4 mt-6 flex-wrap md:flex-nowrap">
-                  <button
-                    className="cursor-pointer w-full md:w-1/3"
-                    aria-label="Pay with PayPal"
-                    type="button">
-                    <Image
-                      className="w-full hidden md:inline-block"
-                      src="/assets/images/PayPal.svg"
-                      alt="PayPal"
-                      width={100}
-                      height={40}
-                      loading="lazy"
-                    />
-                    <Image
-                      className="w-full inline-block md:hidden"
-                      src="/assets/images/paypal-big.svg"
-                      alt="PayPal"
-                      width={200}
-                      height={60}
-                      loading="eager"
-                    />
-                  </button>
-                  <div className="flex justify-between gap-4 items-center w-full md:w-2/3">
-                    {/* Apple Pay temporarily disabled */}
-                    {/* <button
-                      className="cursor-pointer w-1/2 md:w-full"
-                      aria-label="Pay with Apple Pay"
-                      type="button">
-                      <Image
-                        className="w-full"
-                        src="/assets/images/applypay.svg"
-                        alt="Apple Pay"
-                        width={100}
-                        height={40}
-                        loading="lazy"
-                      />
-                    </button> */}
-                    <button
-                      className="cursor-pointer w-full"
-                      aria-label="Pay with Google Pay"
-                      type="button">
-                      <Image
-                        className="w-full"
-                        src="/assets/images/googlepay.svg"
-                        alt="Google Pay"
-                        width={100}
-                        height={40}
-                        loading="lazy"
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-10 mb-21.5 border-b-3 border-[#CDCDCD] relative">
-                  <span className="absolute inline-block bg-white w-31 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-[#A6A6A6] text-[2.13rem] font-medium">
-                    OR
-                  </span>
-                </div>
-              </div>
+              {/* Express Checkout section moved to NewDesignCheckoutForm component */}
 
               {/* Error Display */}
               {error && (

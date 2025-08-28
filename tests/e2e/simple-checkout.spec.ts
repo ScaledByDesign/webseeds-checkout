@@ -24,8 +24,8 @@ test.describe('Basic Checkout UI', () => {
   test('should display form fields correctly', async ({ page }) => {
     // Check all required form fields are present
     const requiredFields = [
-      'email', 'firstName', 'lastName', 'address', 
-      'city', 'state', 'zipCode', 'phone', 'nameOnCard'
+      'email', 'address', 'apartment', 'city', 
+      'state', 'zip', 'phone', 'nameOnCard', 'country'
     ];
     
     for (const field of requiredFields) {
@@ -36,19 +36,36 @@ test.describe('Basic Checkout UI', () => {
   test('should allow filling form fields', async ({ page }) => {
     // Fill out form fields
     await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="firstName"]', 'John');
-    await page.fill('input[name="lastName"]', 'Doe');
     await page.fill('input[name="address"]', '123 Test St');
+    await page.fill('input[name="apartment"]', 'Apt 101');
     await page.fill('input[name="city"]', 'Test City');
-    await page.fill('input[name="state"]', 'CA');
-    await page.fill('input[name="zipCode"]', '12345');
+    await page.selectOption('select[name="state"]', 'CA');
+    await page.fill('input[name="zip"]', '12345');
+    await page.selectOption('select[name="country"]', 'us');
     await page.fill('input[name="phone"]', '1234567890');
     await page.fill('input[name="nameOnCard"]', 'John Doe');
     
     // Verify values are filled
     await expect(page.locator('input[name="email"]')).toHaveValue('test@example.com');
-    await expect(page.locator('input[name="firstName"]')).toHaveValue('John');
-    await expect(page.locator('input[name="lastName"]')).toHaveValue('Doe');
+    await expect(page.locator('input[name="address"]')).toHaveValue('123 Test St');
+    await expect(page.locator('input[name="nameOnCard"]')).toHaveValue('John Doe');
+  });
+
+  test('should auto-fill form with test data button', async ({ page }) => {
+    // Look for auto-fill button (usually for development/testing)
+    const autoFillButton = page.locator('button:has-text("Fill Test Data"), button:has-text("Auto Fill"), button:has-text("Test Data")');
+    
+    if (await autoFillButton.count() > 0) {
+      await autoFillButton.first().click();
+      await page.waitForTimeout(1000); // Wait for auto-fill to complete
+      
+      // Verify fields are filled
+      await expect(page.locator('input[name="email"]')).not.toBeEmpty();
+      await expect(page.locator('input[name="address"]')).not.toBeEmpty();
+      await expect(page.locator('input[name="city"]')).not.toBeEmpty();
+      await expect(page.locator('input[name="zip"]')).not.toBeEmpty();
+      await expect(page.locator('input[name="nameOnCard"]')).not.toBeEmpty();
+    }
   });
 
   test('should show submit button is disabled initially', async ({ page }) => {

@@ -147,34 +147,28 @@ export const inngest = new Inngest({
     ...notificationEvents
   }),
   middleware: [
-    // Add Sentry tracing to Inngest functions
+    // Temporarily disabled Sentry middleware due to API compatibility issues
+    // TODO: Re-enable with proper Sentry v8 API
+    /*
     {
       name: 'sentry-tracing',
       init() {
         return {
           onFunctionRun(ctx) {
-            const transaction = Sentry.startTransaction({
-              name: `inngest.${ctx.fn.id}`,
-              op: 'function',
-              data: {
-                eventName: ctx.event.name,
-                functionId: ctx.fn.id,
-              },
-            });
-            
-            Sentry.getCurrentHub().configureScope(scope => {
-              scope.setSpan(transaction);
-              scope.setTag('inngest.function', ctx.fn.id);
-              scope.setTag('inngest.event', ctx.event.name);
+            // Use Sentry v8 compatible API
+            Sentry.withScope(scope => {
+              scope.setTag('inngest.function', ctx.fn?.id || 'unknown');
+              scope.setTag('inngest.event', ctx.event?.name || 'unknown');
               scope.setContext('inngest', {
                 runId: ctx.runId,
                 attempt: ctx.attempt,
+                functionId: ctx.fn?.id || 'unknown',
+                eventName: ctx.event?.name || 'unknown',
               });
             });
 
             return {
               transformOutput(ctx) {
-                transaction.finish();
                 return ctx.output;
               },
               transformError(ctx) {
@@ -189,8 +183,6 @@ export const inngest = new Inngest({
                     event: ctx.event,
                   },
                 });
-                transaction.setStatus('internal_error');
-                transaction.finish();
                 throw ctx.error;
               },
             };
@@ -198,6 +190,7 @@ export const inngest = new Inngest({
         };
       },
     },
+    */
   ],
 });
 

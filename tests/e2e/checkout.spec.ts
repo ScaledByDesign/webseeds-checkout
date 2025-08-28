@@ -10,15 +10,14 @@ import { Page } from '@playwright/test';
 
 // Test data constants
 const TEST_CUSTOMER = {
-  firstName: 'John',
-  lastName: 'Doe',
   email: 'john.doe@example.com',
   phone: '1234567890',
   address: '123 Test Street',
+  apartment: 'Apt 101',
   city: 'Test City',
   state: 'CA',
-  zipCode: '12345',
-  country: 'US',
+  zip: '12345',
+  country: 'us',
   nameOnCard: 'John Doe'
 };
 
@@ -34,14 +33,14 @@ class CheckoutPageHelper {
   constructor(private page: Page) {}
 
   async fillCustomerInformation() {
-    await this.page.fill('input[name="firstName"]', TEST_CUSTOMER.firstName);
-    await this.page.fill('input[name="lastName"]', TEST_CUSTOMER.lastName);
     await this.page.fill('input[name="email"]', TEST_CUSTOMER.email);
     await this.page.fill('input[name="phone"]', TEST_CUSTOMER.phone);
     await this.page.fill('input[name="address"]', TEST_CUSTOMER.address);
+    await this.page.fill('input[name="apartment"]', TEST_CUSTOMER.apartment);
     await this.page.fill('input[name="city"]', TEST_CUSTOMER.city);
     await this.page.selectOption('select[name="state"]', TEST_CUSTOMER.state);
-    await this.page.fill('input[name="zipCode"]', TEST_CUSTOMER.zipCode);
+    await this.page.fill('input[name="zip"]', TEST_CUSTOMER.zip);
+    await this.page.selectOption('select[name="country"]', TEST_CUSTOMER.country);
     await this.page.fill('input[name="nameOnCard"]', TEST_CUSTOMER.nameOnCard);
   }
 

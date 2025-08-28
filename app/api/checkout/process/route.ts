@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { inngest } from '../../../../src/lib/inngest';
-import { funnelSessionManager } from '../../../../src/lib/funnel-session';
-import { captureCheckoutEvent } from '../../../../src/lib/sentry';
+import { databaseSessionManager } from '@/src/lib/database-session-manager';
+import { directPaymentProcessor } from '@/src/lib/direct-payment-processor';
+import { captureCheckoutEvent } from '@/src/lib/sentry';
 
 // Validation schemas
 const customerInfoSchema = z.object({
@@ -91,8 +91,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       0
     );
 
-    // Create funnel session
-    const session = funnelSessionManager.createSession({
+    // Create funnel session in database
+    const session = await databaseSessionManager.createSession({
       email: validatedData.customerInfo.email,
       products: validatedData.products,
       customerInfo: {
@@ -106,45 +106,66 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
         country: validatedData.customerInfo.country,
       },
       couponCode: validatedData.couponCode,
-      metadata: validatedData.metadata,
-    });
-
-    // Add billing info if provided
-    if (validatedData.billingInfo) {
-      funnelSessionManager.setBillingInfo(session.id, validatedData.billingInfo);
-    }
-
-    // Update session status to processing
-    funnelSessionManager.setSessionStatus(session.id, 'processing');
-    funnelSessionManager.setCurrentStep(session.id, 'processing');
-
-    // Send event to Inngest for async processing
-    await inngest.send({
-      name: 'webseed/payment.attempted',
-      data: {
-        sessionId: session.id,
-        paymentToken: validatedData.paymentToken,
-        amount: totalAmount,
-        customerInfo: validatedData.customerInfo,
-        products: validatedData.products,
-        couponCode: validatedData.couponCode,
+      metadata: {
+        ...validatedData.metadata,
+        billingInfo: validatedData.billingInfo, // Store billing info in metadata
       },
     });
 
-    // Log successful checkout initiation
-    captureCheckoutEvent('Checkout processing initiated', 'info', {
-      sessionId: session.id,
+    // Update session status to processing and ensure it's committed
+    const updatedSession = await databaseSessionManager.updateSession(session.id, {
+      status: 'processing',
+      current_step: 'processing',
+      payment_token: validatedData.paymentToken,
+    });
+
+    if (!updatedSession) {
+      throw new Error('Failed to update session status');
+    }
+
+    // Verify session exists in database before proceeding
+    const verifiedSession = await databaseSessionManager.getSession(session.id);
+    if (!verifiedSession) {
+      throw new Error('Session not found after creation');
+    }
+
+    // Process payment directly (no Inngest)
+    console.log('💳 Processing payment directly...');
+    const paymentResult = await directPaymentProcessor.processPayment({
+      sessionId: verifiedSession.id,
+      paymentToken: validatedData.paymentToken,
+      amount: totalAmount,
+      customerInfo: validatedData.customerInfo,
+      products: validatedData.products,
+      couponCode: validatedData.couponCode,
+    });
+
+    // Log checkout result
+    captureCheckoutEvent('Checkout processing completed', paymentResult.success ? 'info' : 'error', {
+      sessionId: verifiedSession.id,
       email: validatedData.customerInfo.email,
       amount: totalAmount,
       productCount: validatedData.products.length,
+      success: paymentResult.success,
+      error: paymentResult.error,
     });
 
-    // Return immediately with session ID
+    if (!paymentResult.success) {
+      return NextResponse.json({
+        success: false,
+        sessionId: verifiedSession.id,
+        message: paymentResult.error || 'Payment processing failed',
+        error: paymentResult.error,
+      }, { status: 400 });
+    }
+
+    // Return success with next step
     return NextResponse.json({
       success: true,
-      sessionId: session.id,
-      message: 'Payment processing initiated',
-      nextStep: `/checkout/status/${session.id}`,
+      sessionId: verifiedSession.id,
+      transactionId: paymentResult.transactionId,
+      message: 'Payment processed successfully',
+      nextStep: paymentResult.nextStep || `/checkout/success`,
     });
 
   } catch (error) {

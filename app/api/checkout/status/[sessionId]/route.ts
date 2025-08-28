@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { funnelSessionManager } from '../../../../../src/lib/funnel-session';
-import { captureCheckoutEvent } from '../../../../../src/lib/sentry';
+import { databaseSessionManager } from '@/src/lib/database-session-manager';
+import { captureCheckoutEvent } from '@/src/lib/sentry';
 
 interface StatusResponse {
   success: boolean;
@@ -45,8 +45,8 @@ export async function GET(
       );
     }
 
-    // Get session from manager
-    const session = funnelSessionManager.getSession(sessionId);
+    // Get session from database
+    const session = await databaseSessionManager.getSession(sessionId);
 
     if (!session) {
       captureCheckoutEvent('Session not found for status check', 'warning', {
@@ -65,18 +65,18 @@ export async function GET(
     }
 
     // Calculate processing time for estimated wait
-    const processingTime = Date.now() - session.updatedAt.getTime();
+    const processingTime = Date.now() - new Date(session.updated_at).getTime();
     const estimatedWaitTime = Math.max(0, 30 - Math.floor(processingTime / 1000)); // 30 seconds max wait
 
     // Determine next step based on current status and step
     let nextStep: string | undefined;
-    
+
     if (session.status === 'completed') {
-      if (session.currentStep === 'checkout' || session.currentStep === 'processing') {
+      if (session.current_step === 'checkout' || session.current_step === 'processing') {
         nextStep = '/checkout/upsell';
-      } else if (session.currentStep === 'upsell-1') {
+      } else if (session.current_step === 'upsell-1') {
         nextStep = '/checkout/upsell-2';
-      } else if (session.currentStep === 'upsell-2') {
+      } else if (session.current_step === 'upsell-2') {
         nextStep = '/checkout/success';
       } else {
         nextStep = '/checkout/success';
@@ -89,14 +89,14 @@ export async function GET(
       success: true,
       status: session.status as StatusResponse['status'],
       sessionId: session.id,
-      transactionId: session.transactionId,
-      vaultId: session.vaultId,
-      currentStep: session.currentStep,
+      transactionId: session.transaction_id,
+      vaultId: session.vault_id,
+      currentStep: session.current_step,
       nextStep,
       estimatedWaitTime: session.status === 'processing' ? estimatedWaitTime : undefined,
       metadata: {
-        processingStartedAt: session.createdAt.toISOString(),
-        lastUpdatedAt: session.updatedAt.toISOString(),
+        processingStartedAt: session.created_at,
+        lastUpdatedAt: session.updated_at,
       },
     };
 
@@ -110,7 +110,7 @@ export async function GET(
       captureCheckoutEvent('Long processing time detected', 'warning', {
         sessionId,
         processingTimeMs: processingTime,
-        currentStep: session.currentStep,
+        currentStep: session.current_step,
       });
     }
 
@@ -160,7 +160,7 @@ export async function POST(
 
   try {
     const { sessionId } = params;
-    const session = funnelSessionManager.getSession(sessionId);
+    const session = await databaseSessionManager.getSession(sessionId);
 
     if (!session) {
       return NextResponse.json(
@@ -172,7 +172,7 @@ export async function POST(
     // Return full session data for debugging
     return NextResponse.json({
       session,
-      stats: funnelSessionManager.getSessionStats(),
+      stats: { message: 'Database session manager - no stats available' },
     });
 
   } catch (error) {

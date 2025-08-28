@@ -18,25 +18,25 @@ import { Page } from '@playwright/test';
 const TEST_CUSTOMERS = {
   valid: {
     email: 'nmi-test@webseed.com',
-    firstName: 'John',
-    lastName: 'Doe',
     address: '123 Test Street',
+    apartment: 'Suite 100',
     city: 'Test City',
     state: 'CA',
-    zipCode: '12345',
-    country: 'US',
-    phone: '1234567890'
+    zip: '12345',
+    country: 'us',
+    phone: '1234567890',
+    nameOnCard: 'John Doe'
   },
   international: {
     email: 'intl-test@webseed.com',
-    firstName: 'Maria',
-    lastName: 'Garcia',
     address: '456 International Ave',
+    apartment: '',
     city: 'Toronto',
     state: 'ON',
-    zipCode: 'M5V 3A8',
-    country: 'CA',
-    phone: '4161234567'
+    zip: 'M5V 3A8',
+    country: 'ca',
+    phone: '4161234567',
+    nameOnCard: 'Maria Garcia'
   }
 };
 
