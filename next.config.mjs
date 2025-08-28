@@ -28,6 +28,24 @@ const nextConfig = {
     minimumCacheTTL: 31536000, // 1 year cache
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Add domains for external images if needed
+    domains: [],
+    // Ensure local images work properly on Vercel
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.vercel.app',
+        port: '',
+        pathname: '/assets/**',
+      },
+    ],
+    // Temporary fix: disable optimization for problematic images on Vercel
+    unoptimized: process.env.NODE_ENV === 'production',
+    // Use default loader but with error handling
+    loader: 'default',
+    // Add dangerouslyAllowSVG for SVG support
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   
   // Enable compression
@@ -74,6 +92,10 @@ const nextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable'
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*'
           }
         ]
       },
@@ -81,8 +103,12 @@ const nextConfig = {
         source: '/assets/upsells/:path*',
         headers: [
           {
-            key: 'Cache-Control', 
+            key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable'
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*'
           }
         ]
       },
@@ -90,8 +116,12 @@ const nextConfig = {
         source: '/assets/components/:path*',
         headers: [
           {
-            key: 'Cache-Control', 
+            key: 'Cache-Control',
             value: 'public, max-age=604800'
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*'
           }
         ]
       }
