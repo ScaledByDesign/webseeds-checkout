@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
   const [showValidationModal, setShowValidationModal] = useState(false)
+  const [autoFillTrigger, setAutoFillTrigger] = useState(0)
   const [systemBannerMessage, setSystemBannerMessage] = useState<string | null>(null)
 
   // Payment processing states
@@ -310,6 +311,10 @@ export default function CheckoutPage() {
     alert('Special price has expired! The regular price will now apply.')
   }
 
+  const handleAutoFill = () => {
+    setAutoFillTrigger(prev => prev + 1)
+  }
+
   // Validation Modal Component
   const ValidationModal = () => {
     if (!showValidationModal || validationErrors.length === 0) return null
@@ -536,7 +541,8 @@ export default function CheckoutPage() {
                     />
                   </button>
                   <div className="flex justify-between gap-4 items-center w-full md:w-2/3">
-                    <button
+                    {/* Apple Pay temporarily disabled */}
+                    {/* <button
                       className="cursor-pointer w-1/2 md:w-full"
                       aria-label="Pay with Apple Pay"
                       type="button">
@@ -548,9 +554,9 @@ export default function CheckoutPage() {
                         height={40}
                         loading="lazy"
                       />
-                    </button>
+                    </button> */}
                     <button
-                      className="cursor-pointer w-1/2 md:w-full"
+                      className="cursor-pointer w-full"
                       aria-label="Pay with Google Pay"
                       type="button">
                       <Image
@@ -587,11 +593,22 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Test Auto-Fill Button */}
+              <div className="mb-4">
+                <button
+                  onClick={handleAutoFill}
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                >
+                  🧪 Auto-Fill Test Data
+                </button>
+              </div>
+
               {/* Checkout Form */}
               <NewDesignCheckoutForm
                 order={order}
                 onPaymentSuccess={handlePaymentSuccess}
                 onPaymentError={handlePaymentError}
+                autoFillTrigger={autoFillTrigger}
               />
 
               {/* Processing Overlay */}
@@ -677,7 +694,7 @@ export default function CheckoutPage() {
               <div className="mt-18 pl-15 hidden md:block">
                 <div>
                   <label className="flex items-center gap-5 cursor-pointer select-none">
-                    <input type="checkbox" className="peer hidden" checked />
+                    <input type="checkbox" className="peer hidden" defaultChecked />
                     <span className="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
                       <Image src="/assets/images/check-dark.svg" alt="Checkmark" className="hidden" width={16} height={16} loading="lazy" />
                     </span>

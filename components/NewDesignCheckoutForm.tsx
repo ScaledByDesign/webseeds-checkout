@@ -10,6 +10,7 @@ declare global {
     CollectJS: {
       configure: (config: any) => void
       startPaymentRequest: () => void
+      isValid?: (field: string) => boolean
     }
   }
 }
@@ -40,13 +41,15 @@ interface NewDesignCheckoutFormProps {
   onPaymentSuccess: (result: any) => void
   onPaymentError: (error: string) => void
   apiEndpoint?: string
+  autoFillTrigger?: number
 }
 
-export function NewDesignCheckoutForm({ 
-  order, 
-  onPaymentSuccess, 
-  onPaymentError, 
-  apiEndpoint = '/api/checkout/process'
+export function NewDesignCheckoutForm({
+  order,
+  onPaymentSuccess,
+  onPaymentError,
+  apiEndpoint = '/api/checkout/process',
+  autoFillTrigger = 0
 }: NewDesignCheckoutFormProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<FormData>({
@@ -62,7 +65,53 @@ export function NewDesignCheckoutForm({
     useSameAddress: true
   })
   const [errors, setErrors] = useState<FormErrors>({})
+  // Load CollectJS script if not already present
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const existing = document.querySelector('script[src*="Collect.js"]') as HTMLScriptElement | null
+    if (existing) return
+
+    const script = document.createElement('script')
+    script.src = process.env.NEXT_PUBLIC_COLLECT_JS_URL || 'https://secure.nmi.com/token/Collect.js'
+    script.async = true
+    const tk = process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY
+    if (tk) script.setAttribute('data-tokenization-key', tk)
+
+    script.onload = () => {
+      console.log('✅ CollectJS script loaded')
+    }
+    script.onerror = () => {
+      console.error('❌ Failed to load CollectJS script')
+      onPaymentError('Failed to load payment system. Please refresh the page.')
+    }
+
+    document.body.appendChild(script)
+
+    return () => {
+      script.onload = null
+      script.onerror = null
+    }
+  }, [onPaymentError])
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
+
+  // Auto-fill with test data when autoFillTrigger changes
+  useEffect(() => {
+    if (autoFillTrigger > 0) {
+      setFormData({
+        email: 'test@example.com',
+        address: '123 Test Street',
+        apartment: 'Apt 4B',
+        city: 'Test City',
+        state: 'CA',
+        zip: '12345',
+        country: 'US',
+        phone: '555-123-4567',
+        nameOnCard: 'John Doe',
+        useSameAddress: true
+      })
+    }
+  }, [autoFillTrigger])
 
   // Initialize CollectJS
   useEffect(() => {
@@ -71,6 +120,7 @@ export function NewDesignCheckoutForm({
         window.CollectJS.configure({
           variant: 'inline',
           styleSniffer: true,
+          tokenizationKey: process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY || undefined,
           fields: {
             ccnumber: {
               selector: '#card-number-field',
@@ -94,24 +144,34 @@ export function NewDesignCheckoutForm({
               console.log('Payment token received:', response.token)
 
               try {
-                // Submit the form with the token
-                const orderData = {
-                  customer: {
+                // Submit the form with the token (match /api/checkout/process schema)
+                const body = {
+                  customerInfo: {
                     email: formData.email,
-                    phone: formData.phone
-                  },
-                  shipping: {
+                    // Using nameOnCard as full name for now; ideally split into first/last
+                    firstName: formData.nameOnCard.split(' ')[0] || formData.nameOnCard,
+                    lastName: formData.nameOnCard.split(' ').slice(1).join(' ') || 'Customer',
+                    phone: formData.phone,
                     address: formData.address,
-                    apartment: formData.apartment,
                     city: formData.city,
                     state: formData.state,
                     zipCode: formData.zip,
-                    country: formData.country
+                    country: (formData.country || 'US').toUpperCase(),
                   },
-                  payment: {
-                    token: response.token
+                  paymentToken: response.token,
+                  products: (order?.items || []).map((it: any) => ({
+                    id: it.id,
+                    name: it.name,
+                    price: it.price,
+                    quantity: it.quantity ?? 1,
+                  })),
+                  billingInfo: formData.useSameAddress ? undefined : {
+                    address: formData.billingAddress || formData.address,
+                    city: formData.billingCity || formData.city,
+                    state: formData.billingState || formData.state,
+                    zipCode: formData.billingZip || formData.zip,
+                    country: (formData.country || 'US').toUpperCase(),
                   },
-                  order: order
                 }
 
                 const result = await fetch(apiEndpoint, {
@@ -119,7 +179,7 @@ export function NewDesignCheckoutForm({
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify(orderData)
+                  body: JSON.stringify(body)
                 })
 
                 const data = await result.json()
@@ -594,7 +654,7 @@ export function NewDesignCheckoutForm({
               </div>
             )}
           </div>
-          
+
           <div className="floating-label-group">
             <input
               type="text"
@@ -808,19 +868,9 @@ export function NewDesignCheckoutForm({
         </p>
         <div className="space-y-8">
           <div className="floating-label-group relative">
-            <input
-              type="text"
-              id="cardNumber"
-              className={`w-full border-2 border-[#CDCDCD] pl-9 pr-40 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cardNumber ? 'input-error' : ''}`}
-              placeholder=" "
-              pattern="[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}"
-              maxLength={19}
-              required
-              autoComplete="cc-number"
-              aria-required="true"
-              inputMode="numeric"
-            />
-            <label htmlFor="cardNumber" className="floating-label bg-transparent">
+            {/* CollectJS mount point for card number */}
+            <div id="card-number-field" className={`w-full border-2 border-[#CDCDCD] pl-9 pr-40 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cardNumber ? 'input-error' : ''}`}></div>
+            <label htmlFor="card-number-field" className="floating-label bg-transparent">
               Card Number
             </label>
             {errors.cardNumber && (
@@ -857,19 +907,9 @@ export function NewDesignCheckoutForm({
           </div>
           <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
             <div className="floating-label-group w-full lg:mb-0">
-              <input
-                type="text"
-                id="expiry"
-                className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''}`}
-                placeholder=" "
-                pattern="[0-9]{2}/[0-9]{2}"
-                maxLength={5}
-                required
-                autoComplete="cc-exp"
-                aria-required="true"
-                inputMode="numeric"
-              />
-              <label htmlFor="expiry" className="floating-label bg-transparent">
+              {/* CollectJS mount point for expiry */}
+              <div id="card-expiry-field" className={`w-full border-2 border-[#CDCDCD] px-9 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''}`}></div>
+              <label htmlFor="card-expiry-field" className="floating-label bg-transparent">
                 Expiration Date{' '}
                 <span className="text-[1.6rem] text-[#a2a2a2]">(MM/YY)</span>
               </label>
@@ -880,19 +920,9 @@ export function NewDesignCheckoutForm({
               )}
             </div>
             <div className="floating-label-group relative w-full lg:mb-0">
-              <input
-                type="text"
-                id="cvv"
-                className={`w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''}`}
-                placeholder=" "
-                pattern="[0-9]{3,4}"
-                maxLength={4}
-                required
-                autoComplete="cc-csc"
-                aria-required="true"
-                inputMode="numeric"
-              />
-              <label htmlFor="cvv" className="floating-label bg-transparent">
+              {/* CollectJS mount point for CVV */}
+              <div id="card-cvv-field" className={`w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''}`}></div>
+              <label htmlFor="card-cvv-field" className="floating-label bg-transparent">
                 Security Code
               </label>
               {errors.cvv && (

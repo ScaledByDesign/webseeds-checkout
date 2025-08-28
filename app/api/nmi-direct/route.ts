@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('🎯 NMI Direct - Received request');
-    
+
     // Validate the request
     const validatedData = nmiDirectSchema.parse(body);
     console.log('✅ Validation passed');
