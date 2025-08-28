@@ -214,38 +214,49 @@ export default function CheckoutPage() {
     return validationErrors
   }
 
-  const handlePaymentError = (errorMessage: string, errors?: Record<string, string>) => {
+  const handlePaymentError = (errorMessage: string, errors?: Record<string, string>, sessionId?: string) => {
     console.error('Payment failed:', errorMessage)
 
     // Check if it's a duplicate transaction error
     const lowerError = errorMessage.toLowerCase()
     if (lowerError.includes('duplicate') && lowerError.includes('refid')) {
       console.log('🔍 Duplicate transaction detected:', errorMessage)
-      
+
       // Extract REFID if present
       const refidMatch = errorMessage.match(/REFID:(\d+)/i)
       const refid = refidMatch ? refidMatch[1] : null
-      
+
       // For true duplicates (with REFID), auto-proceed to next step
       if (refid) {
         console.log('✅ True duplicate with REFID:', refid, '- auto-proceeding to next step')
-        
+        console.log('📋 Session ID from error response:', sessionId)
+
         // Show a brief notification before proceeding
         setSystemBannerMessage('Payment already processed. Proceeding to next step...')
-        
-        // Store the REFID for reference
+
+        // Store the REFID and session for reference
         sessionStorage.setItem('duplicate_refid', refid)
-        
+        if (sessionId) {
+          sessionStorage.setItem('checkout_session', sessionId)
+          sessionStorage.setItem('main_transaction', refid)
+        }
+
         // Auto-proceed after a brief delay
         setTimeout(() => {
-          // Navigate to upsell or thank you page
-          const storedSession = sessionStorage.getItem('checkout_session')
-          const storedTransaction = sessionStorage.getItem('main_transaction')
-          
-          if (storedSession) {
-            router.push(`/upsell/1?session=${storedSession}&transaction=${storedTransaction || refid}`)
+          // Navigate to upsell - use sessionId from error response if available
+          if (sessionId) {
+            console.log('🎯 Redirecting to upsell with duplicate session:', sessionId)
+            router.push(`/upsell/1?session=${sessionId}&transaction=${refid}`)
           } else {
-            router.push(`/thankyou?transaction=${refid}`)
+            // Fallback to stored session or thank you page
+            const storedSession = sessionStorage.getItem('checkout_session')
+            const storedTransaction = sessionStorage.getItem('main_transaction')
+
+            if (storedSession) {
+              router.push(`/upsell/1?session=${storedSession}&transaction=${storedTransaction || refid}`)
+            } else {
+              router.push(`/thankyou?transaction=${refid}`)
+            }
           }
         }, 2000)
       } else {

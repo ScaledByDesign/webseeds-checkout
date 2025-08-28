@@ -86,32 +86,7 @@ export default function CardUpdateModal({
   });
 
 
-  // Sync fallback form data with CollectJS when available
-  useEffect(() => {
-    if (!collectJSReady || typeof window === 'undefined' || !window.CollectJS) return;
-
-    // If fallback data has card number, try to populate CollectJS fields
-    if (fallbackCardData.cardNumber || fallbackCardData.expiryDate || fallbackCardData.cvv) {
-      console.log('🔄 Syncing password manager data with CollectJS...');
-      
-      try {
-        // Note: Direct manipulation of CollectJS fields is complex due to iframe security
-        // The main benefit is the autocomplete attributes for password managers
-        if (fallbackCardData.cardNumber) {
-          console.log('📝 Card number available from password manager');
-        }
-        if (fallbackCardData.expiryDate) {
-          console.log('📝 Expiry date available from password manager');
-        }
-        if (fallbackCardData.cvv) {
-          console.log('📝 CVV available from password manager');
-        }
-      } catch (error) {
-        console.log('⚠️ Could not sync password manager data with CollectJS fields');
-      }
-    }
-  }, [fallbackCardData, collectJSReady]);
-
+  // Define cleanup function first (no dependencies)
   const cleanup = useCallback(() => {
     try {
       // Reset CollectJS if it exists
@@ -150,6 +125,7 @@ export default function CardUpdateModal({
     setUpdateError('');
   }, []);
 
+  // Define handleVaultUpdate before configureCollectJS
   const handleVaultUpdate = useCallback(async (paymentToken: string) => {
     if (!sessionId) {
       console.error('❌ Cannot update vault: No session ID available');
@@ -205,6 +181,7 @@ export default function CardUpdateModal({
     }
   }, [sessionId, fallbackCardData.nameOnCard, onSuccess]);
 
+  // Define configureCollectJS after handleVaultUpdate
   const configureCollectJS = useCallback(() => {
     console.log('🔄 Configuring CollectJS for card update...');
     
@@ -260,6 +237,7 @@ export default function CardUpdateModal({
     }
   }, [handleVaultUpdate]);
 
+  // Define loadCollectJS after configureCollectJS
   const loadCollectJS = useCallback(() => {
     if (typeof window === 'undefined') return;
     
@@ -291,6 +269,32 @@ export default function CardUpdateModal({
     
     document.head.appendChild(script);
   }, [cleanup, configureCollectJS]);
+
+  // Sync fallback form data with CollectJS when available
+  useEffect(() => {
+    if (!collectJSReady || typeof window === 'undefined' || !window.CollectJS) return;
+
+    // If fallback data has card number, try to populate CollectJS fields
+    if (fallbackCardData.cardNumber || fallbackCardData.expiryDate || fallbackCardData.cvv) {
+      console.log('🔄 Syncing password manager data with CollectJS...');
+      
+      try {
+        // Note: Direct manipulation of CollectJS fields is complex due to iframe security
+        // The main benefit is the autocomplete attributes for password managers
+        if (fallbackCardData.cardNumber) {
+          console.log('📝 Card number available from password manager');
+        }
+        if (fallbackCardData.expiryDate) {
+          console.log('📝 Expiry date available from password manager');
+        }
+        if (fallbackCardData.cvv) {
+          console.log('📝 CVV available from password manager');
+        }
+      } catch (error) {
+        console.log('⚠️ Could not sync password manager data with CollectJS fields');
+      }
+    }
+  }, [fallbackCardData, collectJSReady]);
 
   // Load CollectJS when modal opens
   useEffect(() => {
