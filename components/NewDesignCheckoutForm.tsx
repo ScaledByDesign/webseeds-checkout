@@ -47,7 +47,7 @@ interface FormErrors {
 interface NewDesignCheckoutFormProps {
   order: any
   onPaymentSuccess: (result: any) => void
-  onPaymentError: (error: string) => void
+  onPaymentError: (error: string, errors?: Record<string, string>, sessionId?: string) => void
   apiEndpoint?: string
   autoFillTrigger?: number
 }
