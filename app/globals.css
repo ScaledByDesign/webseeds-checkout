@@ -250,13 +250,14 @@
     margin-left: 5%;
   }
 
-  .floating-label-group:has(.input-error:placeholder-shown) label.floating-label {
+  /* Remove these rules that shift labels on error - they cause content jump */
+  /* .floating-label-group:has(.input-error:placeholder-shown) label.floating-label {
     top: 37% !important;
   }
 
   .floating-label-group:has(.input-error:placeholder-shown) input:focus ~ .floating-label span {
     top: 37% !important;
-  }
+  } */
 
   .floating-label-group input:focus ~ .floating-label span,
   .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
@@ -396,6 +397,8 @@
     color: #666666; /* text-[#666666] */
     line-height: 1; /* leading-none */
     box-sizing: border-box;
+    min-height: 79px; /* Ensure consistent height to prevent layout shift */
+    transition: border-color 0.3s ease; /* Only animate border color */
 
     /* Responsive font sizing - matches form inputs exactly */
     font-size: 2.6rem; /* Mobile: text-[2.6rem] */
@@ -487,6 +490,21 @@
     line-height: 1.2 !important;
     min-height: 3.5rem !important;
   }
+  
+  /* Prevent content shift when validation error occurs */
+  .collectjs-field.input-error iframe {
+    padding-top: 0.5rem !important;
+    padding-bottom: 1rem !important;
+  }
+  
+  #card-number-field.input-error iframe {
+    padding: 0.5rem 4rem 1rem 2.30rem !important;
+  }
+  
+  #card-expiry-field.input-error iframe,
+  #card-cvv-field.input-error iframe {
+    padding: .3rem 4rem 1rem 2.30rem !important;
+  }
 
   /* Countdown timer - exact match from design */
   .countdown-timer {
@@ -559,3 +577,20 @@
     @apply border-blue-500 !important;
   }
 }
+
+/* Card icons styling */
+.card-icons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.card-icons img {
+  height: 24px;
+  width: auto;
+  transition: all 0.3s ease;
+}
+
+/* Card icons are always visible - CollectJS doesn't support real-time card type detection */
+

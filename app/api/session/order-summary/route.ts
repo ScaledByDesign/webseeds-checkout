@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession, getSessionById } from '@/src/lib/cookie-session'
 import { funnelSessionManager } from '@/src/lib/funnel-session'
+import { databaseSessionManager } from '@/src/lib/database-session-manager'
 
 // Product catalog for mapping product codes
 const PRODUCT_CATALOG: Record<string, {
@@ -85,8 +86,17 @@ export async function GET(request: NextRequest) {
     
     // Get funnel session data
     const funnelSession = funnelSessionManager.getSession(sessionId)
-    
-    if (!funnelSession && !cookieSession) {
+
+    // Also check database session manager for checkout orders
+    let databaseSession = null
+    try {
+      databaseSession = await databaseSessionManager.getSession(sessionId)
+      console.log('📋 Database session found:', databaseSession ? 'Yes' : 'No')
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch database session:', error)
+    }
+
+    if (!funnelSession && !cookieSession && !databaseSession) {
       return NextResponse.json(
         { success: false, error: 'Session not found' },
         { status: 404 }
@@ -96,7 +106,7 @@ export async function GET(request: NextRequest) {
     // Build products array from all sources
     const products: any[] = []
     let totalAmount = 0
-    
+
     // Add main products from funnel session
     if (funnelSession?.products) {
       funnelSession.products.forEach(product => {
@@ -105,7 +115,7 @@ export async function GET(request: NextRequest) {
         if (product.id === 'fitspresso-6-pack') {
           productCode = 'FITSPRESSO_6'
         }
-        
+
         const catalogInfo = PRODUCT_CATALOG[productCode] || PRODUCT_CATALOG['FITSPRESSO_6']
         products.push({
           ...catalogInfo,
@@ -116,7 +126,7 @@ export async function GET(request: NextRequest) {
           type: 'main'
         })
         totalAmount += product.price * product.quantity
-        
+
         // Add bonuses if applicable
         if (catalogInfo.includeBonuses) {
           products.push(...BONUS_PRODUCTS.map(bonus => ({
@@ -127,6 +137,43 @@ export async function GET(request: NextRequest) {
           })))
         }
       })
+    }
+
+    // Add main products from database session if no funnel session
+    if (!funnelSession?.products && databaseSession?.products) {
+      try {
+        const dbProducts = JSON.parse(databaseSession.products)
+        dbProducts.forEach((product: any) => {
+          // Map product IDs to catalog codes
+          let productCode = product.id
+          if (product.id === 'fitspresso-6-pack') {
+            productCode = 'FITSPRESSO_6'
+          }
+
+          const catalogInfo = PRODUCT_CATALOG[productCode] || PRODUCT_CATALOG['FITSPRESSO_6']
+          products.push({
+            ...catalogInfo,
+            ...product,
+            transactionId: databaseSession.transaction_id || 'pending',
+            amount: product.price * product.quantity,
+            productCode: productCode,
+            type: 'main'
+          })
+          totalAmount += product.price * product.quantity
+
+          // Add bonuses if applicable
+          if (catalogInfo.includeBonuses) {
+            products.push(...BONUS_PRODUCTS.map(bonus => ({
+              ...bonus,
+              transactionId: 'BONUS',
+              amount: 0,
+              productCode: 'BONUS'
+            })))
+          }
+        })
+      } catch (error) {
+        console.warn('⚠️ Failed to parse database session products:', error)
+      }
     }
     
     // Add upsells from funnel session
@@ -146,6 +193,36 @@ export async function GET(request: NextRequest) {
         }
       })
     }
+
+    // Also check order details cache for upsells (fallback)
+    if (!funnelSession?.upsells || funnelSession.upsells.length === 0) {
+      try {
+        console.log('🔍 Checking order details cache for upsells...')
+        const baseUrl = new URL(request.url).origin
+        const orderResponse = await fetch(`${baseUrl}/api/order/details?session=${sessionId}`)
+        const orderData = await orderResponse.json()
+
+        if (orderData.success && orderData.order?.upsells) {
+          console.log(`📦 Found ${orderData.order.upsells.length} upsells in order cache`)
+          orderData.order.upsells.forEach((upsell: any) => {
+            const catalogInfo = PRODUCT_CATALOG[upsell.productCode]
+            if (catalogInfo) {
+              products.push({
+                ...catalogInfo,
+                transactionId: upsell.transactionId,
+                amount: upsell.amount,
+                productCode: upsell.productCode,
+                step: upsell.step,
+                type: 'upsell'
+              })
+              totalAmount += upsell.amount
+            }
+          })
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch order details cache:', error)
+      }
+    }
     
     // Build response
     const response = {
@@ -160,16 +237,60 @@ export async function GET(request: NextRequest) {
       } : null,
       order: {
         products,
-        customer: funnelSession?.customerInfo || {
-          firstName: cookieSession?.firstName || 'Valued',
-          lastName: cookieSession?.lastName || 'Customer',
-          email: cookieSession?.email || 'customer@example.com',
-          phone: funnelSession?.customerInfo?.phone,
-          address: funnelSession?.customerInfo?.address,
-          city: funnelSession?.customerInfo?.city,
-          state: funnelSession?.customerInfo?.state,
-          zipCode: funnelSession?.customerInfo?.zipCode
-        },
+        customer: await (async () => {
+          // Try funnel session first
+          if (funnelSession?.customerInfo) {
+            return funnelSession.customerInfo
+          }
+
+          // Try database session
+          if (databaseSession) {
+            try {
+              const customerInfo = typeof databaseSession.customer_info === 'string'
+                ? JSON.parse(databaseSession.customer_info)
+                : databaseSession.customer_info
+
+              return {
+                firstName: customerInfo?.firstName || databaseSession.first_name || cookieSession?.firstName || 'Valued',
+                lastName: customerInfo?.lastName || databaseSession.last_name || cookieSession?.lastName || 'Customer',
+                email: databaseSession.email || cookieSession?.email || 'customer@example.com',
+                phone: customerInfo?.phone || databaseSession.phone,
+                address: customerInfo?.address || databaseSession.address,
+                city: customerInfo?.city || databaseSession.city,
+                state: customerInfo?.state || databaseSession.state,
+                zipCode: customerInfo?.zipCode || databaseSession.zip_code
+              }
+            } catch (error) {
+              console.warn('⚠️ Failed to parse database customer info:', error)
+            }
+          }
+
+          // Try order cache as fallback
+          try {
+            const baseUrl = new URL(request.url).origin
+            const orderResponse = await fetch(`${baseUrl}/api/order/details?session=${sessionId}`)
+            const orderData = await orderResponse.json()
+
+            if (orderData.success && orderData.order?.customer) {
+              console.log('📋 Using customer info from order cache')
+              return orderData.order.customer
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to fetch customer from order cache:', error)
+          }
+
+          // Final fallback to cookie session
+          return {
+            firstName: cookieSession?.firstName || 'Valued',
+            lastName: cookieSession?.lastName || 'Customer',
+            email: cookieSession?.email || 'customer@example.com',
+            phone: funnelSession?.customerInfo?.phone,
+            address: funnelSession?.customerInfo?.address,
+            city: funnelSession?.customerInfo?.city,
+            state: funnelSession?.customerInfo?.state,
+            zipCode: funnelSession?.customerInfo?.zipCode
+          }
+        })(),
         totals: {
           subtotal: totalAmount,
           shipping: 0,

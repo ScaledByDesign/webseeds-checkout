@@ -23,6 +23,12 @@ export interface PaymentParams {
     zipCode: string;
     country?: string;
   };
+  products?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
 }
 
 export interface PaymentResult {

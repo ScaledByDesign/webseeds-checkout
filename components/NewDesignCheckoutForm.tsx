@@ -74,6 +74,7 @@ export function NewDesignCheckoutForm({
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
+  const [collectJSInitializing, setCollectJSInitializing] = useState(true)
   const [fieldsValid, setFieldsValid] = useState(false)
   const [cardFieldsTouched, setCardFieldsTouched] = useState(false)
   
@@ -83,10 +84,35 @@ export function NewDesignCheckoutForm({
     ccexp: false,
     cvv: false
   })
+  
+  // CollectJS doesn't support real-time card type detection
+  // Card type is only available after tokenization via response.card.type
+  const [isValidating, setIsValidating] = useState(false)
+  const [fieldFocus, setFieldFocus] = useState<string>('')
+  const [fieldInteractions, setFieldInteractions] = useState({
+    ccnumber: { focused: 0, blurred: 0, changed: 0 },
+    ccexp: { focused: 0, blurred: 0, changed: 0 },
+    cvv: { focused: 0, blurred: 0, changed: 0 }
+  })
+  // Card icons are always visible since we can't detect card type in real-time
 
   // Removed floating states - using pure CSS approach like the design
   const collectJSInitializedRef = useRef(false)
   const addressInputRef = useRef<HTMLInputElement>(null)
+  
+  // Store callbacks in refs to prevent reinitialization while keeping current values
+  const onPaymentSuccessRef = useRef(onPaymentSuccess)
+  const onPaymentErrorRef = useRef(onPaymentError)
+  const apiEndpointRef = useRef(apiEndpoint)
+  const orderRef = useRef(order)
+  
+  // Update refs when props change
+  useEffect(() => {
+    onPaymentSuccessRef.current = onPaymentSuccess
+    onPaymentErrorRef.current = onPaymentError
+    apiEndpointRef.current = apiEndpoint
+    orderRef.current = order
+  }, [onPaymentSuccess, onPaymentError, apiEndpoint, order])
   
   // Load CollectJS script if not already present
   useEffect(() => {
@@ -120,7 +146,7 @@ export function NewDesignCheckoutForm({
     }
     script.onerror = () => {
       console.error('❌ Failed to load CollectJS script')
-      onPaymentError('Failed to load payment system. Please refresh the page.')
+      onPaymentErrorRef.current('Failed to load payment system. Please refresh the page.')
     }
 
     document.body.appendChild(script)
@@ -129,7 +155,7 @@ export function NewDesignCheckoutForm({
       script.onload = null
       script.onerror = null
     }
-  }, [onPaymentError])
+  }, []) // Empty dependencies - we use ref for the callback
 
   // Google Places Autocomplete placeholder - matching design
   // The design includes Google Places but only loads if API key is configured
@@ -210,24 +236,184 @@ export function NewDesignCheckoutForm({
     detectLocationAndFill()
   }, [])
 
+  // Get card type icon
+  const getCardIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      visa: '💳',
+      mastercard: '💳',
+      amex: '💳',
+      discover: '💳',
+      jcb: '💳',
+      diners: '💳',
+      unionpay: '💳'
+    }
+    return icons[type] || '💳'
+  }
+
+  // Get card type display name
+  const getCardDisplayName = (type: string) => {
+    const names: Record<string, string> = {
+      visa: 'Visa',
+      mastercard: 'Mastercard',
+      amex: 'American Express',
+      discover: 'Discover',
+      jcb: 'JCB',
+      diners: 'Diners Club',
+      unionpay: 'UnionPay'
+    }
+    return names[type] || ''
+  }
+
+  // Card type detection based on BIN (Bank Identification Number)
+  const detectCardType = (cardNumber: string) => {
+    const cleaned = cardNumber.replace(/\D/g, '')
+    
+    // Card type patterns with length requirements
+    const patterns = {
+      visa: /^4/,
+      mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/,
+      amex: /^3[47]/,
+      discover: /^(6011|622|64[4-9]|65)/,
+      diners: /^(300|301|302|303|304|305|36|38)/,
+      jcb: /^35/,
+      unionpay: /^62/
+    }
+    
+    let detectedType = ''
+    for (const [type, pattern] of Object.entries(patterns)) {
+      if (pattern.test(cleaned)) {
+        detectedType = type
+        break
+      }
+    }
+    
+    // Note: Card type detection doesn't work with CollectJS iframes
+    // This function is kept for reference but isn't used
+    
+    return detectedType
+  }
+  
+  // Luhn algorithm for card validation
+  const luhnCheck = (cardNumber: string) => {
+    const cleaned = cardNumber.replace(/\D/g, '')
+    if (cleaned.length < 13) return false
+    
+    let sum = 0
+    let isEven = false
+    
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned[i], 10)
+      
+      if (isEven) {
+        digit *= 2
+        if (digit > 9) {
+          digit -= 9
+        }
+      }
+      
+      sum += digit
+      isEven = !isEven
+    }
+    
+    return sum % 10 === 0
+  }
+  
+  // Format card number with spaces
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '')
+    const type = detectCardType(cleaned)
+    
+    // Format based on card type
+    if (type === 'amex') {
+      // Amex: 4-6-5
+      return cleaned.replace(/(\d{4})(\d{6})(\d{5})/, '$1 $2 $3').trim()
+    } else if (type === 'diners') {
+      // Diners: 4-6-4
+      return cleaned.replace(/(\d{4})(\d{6})(\d{4})/, '$1 $2 $3').trim()
+    } else {
+      // Default: 4-4-4-4
+      return cleaned.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+    }
+  }
+  
+  // Test card numbers for development (DO NOT use in production)
+  const TEST_CARDS = {
+    visa: '4111111111111111',           // Visa test card
+    mastercard: '5555555555554444',     // Mastercard test card  
+    amex: '378282246310005',            // American Express test card
+    discover: '6011111111111117',       // Discover test card
+    jcb: '3530111333300000',            // JCB test card
+    diners: '30569309025904',            // Diners Club test card
+    // Additional test cards for specific scenarios
+    visa_debit: '4000056655665556',     // Visa debit test
+    mastercard_2series: '2223003122003222', // Mastercard 2-series
+    insufficient_funds: '4000000000000002', // Will decline - insufficient funds
+    expired_card: '4000000000000069',    // Will decline - expired card
+    cvc_fail: '4000000000000127',        // Will decline - incorrect CVC
+  }
+
+  // Generate random realistic test data
+  const generateRandomTestData = () => {
+    // Arrays of realistic data
+    const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen']
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin']
+    const streetNames = ['Main', 'Oak', 'Maple', 'Cedar', 'Elm', 'Pine', 'Washington', 'Lake', 'Hill', 'Park', 'View', 'Forest', 'River', 'Spring', 'Church', 'Market', 'Center', 'School', 'Union', 'High']
+    const streetTypes = ['Street', 'Avenue', 'Boulevard', 'Drive', 'Road', 'Lane', 'Way', 'Court', 'Place', 'Circle']
+    const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose', 'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'Charlotte', 'San Francisco', 'Indianapolis', 'Seattle', 'Denver', 'Washington']
+    const states = ['CA', 'TX', 'FL', 'NY', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI', 'NJ', 'VA', 'WA', 'AZ', 'MA', 'TN', 'IN', 'MO', 'MD', 'WI']
+    const emailDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com', 'fastmail.com', 'zoho.com']
+    const apartmentPrefixes = ['Apt', 'Suite', 'Unit', '#']
+    
+    // Helper functions
+    const randomItem = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
+    const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
+    
+    // Generate random data
+    const firstName = randomItem(firstNames)
+    const lastName = randomItem(lastNames)
+    const fullName = `${firstName} ${lastName}`
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomNumber(1, 999)}@${randomItem(emailDomains)}`
+    const streetNumber = randomNumber(100, 9999)
+    const streetName = randomItem(streetNames)
+    const streetType = randomItem(streetTypes)
+    const address = `${streetNumber} ${streetName} ${streetType}`
+    
+    // Randomly include apartment
+    const hasApartment = Math.random() > 0.5
+    const apartment = hasApartment ? `${randomItem(apartmentPrefixes)} ${randomNumber(1, 999)}` : ''
+    
+    const city = randomItem(cities)
+    const state = randomItem(states)
+    const zip = randomNumber(10000, 99999).toString()
+    
+    // Generate phone with area code
+    const areaCode = randomNumber(200, 999)
+    const phonePrefix = randomNumber(200, 999)
+    const phoneSuffix = randomNumber(1000, 9999)
+    const phone = `${areaCode}-${phonePrefix}-${phoneSuffix}`
+    
+    return {
+      email,
+      address,
+      apartment,
+      city,
+      state,
+      zip,
+      country: 'US',
+      phone,
+      nameOnCard: fullName,
+      useSameAddress: Math.random() > 0.3 // 70% chance of using same address
+    }
+  }
+  
   // Auto-fill with test data when autoFillTrigger changes
   useEffect(() => {
     if (autoFillTrigger > 0) {
-      setFormData({
-        email: 'test@example.com',
-        address: '123 Test Street',
-        apartment: 'Apt 4B',
-        city: 'Test City',
-        state: 'CA',
-        zip: '12345',
-        country: 'US',
-        phone: '555-123-4567',
-        nameOnCard: 'John Doe',
-        useSameAddress: true
-      })
+      const randomData = generateRandomTestData()
+      setFormData(randomData)
 
-      // CollectJS fields are ready for user input  
-      // Auto-fill disabled to prevent validation errors with test data
+      // Log the generated test data
+      console.log('🎲 Auto-filled with random test data:', randomData)
       console.log('ℹ️ CollectJS fields ready for user input')
     }
   }, [autoFillTrigger])
@@ -407,9 +593,9 @@ export function NewDesignCheckoutForm({
                   console.log('💳 BILLING: Using shipping address')
                 }
                 console.log('📋 Current form data from DOM:', currentFormData)
-                console.log('🛒 Order items:', order?.items)
+                console.log('🛒 Order items:', orderRef.current?.items)
 
-                const result = await fetch(apiEndpoint, {
+                const result = await fetch(apiEndpointRef.current, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -420,15 +606,15 @@ export function NewDesignCheckoutForm({
                 const data = await result.json()
 
                 if (data.success) {
-                  onPaymentSuccess(data)
+                  onPaymentSuccessRef.current(data)
                 } else {
                   // Pass sessionId to error handler for duplicate transaction handling
                   console.log('📋 API error response:', data)
-                  onPaymentError(data.message || 'Payment processing failed.', data.errors, data.sessionId)
+                  onPaymentErrorRef.current(data.message || 'Payment processing failed.', data.errors, data.sessionId)
                 }
               } catch (error) {
                 console.error('Order submission error:', error)
-                onPaymentError('Failed to process your order. Please try again.')
+                onPaymentErrorRef.current('Failed to process your order. Please try again.')
               } finally {
                 setLoading(false)
               }
@@ -444,13 +630,14 @@ export function NewDesignCheckoutForm({
                 errorMessage = `Payment error: ${response.error}`
               }
 
-              onPaymentError(errorMessage)
+              onPaymentErrorRef.current(errorMessage)
               setLoading(false)
             }
           },
           fieldsAvailableCallback: () => {
             console.log('✅ CollectJS fields are now available and ready for input')
             setCollectJSLoaded(true)
+            setCollectJSInitializing(false)
             
             // Additional validation to ensure fields are truly ready
             setTimeout(() => {
@@ -484,6 +671,9 @@ export function NewDesignCheckoutForm({
                       cvvField: !!cvvField 
                     } 
                   }))
+                  
+                  // Note: CollectJS doesn't support real-time card type detection
+                  // Card type is only available after successful tokenization
                 } else {
                   console.log('⚠️ Payment iframes not yet detected, checking again...')
                   console.log('  - Card Number iframe:', cardField ? 'present' : 'missing')
@@ -494,6 +684,13 @@ export function NewDesignCheckoutForm({
               checkFields()
             }, 500)
           },
+          // NOTE: The following callbacks are NOT valid CollectJS options:
+          // - focusCallback (not supported)
+          // - blurCallback (not supported)  
+          // - binChangedCallback (not supported)
+          // - enableCardBrandPreviews (not supported)
+          // 
+          // Card type detection is only available from response.card.type after tokenization
           validationCallback: (field: string, status: boolean, message: string) => {
             // Track that user has interacted with card fields
             if (!cardFieldsTouched) {
@@ -509,8 +706,10 @@ export function NewDesignCheckoutForm({
             
             const errorField = fieldMap[field] || field
             
-            // Update inline errors based on validation status
+            // Update inline errors based on validation status with enhanced messages
             if (!status) {
+              setIsValidating(true)
+              
               if (message === 'Field is empty') {
                 // Clear error for empty fields (will be set when form is submitted)
                 setErrors(prev => ({
@@ -518,15 +717,42 @@ export function NewDesignCheckoutForm({
                   [errorField]: ''
                 }))
               } else {
-                // Set specific validation error
+                // Set specific validation error with enhanced messages
                 console.log(`Field ${field} validation error:`, message)
+                
+                // Provide more user-friendly error messages
+                let enhancedMessage = message
+                if (field === 'ccnumber') {
+                  if (message.includes('invalid')) {
+                    enhancedMessage = 'Please enter a valid card number'
+                    // Check Luhn algorithm
+                    const cardInput = (document.querySelector('#card-number-field iframe') as any)?.value || ''
+                    if (cardInput && !luhnCheck(cardInput)) {
+                      enhancedMessage = 'Card number is invalid. Please check and try again'
+                    }
+                  }
+                } else if (field === 'ccexp') {
+                  if (message.includes('past') || message.includes('expired')) {
+                    enhancedMessage = 'Card has expired. Please use a different card'
+                  } else if (message.includes('invalid')) {
+                    enhancedMessage = 'Please enter a valid expiration date (MM/YY)'
+                  }
+                } else if (field === 'cvv') {
+                  if (message.includes('invalid')) {
+                    // Since we can't detect card type in real-time with CollectJS,
+                    // show a generic message that covers both 3 and 4 digit CVV codes
+                    enhancedMessage = 'Please enter the 3 or 4-digit security code from your card'
+                  }
+                }
+                
                 setErrors(prev => ({
                   ...prev,
-                  [errorField]: message || `Invalid ${field}`
+                  [errorField]: enhancedMessage
                 }))
               }
             } else {
               // Clear error when field becomes valid
+              setIsValidating(false)
               setErrors(prev => ({
                 ...prev,
                 [errorField]: ''
@@ -554,7 +780,7 @@ export function NewDesignCheckoutForm({
           },
           timeoutCallback: () => {
             console.error('CollectJS timeout')
-            onPaymentError('Payment system timeout. Please refresh and try again.')
+            onPaymentErrorRef.current('Payment system timeout. Please refresh and try again.')
             setLoading(false)
           }
         })
@@ -573,18 +799,50 @@ export function NewDesignCheckoutForm({
         }
       }, 100)
 
-      // Cleanup interval after 60 seconds
-      setTimeout(() => {
-        clearInterval(checkCollectJS)
-        if (!collectJSLoaded) {
-          console.error('CollectJS failed to load within 60 seconds')
-          onPaymentError('Payment system failed to load. Please refresh the page.')
+      // Implement retry logic with exponential backoff
+      let retryCount = 0
+      const maxRetries = 3
+      let retryTimeout: NodeJS.Timeout | null = null
+      
+      const retryInitialization = () => {
+        if (retryCount < maxRetries && !collectJSInitializedRef.current) {
+          retryCount++
+          console.log(`🔄 Retrying CollectJS initialization (attempt ${retryCount}/${maxRetries})`)
+          
+          // Exponential backoff: 2s, 4s, 8s
+          const delay = Math.pow(2, retryCount) * 1000
+          retryTimeout = setTimeout(() => {
+            if (!collectJSInitializedRef.current && window.CollectJS) {
+              initializeCollectJS()
+            }
+          }, delay)
         }
-      }, 60000)
+      }
+      
+      // Reduced timeout from 60s to 30s with retry logic
+      const timeoutId = setTimeout(() => {
+        clearInterval(checkCollectJS)
+        if (!collectJSInitializedRef.current) {
+          console.error('CollectJS failed to load within 30 seconds')
+          retryInitialization()
+          
+          // Final timeout after all retries
+          setTimeout(() => {
+            if (!collectJSInitializedRef.current) {
+              onPaymentErrorRef.current('Payment system failed to load. Please refresh the page.')
+            }
+          }, 15000) // Additional 15 seconds for retries
+        }
+      }, 30000)
 
-      return () => clearInterval(checkCollectJS)
+      // Cleanup function - clear all timers
+      return () => {
+        clearInterval(checkCollectJS)
+        clearTimeout(timeoutId)
+        if (retryTimeout) clearTimeout(retryTimeout)
+      }
     }
-  }, [order, apiEndpoint, onPaymentSuccess, onPaymentError])
+  }, []) // Empty dependencies - initialization only happens once via ref check
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
@@ -800,42 +1058,54 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  // Billing address onBlur handlers - standard
+  // Billing address onBlur handlers - only validate if not using same address
   const handleBillingAddressValidation = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = e.target.value.trim()
-    if (!value) {
-      setErrors(prev => ({ ...prev, billingAddress: 'Billing address is required' }))
-    } else {
-      setErrors(prev => ({ ...prev, billingAddress: '' }))
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingAddress: 'Billing address is required' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingAddress: '' }))
+      }
     }
   }
 
   const handleBillingCityValidation = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = e.target.value.trim()
-    if (!value) {
-      setErrors(prev => ({ ...prev, billingCity: 'Billing city is required' }))
-    } else {
-      setErrors(prev => ({ ...prev, billingCity: '' }))
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingCity: 'Billing city is required' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingCity: '' }))
+      }
     }
   }
 
   const handleBillingStateValidation = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = e.target.value.trim()
-    if (!value) {
-      setErrors(prev => ({ ...prev, billingState: 'Billing state is required' }))
-    } else {
-      setErrors(prev => ({ ...prev, billingState: '' }))
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingState: 'Billing state is required' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingState: '' }))
+      }
     }
   }
 
   const handleBillingZipValidation = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = e.target.value.trim()
-    if (!value) {
-      setErrors(prev => ({ ...prev, billingZip: 'Billing postal code is required' }))
-    } else if (!validateZip(value)) {
-      setErrors(prev => ({ ...prev, billingZip: 'Please enter a valid billing postal code' }))
-    } else {
-      setErrors(prev => ({ ...prev, billingZip: '' }))
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingZip: 'Billing postal code is required' }))
+      } else if (!validateZip(value)) {
+        setErrors(prev => ({ ...prev, billingZip: 'Please enter a valid billing postal code' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingZip: '' }))
+      }
     }
   }
 
@@ -1216,7 +1486,7 @@ export function NewDesignCheckoutForm({
         setTimeout(() => {
           if (loading) {
             console.error('⏰ CollectJS callback timeout - no response after 30 seconds')
-            onPaymentError('Payment processing is taking too long. Please try again.')
+            onPaymentErrorRef.current('Payment processing is taking too long. Please try again.')
             setLoading(false)
           }
         }, 30000) // 30 second timeout
@@ -1225,7 +1495,7 @@ export function NewDesignCheckoutForm({
       }
     } catch (error) {
       console.error('❌ Payment submission error:', error)
-      onPaymentError('Payment processing failed. Please try again.')
+      onPaymentErrorRef.current('Payment processing failed. Please try again.')
       setLoading(false)
     }
   }
@@ -1545,14 +1815,24 @@ export function NewDesignCheckoutForm({
             <div
               id="card-number-field"
               data-autocomplete="cc-number"
-              className={`collectjs-field collectjs-card-number ${errors.cardNumber ? 'input-error' : ''}`}
+              role="textbox"
+              aria-label="Card Number"
+              aria-required="true"
+              aria-invalid={!!errors.cardNumber}
+              aria-describedby={errors.cardNumber ? "card-number-error" : undefined}
+              className={`collectjs-field collectjs-card-number ${errors.cardNumber ? 'input-error' : ''} ${!errors.cardNumber && fieldValidationState.ccnumber ? 'border-green-500' : ''}`}
             >
+              {collectJSInitializing && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                </div>
+              )}
             </div>
             <label htmlFor="card-number-field" className="floating-label bg-transparent">
               Card Number
             </label>
             {errors.cardNumber && (
-              <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+              <div id="card-number-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
                 {errors.cardNumber}
               </div>
             )}
@@ -1589,13 +1869,24 @@ export function NewDesignCheckoutForm({
               <div 
                 id="card-expiry-field" 
                 data-autocomplete="cc-exp"
-                className={`w-full border-2 border-[#CDCDCD] px-9 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''}`}
-              ></div>
+                role="textbox"
+                aria-label="Expiration Date MM/YYYY"
+                aria-required="true"
+                aria-invalid={!!errors.expiry}
+                aria-describedby={errors.expiry ? "expiry-error" : undefined}
+                className={`relative w-full border-2 border-[#CDCDCD] px-9 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''} ${!errors.expiry && fieldValidationState.ccexp ? 'border-green-500' : ''}`}
+              >
+                {collectJSInitializing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                  </div>
+                )}
+              </div>
               <label htmlFor="card-expiry-field" className="floating-label bg-transparent">
                 Expiration Date{' '}(MM/YYYY)
               </label>
               {errors.expiry && (
-                <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                <div id="expiry-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
                   {errors.expiry}
                 </div>
               )}
@@ -1605,13 +1896,24 @@ export function NewDesignCheckoutForm({
               <div 
                 id="card-cvv-field" 
                 data-autocomplete="cc-csc"
-                className={`w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''}`}
-              ></div>
+                role="textbox"
+                aria-label="Security Code CVV"
+                aria-required="true"
+                aria-invalid={!!errors.cvv}
+                aria-describedby={errors.cvv ? "cvv-error" : undefined}
+                className={`relative w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''} ${!errors.cvv && fieldValidationState.cvv ? 'border-green-500' : ''}`}
+              >
+                {collectJSInitializing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                  </div>
+                )}
+              </div>
               <label htmlFor="card-cvv-field" className="floating-label bg-transparent">
                 Security Code
               </label>
               {errors.cvv && (
-                <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
+                <div id="cvv-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
                   {errors.cvv}
                 </div>
               )}
@@ -1659,7 +1961,20 @@ export function NewDesignCheckoutForm({
                 style={{ transform: 'scale(1.5)' }}
                 id="sameAddress"
                 checked={formData.useSameAddress}
-                onChange={(e) => setFormData(prev => ({ ...prev, useSameAddress: e.target.checked }))}
+                onChange={(e) => {
+                  const isChecked = e.target.checked
+                  setFormData(prev => ({ ...prev, useSameAddress: isChecked }))
+                  // Clear billing address errors when using same address
+                  if (isChecked) {
+                    setErrors(prev => ({
+                      ...prev,
+                      billingAddress: '',
+                      billingCity: '',
+                      billingState: '',
+                      billingZip: ''
+                    }))
+                  }
+                }}
               />
               <span className="text-[#373738] font-medium text-[2.5rem]">
                 Use shipping address as payment

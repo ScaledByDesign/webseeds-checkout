@@ -180,8 +180,17 @@ export default function Upsell2() {
 
   // Handle upsell purchase
   const handleUpsellPurchase = async (productCode: string, amount: number, bottles: number) => {
+    console.log('🛒 UPSELL PURCHASE: Starting purchase process');
+    console.log('🛒 UPSELL PURCHASE: Product details:', {
+      productCode,
+      amount,
+      bottles,
+      isDownsell: showDownsell,
+      timestamp: new Date().toISOString()
+    });
+
     if (!sessionId) {
-      console.error('No session ID found in URL params');
+      console.error('❌ UPSELL PURCHASE: No session ID found in URL params');
       router.push('/checkout');
       return;
     }
@@ -191,7 +200,8 @@ export default function Upsell2() {
       productCode,
       amount,
       bottles,
-      step: 2
+      step: 2,
+      downsellActive: showDownsell
     });
 
     setLoading(true);
@@ -236,13 +246,49 @@ export default function Upsell2() {
 
   // Handle decline upsell
   const handleDeclineUpsell = () => {
+    console.log('🚫 DECLINE: handleDeclineUpsell called');
+    console.log('🚫 DECLINE: Current URL:', window.location.href);
+    console.log('🚫 DECLINE: SessionId:', sessionId);
+    console.log('🚫 DECLINE: ShowDownsell state:', showDownsell);
+    console.log('🚫 DECLINE: Timestamp:', new Date().toISOString());
+
     if (!sessionId) {
+      console.log('🚫 DECLINE: ERROR - No sessionId found, redirecting to checkout');
       router.push('/checkout');
       return;
     }
 
+    // Log decline event
+    console.log('📊 ANALYTICS: User declined upsell 2', {
+      sessionId,
+      declined_from: showDownsell ? 'downsell' : 'main_offer',
+      timestamp: Date.now()
+    });
+
     // Redirect to thank you page
-    router.push(`/thankyou?session=${sessionId}`);
+    const thankYouUrl = `/thankyou?session=${sessionId}`;
+    console.log('🚫 DECLINE: Redirecting to thank you page:', thankYouUrl);
+    console.log('🚫 DECLINE: Navigation initiated');
+    router.push(thankYouUrl);
+  };
+
+  // Handle showing downsell
+  const handleShowDownsell = () => {
+    console.log('⬇️ DOWNSELL: Showing downsell offer');
+    console.log('⬇️ DOWNSELL: Changing from 6 bottles to 3 bottles offer');
+    console.log('⬇️ DOWNSELL: Original offer was SA6_149 ($149)');
+    console.log('⬇️ DOWNSELL: New offer is SA3_099 ($99)');
+    console.log('⬇️ DOWNSELL: SessionId:', sessionId);
+    console.log('⬇️ DOWNSELL: Timestamp:', new Date().toISOString());
+    setShowDownsell(true);
+    
+    // Log downsell view
+    console.log('📊 ANALYTICS: Downsell viewed', {
+      sessionId,
+      original_offer: 'SA6_149',
+      downsell_offer: 'SA3_099',
+      timestamp: Date.now()
+    });
   };
 
   return (
@@ -381,7 +427,8 @@ export default function Upsell2() {
                           href="#"
                           onClick={(e) => {
                             e.preventDefault();
-                            setShowDownsell(true);
+                            console.log('🔗 CLICK: First "No thanks" link clicked - showing downsell');
+                            handleShowDownsell();
                           }}
                           className="lh1 limit-button flightPop" 
                           style={{ color: '#c71585' }}
@@ -513,7 +560,12 @@ export default function Upsell2() {
                       </p>
                       <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
                         <a 
-                          onClick={() => handleUpsellPurchase('SA3_099', 99, 3)} 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            console.log('🔗 CLICK: Second "No thanks" link clicked - showing downsell');
+                            handleShowDownsell();
+                          }}
                           className="lh1 limit-button flightPop" 
                           style={{ color: '#c71585' }}
                         >
@@ -607,9 +659,12 @@ export default function Upsell2() {
                   </p>
                   <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
                     <button 
-                      onClick={handleDeclineUpsell} 
+                      onClick={() => {
+                        console.log('🔗 CLICK: Downsell decline button clicked');
+                        handleDeclineUpsell();
+                      }}
                       className="lh1 limit-button flightPop3 decline-link" 
-                      style={{ color: '#c71585', background: 'none', border: 'none' }}
+                      style={{ color: '#c71585', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       <u>No thanks, I understand I cannot return to this page or see this offer again.</u>
                     </button>
@@ -699,9 +754,12 @@ export default function Upsell2() {
                   </p>
                   <p className="is-size-5 lh1 is-capitalized is-size-6-touch mb-0 has-text-weight-bold has-text-centered">
                     <button 
-                      onClick={handleDeclineUpsell} 
+                      onClick={() => {
+                        console.log('🔗 CLICK: Downsell decline button clicked');
+                        handleDeclineUpsell();
+                      }}
                       className="lh1 limit-button flightPop3 decline-link" 
-                      style={{ color: '#c71585', background: 'none', border: 'none' }}
+                      style={{ color: '#c71585', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
                       <u>No thanks, I understand I cannot return to this page or see this offer again.</u>
                     </button>

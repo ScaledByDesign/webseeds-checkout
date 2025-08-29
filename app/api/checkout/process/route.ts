@@ -291,6 +291,40 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       }
     }
 
+    // Initialize order cache with main order data for thank you page
+    try {
+      const baseUrl = new URL(request.url).origin
+      const orderCacheResponse = await fetch(`${baseUrl}/api/order/details`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'initialize',
+          sessionId: verifiedSession.id,
+          customer: {
+            firstName: customerInfo.firstName,
+            lastName: customerInfo.lastName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+            address: customerInfo.address,
+            city: customerInfo.city,
+            state: customerInfo.state,
+            zipCode: customerInfo.zipCode
+          },
+          mainOrder: {
+            transactionId: paymentResult.transactionId,
+            amount: amount,
+            productCode: products[0]?.id || 'FITSPRESSO_6',
+            products: products
+          }
+        })
+      })
+      const orderCacheResult = await orderCacheResponse.json()
+      console.log('🎯 Order cache initialized:', orderCacheResult.success ? 'Success' : orderCacheResult.error)
+    } catch (error) {
+      console.warn('⚠️ Failed to initialize order cache:', error)
+      // Don't fail the whole transaction for this
+    }
+
     // Success response
     console.log('🎉 PAYMENT SUCCESS:');
     console.log(`  💳 Transaction ID: ${paymentResult.transactionId}`);
