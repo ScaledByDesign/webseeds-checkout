@@ -76,6 +76,13 @@ export function NewDesignCheckoutForm({
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
   const [fieldsValid, setFieldsValid] = useState(false)
   const [cardFieldsTouched, setCardFieldsTouched] = useState(false)
+  
+  // Track individual field validation states
+  const [fieldValidationState, setFieldValidationState] = useState({
+    ccnumber: false,
+    ccexp: false,
+    cvv: false
+  })
 
   // Removed floating states - using pure CSS approach like the design
   const collectJSInitializedRef = useRef(false)
@@ -493,27 +500,57 @@ export function NewDesignCheckoutForm({
               setCardFieldsTouched(true)
             }
             
-            // Only log validation issues, not empty field states
-            if (!status && message !== 'Field is empty') {
-              console.log(`Field ${field} validation error:`, message)
+            // Map CollectJS field names to our error keys
+            const fieldMap: Record<string, string> = {
+              'ccnumber': 'cardNumber',
+              'ccexp': 'expiry',
+              'cvv': 'cvv'
+            }
+            
+            const errorField = fieldMap[field] || field
+            
+            // Update inline errors based on validation status
+            if (!status) {
+              if (message === 'Field is empty') {
+                // Clear error for empty fields (will be set when form is submitted)
+                setErrors(prev => ({
+                  ...prev,
+                  [errorField]: ''
+                }))
+              } else {
+                // Set specific validation error
+                console.log(`Field ${field} validation error:`, message)
+                setErrors(prev => ({
+                  ...prev,
+                  [errorField]: message || `Invalid ${field}`
+                }))
+              }
+            } else {
+              // Clear error when field becomes valid
+              setErrors(prev => ({
+                ...prev,
+                [errorField]: ''
+              }))
             }
 
-            // Track field validation status
-            // Since isValid() might not be available, track validation through the callback
-            // The validationCallback is called for each field, so we need to track all three
-            // For now, we'll consider fields valid if status is true for the field being validated
-            // This is a simplified approach since we can't check all fields at once
-            
-            // Mark that fields have been validated (user has entered something)
-            if (status && cardFieldsTouched) {
-              // If this field is valid and user has touched the fields, 
-              // we'll optimistically set fieldsValid to true
-              // This will be overridden if any field becomes invalid
-              setFieldsValid(true)
-            } else if (!status && message !== 'Field is empty') {
-              // If any field is invalid (and not just empty), mark as invalid
-              setFieldsValid(false)
-            }
+            // Track individual field validation status
+            setFieldValidationState(prev => {
+              const newState = {
+                ...prev,
+                [field]: status && message !== 'Field is empty'
+              }
+              
+              // Check if ALL fields are valid (not empty and valid format)
+              const allFieldsValid = newState.ccnumber && newState.ccexp && newState.cvv
+              
+              // Update the overall fieldsValid state
+              setFieldsValid(allFieldsValid)
+              
+              console.log(`📊 Field validation update - ${field}: ${status}, All fields valid: ${allFieldsValid}`)
+              console.log('   Current field states:', newState)
+              
+              return newState
+            })
           },
           timeoutCallback: () => {
             console.error('CollectJS timeout')
@@ -1076,44 +1113,37 @@ export function NewDesignCheckoutForm({
     const isValid = Object.keys(newErrors).length === 0
     
     if (!isValid) {
+      // Set all errors to state for inline display
+      setErrors(newErrors)
       
       const errorCount = Object.keys(newErrors).length
       if (errorCount > 0) {
-        // Show user-friendly error message
-        const missingFields = Object.keys(newErrors).map(field => {
-          switch(field) {
-            case 'email': return 'Email'
-            case 'nameOnCard': return 'Name on Card'
-            case 'address': return 'Street Address'
-            case 'phone': return 'Phone Number'
-            case 'city': return 'City'
-            case 'state': return 'State'
-            case 'zip': return 'ZIP Code'
-            case 'cardNumber': return 'Card Number'
-            case 'expiry': return 'Expiration Date'
-            case 'cvv': return 'Security Code (CVV)'
-            case 'payment': return 'Payment Information'
-            default: return field
-          }
-        })
-        
-        onPaymentError(`Please fill in the following required fields: ${missingFields.join(', ')}`)
+        // Log validation issues for debugging
+        console.log('Form validation failed with errors:', newErrors)
         
         // Scroll to the first error field
         const firstErrorField = Object.keys(newErrors)[0]
-        const element = document.getElementById(firstErrorField)
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          element.focus()
+        
+        // Special handling for payment fields
+        if (firstErrorField === 'cardNumber' || firstErrorField === 'expiry' || firstErrorField === 'cvv') {
+          // For CollectJS fields, find the iframe container
+          const paymentSection = document.querySelector('.collectjs-field')
+          if (paymentSection) {
+            paymentSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        } else {
+          // For regular form fields
+          const element = document.getElementById(firstErrorField)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            element.focus()
+          }
         }
       }
       return
     }
 
-    if (!collectJSLoaded) {
-      onPaymentError('Payment system is still loading. Please wait a moment and try again.')
-      return
-    }
+    // CollectJS loading is already checked above in validation
 
     // CollectJS will validate the payment fields when startPaymentRequest is called
     // No need to pre-check fieldsValid here as CollectJS handles validation internally
@@ -1136,7 +1166,22 @@ export function NewDesignCheckoutForm({
         // Check if user has entered card information
         if (!cardFieldsTouched) {
           console.warn('⚠️ No card information entered')
-          onPaymentError('Please enter your card number, expiration date, and security code')
+          // Set inline errors for empty fields
+          setErrors(prev => ({
+            ...prev,
+            cardNumber: 'Card number is required',
+            expiry: 'Expiration date is required',
+            cvv: 'Security code is required'
+          }))
+          
+          // Focus first error field (card number iframe)
+          const cardNumberFrame = document.querySelector('.collectjs-card-number') as HTMLIFrameElement
+          if (cardNumberFrame) {
+            cardNumberFrame.focus()
+            // Scroll to the payment section
+            cardNumberFrame.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          
           setLoading(false)
           return
         }
@@ -1144,7 +1189,22 @@ export function NewDesignCheckoutForm({
         // Check if entered card information is valid
         if (!fieldsValid) {
           console.warn('⚠️ Card information is invalid')
-          onPaymentError('Please check your card information. Ensure all fields are filled correctly.')
+          // Set inline errors for invalid fields
+          // Note: These will be more specific once CollectJS provides field-level validation
+          setErrors(prev => ({
+            ...prev,
+            cardNumber: prev.cardNumber || 'Please check your card number',
+            expiry: prev.expiry || 'Please check the expiration date',
+            cvv: prev.cvv || 'Please check the security code'
+          }))
+          
+          // Focus first error field
+          const firstErrorField = document.querySelector('.input-error') as HTMLElement
+          if (firstErrorField) {
+            firstErrorField.focus()
+            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          
           setLoading(false)
           return
         }

@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { NewDesignCheckoutForm } from '@/components/NewDesignCheckoutForm'
-import CardUpdateModal from '@/components/CardUpdateModal'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -40,7 +39,6 @@ export default function CheckoutPage() {
   const [systemBannerMessage, setSystemBannerMessage] = useState<string | null>(null)
 
   // Card update modal state
-  const [showCardUpdateModal, setShowCardUpdateModal] = useState(false)
   const [cardUpdateErrorMessage, setCardUpdateErrorMessage] = useState('')
 
   // Payment processing states
@@ -417,9 +415,9 @@ export default function CheckoutPage() {
           }
         }, 2000)
       } else {
-        // Show card update modal for generic duplicate errors
+        // Show error message for generic duplicate errors
         setCardUpdateErrorMessage('This appears to be a duplicate transaction. Please update your payment method to continue.')
-        setShowCardUpdateModal(true)
+        setSystemBannerMessage('This appears to be a duplicate transaction. Please update your payment method to continue.')
       }
     } else if (errors && Object.keys(errors).length > 0) {
       // Structured field errors → show detailed modal
@@ -433,9 +431,9 @@ export default function CheckoutPage() {
           lowerError.includes('invalid card') ||
           lowerError.includes('insufficient') ||
           lowerError.includes('cvv')) {
-        // Show card update modal for card-related errors
+        // Show error message for card-related errors
         setCardUpdateErrorMessage(errorMessage)
-        setShowCardUpdateModal(true)
+        setSystemBannerMessage(errorMessage)
       } else {
         // Generic/system errors → show a non-blocking banner instead of modal
         setSystemBannerMessage(errorMessage || 'We hit a snag. Please try again.')
@@ -1092,22 +1090,6 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {/* Card Update Modal for handling payment errors */}
-      <CardUpdateModal
-        isOpen={showCardUpdateModal}
-        onClose={() => setShowCardUpdateModal(false)}
-        sessionId={sessionId}
-        onSuccess={() => {
-          setShowCardUpdateModal(false)
-          // Reload the page to retry the transaction
-          window.location.reload()
-        }}
-        onError={(errorMsg) => {
-          console.error('Card update failed:', errorMsg)
-          setSystemBannerMessage(errorMsg)
-        }}
-        errorMessage={cardUpdateErrorMessage}
-      />
     </>
   )
 }
