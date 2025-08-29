@@ -75,19 +75,79 @@
     }
   }
 
+  /*
+   * CSS FALLBACK RULES - Pure CSS floating labels (from design)
+   * These work even if JavaScript fails or is disabled
+   */
   .floating-label-group input:focus ~ .floating-label,
   .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
   .floating-label-group select:focus ~ .floating-label,
   .floating-label-group select:valid ~ .floating-label,
-  .floating-label-group.always-float .floating-label {
+  .floating-label-group.input-focused .floating-label,
+  .floating-label-group.has-value .floating-label {
     top: 1.2rem;
     transform: translateY(-50%);
     font-size: 1.2rem;
-    color: #666666; /* at rest, same as other inputs */
+    color: #976987; /* match design - purple when floating */
     z-index: 1;
   }
-  .floating-label-group.always-float:focus-within .floating-label {
-    color: #976987; /* match design focus color */
+
+  /* Additional fallback rules for span elements - matching design exactly */
+  .floating-label-group input:focus ~ .floating-label,
+  .floating-label-group input:not(:placeholder-shown) ~ .floating-label,
+  .floating-label-group select:focus ~ .floating-label,
+  .floating-label-group select:valid ~ .floating-label,
+  .floating-label-group input:focus ~ span,
+  .floating-label-group input:not(:placeholder-shown) ~ span,
+  .floating-label-group select:focus ~ span,
+  .floating-label-group select:valid ~ span,
+  .floating-label-group.input-focused .floating-label,
+  .floating-label-group.input-focused span,
+  .floating-label-group.has-value .floating-label,
+  .floating-label-group.has-value span {
+    font-size: 1.2rem;
+    color: #976987;
+    z-index: 1;
+  }
+
+  /* Focus state for inputs and selects - fallback */
+  .floating-label-group input:focus,
+  .floating-label-group select:focus {
+    border-color: #976987; /* match design focus border color */
+  }
+
+  /* Specific fallback rules for ZIP code and CVV fields - matching design exactly */
+  #zip:placeholder-shown ~ .floating-label,
+  #billing-zip:placeholder-shown ~ .floating-label,
+  #cvv:placeholder-shown ~ .floating-label {
+    /* Default placeholder state - no special positioning needed */
+  }
+
+  /* When ZIP code or CVV is focused or has value, use the same floating position as other fields */
+  #zip:focus ~ .floating-label,
+  #zip:not(:placeholder-shown) ~ .floating-label,
+  #billing-zip:focus ~ .floating-label,
+  #billing-zip:not(:placeholder-shown) ~ .floating-label,
+  #cvv:focus ~ .floating-label,
+  #cvv:not(:placeholder-shown) ~ .floating-label {
+    top: 1.2rem;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: #976987;
+    background: white;
+    z-index: 1;
+  }
+
+  /*
+   * JAVASCRIPT ENHANCEMENT RULES - Higher specificity overrides
+   * These provide enhanced reliability when JavaScript is working
+   */
+  .floating-label-group.always-float .floating-label {
+    top: 1.2rem !important;
+    transform: translateY(-50%) !important;
+    font-size: 1.2rem !important;
+    color: #976987 !important; /* match design - purple when floating */
+    z-index: 1 !important;
   }
   /* CollectJS container styling - fixed height to prevent expansion */
   #card-number-field,

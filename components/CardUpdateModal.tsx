@@ -84,26 +84,50 @@ export default function CardUpdateModal({
     cvv: '',
     nameOnCard: ''
   });
+  
+  // Field validation state
+  const [fieldErrors, setFieldErrors] = useState({
+    nameOnCard: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: ''
+  });
+  
+  const [fieldTouched, setFieldTouched] = useState({
+    nameOnCard: false,
+    cardNumber: false,
+    expiryDate: false,
+    cvv: false
+  });
+  
+  const [validFields, setValidFields] = useState({
+    nameOnCard: false,
+    cardNumber: false,
+    expiryDate: false,
+    cvv: false
+  });
 
 
   // Define cleanup function first (no dependencies)
   const cleanup = useCallback(() => {
     try {
-      // Reset CollectJS if it exists
+      // Only clear fields if CollectJS exists, but don't reset the entire instance
+      // This prevents interference with the main checkout form
       if (typeof window !== 'undefined' && window.CollectJS) {
-        console.log('🧹 Cleaning up CollectJS...');
-        // Reset CollectJS to prevent conflicts
+        console.log('🧹 Cleaning up CardUpdateModal CollectJS fields...');
+        // Only clear the modal's specific fields if the function exists
         if (window.CollectJS.clearFields) {
-          window.CollectJS.clearFields();
+          // Clear only the update modal fields
+          try {
+            window.CollectJS.clearFields();
+          } catch (e) {
+            console.log('⚠️ Could not clear fields:', e);
+          }
         }
       }
       
-      // Remove CollectJS script
-      const existingScript = document.getElementById('collectjs-update-script');
-      if (existingScript) {
-        existingScript.remove();
-        console.log('🗑️ Removed CollectJS script');
-      }
+      // Don't remove the CollectJS script as it might be used by the main form
+      // The script can be shared between components
       
       // Remove any Apple Pay related elements that might conflict
       const applePayElements = document.querySelectorAll('apple-spinner, [class*="apple-pay"]');
@@ -119,7 +143,7 @@ export default function CardUpdateModal({
       console.log('⚠️ Error during CollectJS cleanup:', error);
     }
     
-    // Reset state
+    // Reset modal state only
     setCollectJSReady(false);
     setUpdateLoading(false);
     setUpdateError('');
@@ -229,6 +253,29 @@ export default function CardUpdateModal({
         },
         'validationCallback': (field: string, status: string, message: string) => {
           console.log('🔍 Field validation:', field, status, message);
+          
+          // Map CollectJS field names to our state keys
+          const fieldMap: { [key: string]: string } = {
+            'ccnumber': 'cardNumber',
+            'ccexp': 'expiryDate',
+            'cvv': 'cvv'
+          };
+          
+          const stateFieldName = fieldMap[field];
+          if (stateFieldName) {
+            setFieldTouched(prev => ({ ...prev, [stateFieldName]: true }));
+            
+            if (status === 'valid') {
+              setValidFields(prev => ({ ...prev, [stateFieldName]: true }));
+              setFieldErrors(prev => ({ ...prev, [stateFieldName]: '' }));
+            } else if (status === 'invalid') {
+              setValidFields(prev => ({ ...prev, [stateFieldName]: false }));
+              setFieldErrors(prev => ({ 
+                ...prev, 
+                [stateFieldName]: message || `Invalid ${field === 'ccnumber' ? 'card number' : field === 'ccexp' ? 'expiry date' : 'CVV'}` 
+              }));
+            }
+          }
         }
       });
     } catch (error) {
@@ -299,22 +346,55 @@ export default function CardUpdateModal({
   // Load CollectJS when modal opens
   useEffect(() => {
     if (isOpen) {
+      console.log('📂 CardUpdateModal opened, initializing...');
       setUpdateError('');
       setCollectJSReady(false);
       
+      // Reset validation state
+      setFieldErrors({
+        nameOnCard: '',
+        cardNumber: '',
+        expiryDate: '',
+        cvv: ''
+      });
+      setFieldTouched({
+        nameOnCard: false,
+        cardNumber: false,
+        expiryDate: false,
+        cvv: false
+      });
+      setValidFields({
+        nameOnCard: false,
+        cardNumber: false,
+        expiryDate: false,
+        cvv: false
+      });
+      
       // Load CollectJS with a delay to ensure modal is rendered
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         loadCollectJS();
       }, 500);
+      
+      // Clear timer on cleanup
+      return () => {
+        clearTimeout(timer);
+      };
     }
-    
-    // Cleanup when modal closes
-    return () => {
-      if (!isOpen) {
+  }, [isOpen]); // Remove loadCollectJS from dependencies to prevent loops
+  
+  // Separate cleanup effect that only runs when modal actually closes
+  useEffect(() => {
+    // Only cleanup when modal transitions from open to closed
+    // The collectJSReady check ensures we only clean up if we actually initialized
+    if (!isOpen && collectJSReady) {
+      // Add a small delay to prevent race conditions
+      const cleanupTimer = setTimeout(() => {
         cleanup();
-      }
-    };
-  }, [isOpen, loadCollectJS, cleanup]);
+      }, 100);
+      
+      return () => clearTimeout(cleanupTimer);
+    }
+  }, [isOpen, collectJSReady, cleanup]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,17 +409,36 @@ export default function CardUpdateModal({
       return;
     }
 
+    // Validate name field
     if (!fallbackCardData.nameOnCard.trim()) {
-      setUpdateError('Please enter the name as shown on your card.');
+      setFieldErrors(prev => ({ ...prev, nameOnCard: 'Please enter the name as shown on your card' }));
+      setFieldTouched(prev => ({ ...prev, nameOnCard: true }));
+      
+      // Focus on name field
+      const nameField = document.querySelector('input[name="cc-name"]') as HTMLInputElement;
+      if (nameField) {
+        nameField.focus();
+      }
       return;
     }
+    
+    // Mark all fields as touched to show validation
+    setFieldTouched({
+      nameOnCard: true,
+      cardNumber: true,
+      expiryDate: true,
+      cvv: true
+    });
+    
+    // Check if card fields are empty (CollectJS will validate them)
+    console.log('🔍 Validating card fields before submission...');
     
     setUpdateError('');
     setUpdateLoading(true);
     
     console.log('🚀 Submitting card update with name:', fallbackCardData.nameOnCard);
     
-    // Trigger CollectJS tokenization
+    // Trigger CollectJS tokenization - it will validate and show errors if fields are empty
     window.CollectJS.startPaymentRequest();
   };
 
@@ -481,10 +580,29 @@ export default function CardUpdateModal({
               name="cc-name"
               autoComplete="cc-name"
               value={fallbackCardData.nameOnCard}
-              onChange={(e) => setFallbackCardData(prev => ({ ...prev, nameOnCard: e.target.value }))}
+              onChange={(e) => {
+                setFallbackCardData(prev => ({ ...prev, nameOnCard: e.target.value }));
+                setFieldTouched(prev => ({ ...prev, nameOnCard: true }));
+                if (e.target.value.trim()) {
+                  setFieldErrors(prev => ({ ...prev, nameOnCard: '' }));
+                  setValidFields(prev => ({ ...prev, nameOnCard: true }));
+                } else {
+                  setFieldErrors(prev => ({ ...prev, nameOnCard: 'Name is required' }));
+                  setValidFields(prev => ({ ...prev, nameOnCard: false }));
+                }
+              }}
               placeholder="Full name as shown on card"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={`w-full px-4 py-3 border ${
+                fieldTouched.nameOnCard && fieldErrors.nameOnCard ? 'border-red-500' : 
+                fieldTouched.nameOnCard && validFields.nameOnCard ? 'border-green-500' : 
+                'border-gray-300'
+              } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
             />
+            {fieldTouched.nameOnCard && fieldErrors.nameOnCard && (
+              <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
+                {fieldErrors.nameOnCard}
+              </p>
+            )}
           </div>
 
           <div style={{ marginBottom: '20px' }}>
@@ -499,12 +617,21 @@ export default function CardUpdateModal({
             </label>
             <div 
               id="update-card-number-field" 
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[3rem] bg-white"
+              className={`w-full px-4 py-3 border ${
+                fieldTouched.cardNumber && fieldErrors.cardNumber ? 'border-red-500' : 
+                fieldTouched.cardNumber && validFields.cardNumber ? 'border-green-500' : 
+                'border-gray-300'
+              } rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[3rem] bg-white`}
             >
               {!collectJSReady && (
                 <div style={{ color: '#9ca3af', fontSize: '16px' }}>Loading secure payment system...</div>
               )}
             </div>
+            {fieldTouched.cardNumber && fieldErrors.cardNumber && (
+              <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
+                {fieldErrors.cardNumber}
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
@@ -520,12 +647,21 @@ export default function CardUpdateModal({
               </label>
               <div 
                 id="update-card-expiry-field" 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[3rem] bg-white"
+                className={`w-full px-4 py-3 border ${
+                  fieldTouched.expiryDate && fieldErrors.expiryDate ? 'border-red-500' : 
+                  fieldTouched.expiryDate && validFields.expiryDate ? 'border-green-500' : 
+                  'border-gray-300'
+                } rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[3rem] bg-white`}
               >
                 {!collectJSReady && (
                   <div style={{ color: '#9ca3af', fontSize: '16px' }}>MM/YY</div>
                 )}
               </div>
+              {fieldTouched.expiryDate && fieldErrors.expiryDate && (
+                <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
+                  {fieldErrors.expiryDate}
+                </p>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ 
@@ -539,12 +675,21 @@ export default function CardUpdateModal({
               </label>
               <div 
                 id="update-card-cvv-field" 
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[3rem] bg-white"
+                className={`w-full px-4 py-3 border ${
+                  fieldTouched.cvv && fieldErrors.cvv ? 'border-red-500' : 
+                  fieldTouched.cvv && validFields.cvv ? 'border-green-500' : 
+                  'border-gray-300'
+                } rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 min-h-[3rem] bg-white`}
               >
                 {!collectJSReady && (
                   <div style={{ color: '#9ca3af', fontSize: '16px' }}>000</div>
                 )}
               </div>
+              {fieldTouched.cvv && fieldErrors.cvv && (
+                <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
+                  {fieldErrors.cvv}
+                </p>
+              )}
             </div>
           </div>
 

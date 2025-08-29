@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { FloatingLabelInput, FloatingLabelSelect } from './FloatingLabelInput'
+import { FloatingLabelSelect } from './FloatingLabelInput'
 
 // CollectJS and Google Places type declaration
 declare global {
@@ -75,8 +75,9 @@ export function NewDesignCheckoutForm({
   const [errors, setErrors] = useState<FormErrors>({})
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
   const [fieldsValid, setFieldsValid] = useState(false)
-  const [floatingStates, setFloatingStates] = useState<{[key: string]: boolean}>({})
-  const [focusedField, setFocusedField] = useState<string | null>(null)
+  const [cardFieldsTouched, setCardFieldsTouched] = useState(false)
+
+  // Removed floating states - using pure CSS approach like the design
   const collectJSInitializedRef = useRef(false)
   const addressInputRef = useRef<HTMLInputElement>(null)
   
@@ -326,7 +327,16 @@ export function NewDesignCheckoutForm({
                   const country = (document.querySelector('input[name="country"]') as HTMLInputElement)?.value || 'US'
                   const useSameAddress = (document.querySelector('input[name="useSameAddress"]') as HTMLInputElement)?.checked ?? true
 
-                  return { email, nameOnCard, phone, address, city, state, zip, country, useSameAddress }
+                  // Collect billing address fields when not using same address
+                  const billingAddress = (document.querySelector('input[name="billingAddress"]') as HTMLInputElement)?.value || ''
+                  const billingCity = (document.querySelector('input[name="billingCity"]') as HTMLInputElement)?.value || ''
+                  const billingState = (document.querySelector('input[name="billingState"]') as HTMLInputElement)?.value || ''
+                  const billingZip = (document.querySelector('input[name="billingZip"]') as HTMLInputElement)?.value || ''
+
+                  return {
+                    email, nameOnCard, phone, address, city, state, zip, country, useSameAddress,
+                    billingAddress, billingCity, billingState, billingZip
+                  }
                 }
 
                 const currentFormData = getCurrentFormData()
@@ -360,10 +370,10 @@ export function NewDesignCheckoutForm({
                     quantity: it.quantity ?? 1,
                   })),
                   billingInfo: currentFormData.useSameAddress ? undefined : {
-                    address: currentFormData.address.trim(), // Use same address for now
-                    city: currentFormData.city.trim(),
-                    state: currentFormData.state.trim().toUpperCase(),
-                    zipCode: normalizedZip,
+                    address: currentFormData.billingAddress.trim() || currentFormData.address.trim(),
+                    city: currentFormData.billingCity.trim() || currentFormData.city.trim(),
+                    state: (currentFormData.billingState.trim() || currentFormData.state.trim()).toUpperCase(),
+                    zipCode: currentFormData.billingZip.replace(/\D/g, '') || normalizedZip,
                     country: currentFormData.country.trim().toUpperCase(),
                   },
                 }
@@ -379,6 +389,16 @@ export function NewDesignCheckoutForm({
                 console.log('  📮 ZIP:', body.customerInfo.zipCode)
                 console.log('  🌍 Country:', body.customerInfo.country)
                 console.log('  🎫 Token:', body.paymentToken.substring(0, 20) + '...')
+                console.log('🏦 Use Same Address:', currentFormData.useSameAddress)
+                if (body.billingInfo) {
+                  console.log('💳 BILLING Address:', body.billingInfo.address)
+                  console.log('💳 BILLING City:', body.billingInfo.city)
+                  console.log('💳 BILLING State:', body.billingInfo.state)
+                  console.log('💳 BILLING ZIP:', body.billingInfo.zipCode)
+                  console.log('💳 BILLING Country:', body.billingInfo.country)
+                } else {
+                  console.log('💳 BILLING: Using shipping address')
+                }
                 console.log('📋 Current form data from DOM:', currentFormData)
                 console.log('🛒 Order items:', order?.items)
 
@@ -444,32 +464,9 @@ export function NewDesignCheckoutForm({
                     const functions = Object.keys(window.CollectJS).filter(key => typeof (window.CollectJS as any)[key] === 'function')
                     console.log(`📌 Available CollectJS functions: ${functions.join(', ')}`)
                     
-                    // Important: Check initial field validity
-                    // CollectJS fields may be considered "valid" when empty initially
-                    // This is important for enabling the submit button
-                    if (window.CollectJS.isValid) {
-                      setTimeout(() => {
-                        const ccnumberValid = window.CollectJS.isValid?.('ccnumber') ?? false
-                        const ccexpValid = window.CollectJS.isValid?.('ccexp') ?? false
-                        const cvvValid = window.CollectJS.isValid?.('cvv') ?? false
-                        
-                        console.log('🎯 Initial field validity check:', {
-                          ccnumber: ccnumberValid,
-                          ccexp: ccexpValid,
-                          cvv: cvvValid
-                        })
-                        
-                        // Enable submission if fields are initially valid (may be empty but acceptable)
-                        // The validationCallback will update this when user starts typing
-                        const initiallyValid = ccnumberValid && ccexpValid && cvvValid
-                        if (initiallyValid) {
-                          console.log('✅ Fields initially valid, enabling submit button')
-                          setFieldsValid(true)
-                        } else {
-                          console.log('⚠️ Fields not initially valid, submit button will remain disabled until valid')
-                        }
-                      }, 100) // Small delay to ensure CollectJS is fully initialized
-                    }
+                    // Note: isValid() function is not available in this version of CollectJS
+                    // Field validation is handled through the validationCallback instead
+                    console.log('ℹ️ CollectJS fields ready for user input')
                   }
                   
                   // Dispatch custom event for testing
@@ -491,17 +488,31 @@ export function NewDesignCheckoutForm({
             }, 500)
           },
           validationCallback: (field: string, status: boolean, message: string) => {
+            // Track that user has interacted with card fields
+            if (!cardFieldsTouched) {
+              setCardFieldsTouched(true)
+            }
+            
             // Only log validation issues, not empty field states
             if (!status && message !== 'Field is empty') {
               console.log(`Field ${field} validation error:`, message)
             }
 
-            // Check if all fields are valid for enhanced UX
-            if (window.CollectJS && window.CollectJS.isValid) {
-              const ccnumberValid = window.CollectJS.isValid('ccnumber')
-              const ccexpValid = window.CollectJS.isValid('ccexp')
-              const cvvValid = window.CollectJS.isValid('cvv')
-              setFieldsValid(ccnumberValid && ccexpValid && cvvValid)
+            // Track field validation status
+            // Since isValid() might not be available, track validation through the callback
+            // The validationCallback is called for each field, so we need to track all three
+            // For now, we'll consider fields valid if status is true for the field being validated
+            // This is a simplified approach since we can't check all fields at once
+            
+            // Mark that fields have been validated (user has entered something)
+            if (status && cardFieldsTouched) {
+              // If this field is valid and user has touched the fields, 
+              // we'll optimistically set fieldsValid to true
+              // This will be overridden if any field becomes invalid
+              setFieldsValid(true)
+            } else if (!status && message !== 'Field is empty') {
+              // If any field is invalid (and not just empty), mark as invalid
+              setFieldsValid(false)
             }
           },
           timeoutCallback: () => {
@@ -536,7 +547,7 @@ export function NewDesignCheckoutForm({
 
       return () => clearInterval(checkCollectJS)
     }
-  }, [formData, order, apiEndpoint, onPaymentSuccess, onPaymentError])
+  }, [order, apiEndpoint, onPaymentSuccess, onPaymentError])
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
@@ -591,14 +602,7 @@ export function NewDesignCheckoutForm({
               country: country || prev.country
             }))
 
-            // Update floating states
-            setFloatingStates(prev => ({
-              ...prev,
-              address: true,
-              city: !!city,
-              state: !!state,
-              zip: !!postalCode
-            }))
+            // Floating labels handled by CSS - no state management needed
 
             console.log('✅ Google Places autocomplete filled:', {
               address: fullAddress,
@@ -629,32 +633,30 @@ export function NewDesignCheckoutForm({
     }
   }, [])
 
-  // Handle floating label state
-  const handleFieldFocus = (fieldName: string) => {
-    console.log(`🎯 Field focused: ${fieldName}`)
-    setFocusedField(fieldName)
-    // Always set floating state to true when focused
-    setFloatingStates(prev => ({ ...prev, [fieldName]: true }))
+  // Pure CSS floating labels - no JavaScript state management needed
+  // The CSS :focus and :not(:placeholder-shown) pseudo-selectors handle everything
+
+  // Handle input focus to ensure floating label consistency
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Add a class to the parent to force label floating on focus
+    const parent = e.target.closest('.floating-label-group')
+    if (parent) {
+      parent.classList.add('input-focused')
+    }
   }
 
-  const handleFieldBlur = (fieldName: string, value: string) => {
-    console.log(`🎯 Field blurred: ${fieldName}, value: "${value}"`)
-    setFocusedField(null)
-    // Keep floating if field has value, otherwise let it drop
-    const hasValue = value.trim() !== ''
-    setFloatingStates(prev => ({ ...prev, [fieldName]: hasValue }))
-  }
-
-  const shouldFloat = (fieldName: string, value: string) => {
-    // Float if: 1) currently focused, 2) has value, or 3) explicitly set to float
-    const isFocused = focusedField === fieldName
-    const hasValue = value.trim() !== ''
-    const isExplicitlyFloating = floatingStates[fieldName]
-
-    const result = isFocused || hasValue || isExplicitlyFloating
-    console.log(`🎯 shouldFloat(${fieldName}): focused=${isFocused}, hasValue=${hasValue}, explicit=${isExplicitlyFloating} => ${result}`)
-
-    return result
+  // Handle input blur to manage floating label state  
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const parent = e.target.closest('.floating-label-group')
+    if (parent) {
+      parent.classList.remove('input-focused')
+      // Only keep label floating if input has value
+      if (e.target.value.trim()) {
+        parent.classList.add('has-value')
+      } else {
+        parent.classList.remove('has-value')
+      }
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -665,8 +667,15 @@ export function NewDesignCheckoutForm({
       [name]: value
     }))
 
-    // Update floating state based on value
-    setFloatingStates(prev => ({ ...prev, [name]: value.trim() !== '' }))
+    // Manage has-value class for floating labels
+    const parent = e.target.closest('.floating-label-group')
+    if (parent) {
+      if (value.trim()) {
+        parent.classList.add('has-value')
+      } else {
+        parent.classList.remove('has-value')
+      }
+    }
 
     // Real-time apartment validation (matching design)
     if (name === 'apartment' && value) {
@@ -694,7 +703,7 @@ export function NewDesignCheckoutForm({
   }
 
   // onBlur validation handlers - standard behavior
-  const handleEmailBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleEmailValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, email: 'Email is required' }))
@@ -705,7 +714,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleAddressBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleAddressValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, address: 'Address is required' }))
@@ -714,7 +723,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleCityBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleCityValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, city: 'City is required' }))
@@ -723,7 +732,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleStateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleStateValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, state: 'State is required' }))
@@ -732,7 +741,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleZipBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleZipValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, zip: 'Postal code is required' }))
@@ -743,7 +752,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handlePhoneValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, phone: 'Phone is required' }))
@@ -755,7 +764,7 @@ export function NewDesignCheckoutForm({
   }
 
   // Billing address onBlur handlers - standard
-  const handleBillingAddressBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleBillingAddressValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, billingAddress: 'Billing address is required' }))
@@ -764,7 +773,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleBillingCityBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleBillingCityValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, billingCity: 'Billing city is required' }))
@@ -773,7 +782,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleBillingStateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleBillingStateValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, billingState: 'Billing state is required' }))
@@ -782,7 +791,7 @@ export function NewDesignCheckoutForm({
     }
   }
 
-  const handleBillingZipBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleBillingZipValidation = (e: React.FocusEvent<HTMLInputElement>) => {
     const value = e.target.value.trim()
     if (!value) {
       setErrors(prev => ({ ...prev, billingZip: 'Billing postal code is required' }))
@@ -889,43 +898,52 @@ export function NewDesignCheckoutForm({
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    // Email validation - standard
+    // VALIDATION ORDER: Top to Bottom as displayed in form
+    
+    // 1. CONTACT SECTION
+    // Email validation
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
     } else if (!validateEmail(formData.email)) {
       newErrors.email = 'Please enter a valid email'
     }
 
-    // Address validation - standard
+    // 2. SHIPPING SECTION (in visual order)
+    // Address validation
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required'
     }
-
-    // City validation - standard
+    
+    // Apartment is optional - no validation
+    
+    // City validation
     if (!formData.city.trim()) {
       newErrors.city = 'City is required'
     }
 
-    // State validation - standard
+    // State validation
     if (!formData.state.trim()) {
       newErrors.state = 'State is required'
     }
 
-    // Postal code validation - international friendly
+    // Postal code validation
     if (!formData.zip.trim()) {
       newErrors.zip = 'Postal code is required'
     } else if (!validateZip(formData.zip)) {
       newErrors.zip = 'Please enter a valid postal code'
     }
-
-    // Phone validation - international friendly
+    
+    // Country validation happens separately
+    
+    // Phone validation
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone is required'
     } else if (!validatePhone(formData.phone)) {
       newErrors.phone = 'Please enter a valid phone number'
     }
 
-    // Name on Card validation - standard
+    // 3. PAYMENT SECTION
+    // Name on Card validation
     if (!formData.nameOnCard.trim()) {
       newErrors.nameOnCard = 'Name on card is required'
     }
@@ -1004,18 +1022,19 @@ export function NewDesignCheckoutForm({
     const currentValues = getDOMValues()
     console.log('🔍 Form values at submission:', currentValues)
 
-    // Validate using DOM values as fallback
+    // Validate using DOM values as fallback - ORDER: Top to Bottom as displayed
     const newErrors: FormErrors = {}
     
+    // 1. Contact section
     if (!currentValues.email.trim()) {
       newErrors.email = 'Email is required'
     }
-    if (!currentValues.nameOnCard.trim()) {
-      newErrors.nameOnCard = 'Name on card is required'
-    }
+    
+    // 2. Shipping section (in order of appearance)
     if (!currentValues.address.trim()) {
       newErrors.address = 'Address is required'
     }
+    // Note: Apartment is optional, no validation needed
     if (!currentValues.city.trim()) {
       newErrors.city = 'City is required'
     }
@@ -1025,8 +1044,33 @@ export function NewDesignCheckoutForm({
     if (!currentValues.zip.trim()) {
       newErrors.zip = 'ZIP code is required'
     }
+    // Country is handled separately (it's a select with default value)
     if (!currentValues.phone.trim()) {
       newErrors.phone = 'Phone is required'
+    }
+    
+    // 3. Payment section (last)
+    if (!currentValues.nameOnCard.trim()) {
+      newErrors.nameOnCard = 'Name on card is required'
+    }
+    
+    // 4. CollectJS Card Validation - CRITICAL for payment processing
+    if (collectJSLoaded && window.CollectJS) {
+      // CollectJS validation is handled through validationCallback, not isValid()
+      // Check if user has interacted with card fields and if they're valid
+      if (!cardFieldsTouched) {
+        // User hasn't entered any card information yet
+        newErrors.cardNumber = 'Please enter your card number'
+        newErrors.expiry = 'Please enter the expiration date (MM/YY)'
+        newErrors.cvv = 'Please enter the 3 or 4 digit security code'
+      } else if (!fieldsValid) {
+        // User has entered something but fields are not valid
+        // Since we can't check individual fields without isValid(), show general error
+        newErrors.payment = 'Please check your card information and ensure all fields are filled correctly'
+      }
+      // If cardFieldsTouched && fieldsValid, card fields are good to go
+    } else if (!collectJSLoaded) {
+      newErrors.payment = 'Payment system is still loading. Please wait...'
     }
     
     const isValid = Object.keys(newErrors).length === 0
@@ -1040,11 +1084,15 @@ export function NewDesignCheckoutForm({
           switch(field) {
             case 'email': return 'Email'
             case 'nameOnCard': return 'Name on Card'
-            case 'address': return 'Billing Address'
+            case 'address': return 'Street Address'
             case 'phone': return 'Phone Number'
             case 'city': return 'City'
             case 'state': return 'State'
             case 'zip': return 'ZIP Code'
+            case 'cardNumber': return 'Card Number'
+            case 'expiry': return 'Expiration Date'
+            case 'cvv': return 'Security Code (CVV)'
+            case 'payment': return 'Payment Information'
             default: return field
           }
         })
@@ -1080,19 +1128,25 @@ export function NewDesignCheckoutForm({
         console.log('🎯 Calling CollectJS.startPaymentRequest()...')
 
         // Check if CollectJS fields are valid before starting
-        if (window.CollectJS.isValid) {
-          const ccnumberValid = window.CollectJS.isValid('ccnumber')
-          const ccexpValid = window.CollectJS.isValid('ccexp')
-          const cvvValid = window.CollectJS.isValid('cvv')
+        // Since isValid() is not available, use our state tracking
+        console.log('🔍 CollectJS field validation status:')
+        console.log(`  📝 Card fields touched: ${cardFieldsTouched ? '✅' : '❌'}`)
+        console.log(`  ✔️ Fields valid: ${fieldsValid ? '✅' : '❌'}`)
 
-          console.log('🔍 CollectJS field validation status:')
-          console.log(`  💳 Card Number: ${ccnumberValid ? '✅' : '❌'}`)
-          console.log(`  📅 Expiry: ${ccexpValid ? '✅' : '❌'}`)
-          console.log(`  🔒 CVV: ${cvvValid ? '✅' : '❌'}`)
-
-          if (!ccnumberValid || !ccexpValid || !cvvValid) {
-            console.warn('⚠️ Some payment fields are invalid, but proceeding with tokenization...')
-          }
+        // Check if user has entered card information
+        if (!cardFieldsTouched) {
+          console.warn('⚠️ No card information entered')
+          onPaymentError('Please enter your card number, expiration date, and security code')
+          setLoading(false)
+          return
+        }
+        
+        // Check if entered card information is valid
+        if (!fieldsValid) {
+          console.warn('⚠️ Card information is invalid')
+          onPaymentError('Please check your card information. Ensure all fields are filled correctly.')
+          setLoading(false)
+          return
         }
 
         window.CollectJS.startPaymentRequest()
@@ -1133,7 +1187,7 @@ export function NewDesignCheckoutForm({
           Contact
         </h3>
         <div className="space-y-8">
-          <div className={`floating-label-group ${shouldFloat('email', formData.email) ? 'always-float' : ''}`}>
+          <div className="floating-label-group">
             <input
               type="email"
               id="email"
@@ -1146,11 +1200,8 @@ export function NewDesignCheckoutForm({
               inputMode="email"
               value={formData.email}
               onChange={handleInputChange}
-              onFocus={() => handleFieldFocus('email')}
-              onBlur={(e) => {
-                handleFieldBlur('email', e.target.value)
-                handleEmailBlur(e)
-              }}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
             />
             <label htmlFor="email" className="floating-label bg-transparent sm:hidden block">
               Email{' '}
@@ -1194,11 +1245,8 @@ export function NewDesignCheckoutForm({
               aria-required="true"
               value={formData.address}
               onChange={handleInputChange}
-              onFocus={() => handleFieldFocus('address')}
-              onBlur={(e) => {
-                handleFieldBlur('address', e.target.value)
-                handleAddressBlur(e)
-              }}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
             />
             <label htmlFor="address" className="floating-label bg-transparent">
               Street Address
@@ -1214,7 +1262,7 @@ export function NewDesignCheckoutForm({
             )}
           </div>
 
-          <div className={`floating-label-group ${shouldFloat('apartment', formData.apartment) ? 'always-float' : ''}`}>
+          <div className="floating-label-group">
             <input
               type="text"
               id="apartment"
@@ -1225,8 +1273,8 @@ export function NewDesignCheckoutForm({
               autoComplete="address-line2"
               value={formData.apartment}
               onChange={handleInputChange}
-              onFocus={() => handleFieldFocus('apartment')}
-              onBlur={(e) => handleFieldBlur('apartment', e.target.value)}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
             />
             <label htmlFor="apartment" className="floating-label bg-transparent">
               Apartment, suite, etc{' '}
@@ -1245,7 +1293,7 @@ export function NewDesignCheckoutForm({
 
           <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
             <div className="w-full">
-              <div className={`floating-label-group ${shouldFloat('city', formData.city) ? 'always-float' : ''}`}>
+              <div className="floating-label-group">
                 <input
                   type="text"
                   id="city"
@@ -1257,11 +1305,8 @@ export function NewDesignCheckoutForm({
                   aria-required="true"
                   value={formData.city}
                   onChange={handleInputChange}
-                  onFocus={() => handleFieldFocus('city')}
-                  onBlur={(e) => {
-                    handleFieldBlur('city', e.target.value)
-                    handleCityBlur(e)
-                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
                 <label htmlFor="city" className="floating-label bg-transparent">
                   City
@@ -1278,7 +1323,7 @@ export function NewDesignCheckoutForm({
               </div>
             </div>
             <div className="w-full">
-              <div className={`floating-label-group ${shouldFloat('state', formData.state) ? 'always-float' : ''}`}>
+              <div className="floating-label-group">
                 <input
                   type="text"
                   id="state"
@@ -1290,11 +1335,8 @@ export function NewDesignCheckoutForm({
                   aria-required="true"
                   value={formData.state}
                   onChange={handleInputChange}
-                  onFocus={() => handleFieldFocus('state')}
-                  onBlur={(e) => {
-                    handleFieldBlur('state', e.target.value)
-                    handleStateBlur(e)
-                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
                 <label htmlFor="state" className="floating-label bg-transparent">
                   State
@@ -1311,7 +1353,7 @@ export function NewDesignCheckoutForm({
               </div>
             </div>
             <div className="w-full">
-              <div className={`floating-label-group ${shouldFloat('zip', formData.zip) ? 'always-float' : ''}`}>
+              <div className="floating-label-group">
                 <input
                   type="text"
                   id="zip"
@@ -1326,11 +1368,8 @@ export function NewDesignCheckoutForm({
                   inputMode="numeric"
                   value={formData.zip}
                   onChange={handleInputChange}
-                  onFocus={() => handleFieldFocus('zip')}
-                  onBlur={(e) => {
-                    handleFieldBlur('zip', e.target.value)
-                    handleZipBlur(e)
-                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
                 <label htmlFor="zip" className="floating-label bg-transparent">
                   Zip Code
@@ -1366,7 +1405,7 @@ export function NewDesignCheckoutForm({
             <option value="nz">New Zealand</option>
           </FloatingLabelSelect>
 
-          <div className={`floating-label-group ${shouldFloat('phone', formData.phone) ? 'always-float' : ''}`}>
+          <div className="floating-label-group">
             <input
               type="tel"
               id="phone"
@@ -1381,11 +1420,8 @@ export function NewDesignCheckoutForm({
               inputMode="tel"
               value={formData.phone}
               onChange={handleInputChange}
-              onFocus={() => handleFieldFocus('phone')}
-              onBlur={(e) => {
-                handleFieldBlur('phone', e.target.value)
-                handlePhoneBlur(e)
-              }}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
             />
             <label htmlFor="phone" className="floating-label bg-transparent sm:hidden block">
               Phone Number{' '}
@@ -1530,7 +1566,7 @@ export function NewDesignCheckoutForm({
               </span>
             </div>
           </div>
-          <div className={`floating-label-group ${shouldFloat('nameOnCard', formData.nameOnCard) ? 'always-float' : ''}`}>
+          <div className="floating-label-group">
             <input
               type="text"
               id="nameOnCard"
@@ -1538,8 +1574,8 @@ export function NewDesignCheckoutForm({
               className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.nameOnCard ? 'input-error' : ''}`}
               value={formData.nameOnCard}
               onChange={handleInputChange}
-              onFocus={() => handleFieldFocus('nameOnCard')}
-              onBlur={(e) => handleFieldBlur('nameOnCard', e.target.value)}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
               placeholder=" "
               required
               autoComplete="cc-name"
@@ -1578,7 +1614,7 @@ export function NewDesignCheckoutForm({
                 Billing Address
               </h4>
             <div className="space-y-8">
-              <div className={`floating-label-group ${shouldFloat('billingAddress', formData.billingAddress || '') ? 'always-float' : ''}`}>
+              <div className="floating-label-group">
                 <input
                   type="text"
                   id="billing-address"
@@ -1587,11 +1623,8 @@ export function NewDesignCheckoutForm({
                   placeholder=" "
                   value={formData.billingAddress || ''}
                   onChange={handleInputChange}
-                  onFocus={() => handleFieldFocus('billingAddress')}
-                  onBlur={(e) => {
-                    handleFieldBlur('billingAddress', e.target.value)
-                    handleBillingAddressBlur(e)
-                  }}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
                 <label htmlFor="billing-address" className="floating-label bg-transparent">
                   Street Address
@@ -1603,7 +1636,7 @@ export function NewDesignCheckoutForm({
                 )}
               </div>
               <div className="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
-                <div className={`floating-label-group w-full ${shouldFloat('billingCity', formData.billingCity || '') ? 'always-float' : ''}`}>
+                <div className="floating-label-group w-full">
                   <input
                     type="text"
                     id="billing-city"
@@ -1612,11 +1645,8 @@ export function NewDesignCheckoutForm({
                     placeholder=" "
                     value={formData.billingCity || ''}
                     onChange={handleInputChange}
-                    onFocus={() => handleFieldFocus('billingCity')}
-                    onBlur={(e) => {
-                      handleFieldBlur('billingCity', e.target.value)
-                      handleBillingCityBlur(e)
-                    }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
                   <label htmlFor="billing-city" className="floating-label bg-transparent">
                     City
@@ -1627,7 +1657,7 @@ export function NewDesignCheckoutForm({
                     </div>
                   )}
                 </div>
-                <div className={`floating-label-group w-full ${shouldFloat('billingState', formData.billingState || '') ? 'always-float' : ''}`}>
+                <div className="floating-label-group w-full">
                   <input
                     type="text"
                     id="billing-state"
@@ -1636,11 +1666,8 @@ export function NewDesignCheckoutForm({
                     placeholder=" "
                     value={formData.billingState || ''}
                     onChange={handleInputChange}
-                    onFocus={() => handleFieldFocus('billingState')}
-                    onBlur={(e) => {
-                      handleFieldBlur('billingState', e.target.value)
-                      handleBillingStateBlur(e)
-                    }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
                   <label htmlFor="billing-state" className="floating-label bg-transparent">
                     State
@@ -1651,7 +1678,7 @@ export function NewDesignCheckoutForm({
                     </div>
                   )}
                 </div>
-                <div className={`floating-label-group w-full ${shouldFloat('billingZip', formData.billingZip || '') ? 'always-float' : ''}`}>
+                <div className="floating-label-group w-full">
                   <input
                     type="text"
                     id="billing-zip"
@@ -1661,11 +1688,8 @@ export function NewDesignCheckoutForm({
                     pattern="[0-9]{5}"
                     value={formData.billingZip || ''}
                     onChange={handleInputChange}
-                    onFocus={() => handleFieldFocus('billingZip')}
-                    onBlur={(e) => {
-                      handleFieldBlur('billingZip', e.target.value)
-                      handleBillingZipBlur(e)
-                    }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
                   />
                   <label htmlFor="billing-zip" className="floating-label bg-transparent">
                     Zip Code
@@ -1680,10 +1704,13 @@ export function NewDesignCheckoutForm({
               <div className="floating-label-group">
                 <select
                   id="billing-country"
-                  className="w-full border-2 border-[#CDCDCD] px-9 py-6 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]"
+                  className="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] appearance-none bg-no-repeat form-select"
+                  required
+                  autoComplete="country"
+                  aria-required="true"
                   defaultValue=""
                 >
-                  <option value="" disabled></option>
+                  <option value="" disabled selected></option>
                   <option value="us">United States</option>
                   <option value="ca">Canada</option>
                   <option value="uk">United Kingdom</option>

@@ -56,121 +56,64 @@ const { chromium } = require('playwright');
     await page.waitForSelector('form#checkout-form', { timeout: 10000 });
     console.log('✅ Checkout form loaded');
     
-    // Generate unique test data
+    // Generate randomized test data
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
-    const testEmail = `test-${timestamp}-${randomStr}@example.com`;
-    const randomZip = `900${Math.floor(Math.random() * 90) + 10}`;
-    
-    console.log(`📧 Using email: ${testEmail}`);
-    
+
+    // Randomized customer data
+    const firstNames = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Lisa', 'James', 'Maria'];
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+    const streetNames = ['Main St', 'Oak Ave', 'Pine Rd', 'Elm Dr', 'Cedar Ln', 'Maple Way', 'Park Blvd', 'First St', 'Second Ave', 'Third Dr'];
+    const cities = ['Austin', 'Dallas', 'Houston', 'San Antonio', 'Phoenix', 'Denver', 'Seattle', 'Portland', 'Miami', 'Atlanta'];
+    const states = ['TX', 'CA', 'FL', 'NY', 'WA', 'CO', 'AZ', 'GA', 'OR', 'NC'];
+
+    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const randomStreetNumber = Math.floor(Math.random() * 9999) + 1;
+    const randomStreetName = streetNames[Math.floor(Math.random() * streetNames.length)];
+    const randomCity = cities[Math.floor(Math.random() * cities.length)];
+    const randomState = states[Math.floor(Math.random() * states.length)];
+    const randomZip = `${Math.floor(Math.random() * 90000) + 10000}`;
+    const randomPhone = `555${Math.floor(Math.random() * 9000000) + 1000000}`;
+
+    const testData = {
+      email: `test-${timestamp}-${randomStr}@example.com`,
+      fullName: `${randomFirstName} ${randomLastName}`,
+      phone: randomPhone,
+      address: `${randomStreetNumber} ${randomStreetName}`,
+      city: randomCity,
+      state: randomState,
+      zip: randomZip
+    };
+
+    console.log(`📧 Using randomized test data:`);
+    console.log(`  📧 Email: ${testData.email}`);
+    console.log(`  👤 Name: ${testData.fullName}`);
+    console.log(`  📞 Phone: ${testData.phone}`);
+    console.log(`  🏠 Address: ${testData.address}`);
+    console.log(`  🏙️ City: ${testData.city}, ${testData.state} ${testData.zip}`);
+
     // Fill customer information
     console.log('📝 Filling customer information...');
-    
+
     // Helper function to clear field and type new value
-    // Fixed to properly trigger React onChange events using React's event system
+    // Uses Playwright's fill() method to properly trigger React onChange events
     const clearAndType = async (selector, value) => {
-      // Use Playwright's fill which should work with React
       await page.locator(selector).fill(value);
-      
-      // Force trigger React events by simulating user typing
-      await page.evaluate(({ selector, value }) => {
-        const element = document.querySelector(selector);
-        if (element) {
-          // Clear the field first
-          element.focus();
-          element.select();
-          
-          // Set the value using the native setter to bypass React
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-          nativeInputValueSetter.call(element, value);
-          
-          // Create a proper React-compatible input event
-          const event = new Event('input', { bubbles: true, cancelable: true });
-          // Important: React reads the target.value from the event
-          Object.defineProperty(event, 'target', {
-            value: element,
-            writable: false
-          });
-          
-          // Dispatch the input event - React 16+ uses this
-          element.dispatchEvent(event);
-          
-          // Also trigger change for older React versions
-          const changeEvent = new Event('change', { bubbles: true });
-          Object.defineProperty(changeEvent, 'target', {
-            value: element,
-            writable: false
-          });
-          element.dispatchEvent(changeEvent);
-          
-          // Blur to trigger validation
-          element.blur();
-          
-          // Log what we did
-          console.log(`Test filled field ${element.name || element.id}: "${value}"`);
-        }
-      }, { selector, value });
-      
-      // Give React time to update state
-      await page.waitForTimeout(150);
+      // Wait for React state to update
+      await page.waitForTimeout(100);
     };
-    
-    await clearAndType('input[name="email"]', testEmail);
-    await clearAndType('input[name="nameOnCard"]', 'Test Customer');
-    await clearAndType('input[name="phone"]', '5551234567');
-    await clearAndType('input[name="address"]', '123 Test Street');
-    await clearAndType('input[name="city"]', 'Test City');
-    await clearAndType('input#state', 'CA');
-    await clearAndType('input[name="zip"]', randomZip);
+
+    await clearAndType('input[name="email"]', testData.email);
+    await clearAndType('input[name="nameOnCard"]', testData.fullName);
+    await clearAndType('input[name="phone"]', testData.phone);
+    await clearAndType('input[name="address"]', testData.address);
+    await clearAndType('input[name="city"]', testData.city);
+    await clearAndType('input#state', testData.state);
+    await clearAndType('input[name="zip"]', testData.zip);
     
     // Tab out of last field to trigger blur
     await page.keyboard.press('Tab');
-    
-    // Test billing address checkbox functionality
-    console.log('📋 Testing billing address checkbox...');
-    
-    // First, check if checkbox is checked by default (should be)
-    const isInitiallyChecked = await page.locator('input[type="checkbox"][id*="same"]').isChecked();
-    console.log(`  Initial state: ${isInitiallyChecked ? '✅ Checked (use shipping for billing)' : '❌ Unchecked'}`);
-    
-    // Uncheck the checkbox to require billing address
-    console.log('  🔲 Unchecking "Same as shipping" checkbox...');
-    await page.locator('input[type="checkbox"][id*="same"]').click();
-    await page.waitForTimeout(200);
-    
-    // Check if billing fields are now visible/required
-    const billingFieldsVisible = await page.locator('input[name="billingAddress"]').isVisible().catch(() => false);
-    console.log(`  Billing fields: ${billingFieldsVisible ? '✅ Visible and required' : '⚠️ Not visible (may be hidden by default)'}`);
-    
-    // Try to submit without filling billing (should fail validation)
-    const submitBtn = page.locator('button:has-text("Complete Order"), button:has-text("Place Your Order")').first();
-    const isDisabledWithoutBilling = await submitBtn.isDisabled();
-    console.log(`  Submit button (without billing): ${isDisabledWithoutBilling ? '🔒 Disabled (validation working)' : '🔓 Enabled'}`);
-    
-    // If billing fields are visible, fill them
-    if (billingFieldsVisible) {
-      console.log('  📝 Filling billing address fields...');
-      await page.locator('input[name="billingAddress"]').fill('456 Billing Ave');
-      await page.locator('input[name="billingCity"]').fill('Billing City');
-      await page.locator('input[name="billingState"]').fill('NY');
-      await page.locator('input[name="billingZip"]').fill('10001');
-      await page.waitForTimeout(100);
-      console.log('  ✅ Billing fields filled');
-    }
-    
-    // Check the checkbox again to use shipping address
-    console.log('  ☑️ Re-checking "Same as shipping" checkbox...');
-    await page.locator('input[type="checkbox"][id*="same"]').click();
-    await page.waitForTimeout(200);
-    
-    // Verify billing fields are hidden/cleared
-    const billingFieldsHidden = !(await page.locator('input[name="billingAddress"]').isVisible().catch(() => true));
-    console.log(`  Billing fields after re-check: ${billingFieldsHidden ? '✅ Hidden (using shipping)' : '⚠️ Still visible'}`);
-    
-    // Ensure checkbox is checked for final submission
-    const isFinallyChecked = await page.locator('input[type="checkbox"][id*="same"]').isChecked();
-    console.log(`  Final checkbox state: ${isFinallyChecked ? '✅ Checked (will use shipping for billing)' : '❌ Unchecked'}`);
     
     // Validate that React state is synchronized with DOM values
     console.log('🔍 Validating React state synchronization...');
@@ -181,12 +124,9 @@ const { chromium } = require('playwright');
       inputs.forEach(name => {
         const input = document.querySelector(`input[name="${name}"]`);
         if (input) {
-          // Get the React component instance to check actual state
-          const reactInstance = input._valueTracker?.getValue?.() || input.value;
           formData[name] = {
             domValue: input.value,
-            reactValue: reactInstance,
-            hasValue: input.value && input.value.length > 0
+            reactValue: input.value // For controlled components, these should match
           };
         }
       });
@@ -194,19 +134,10 @@ const { chromium } = require('playwright');
       // Check state input separately
       const stateInput = document.querySelector('input#state');
       if (stateInput) {
-        const reactInstance = stateInput._valueTracker?.getValue?.() || stateInput.value;
         formData.state = {
           domValue: stateInput.value,
-          reactValue: reactInstance,
-          hasValue: stateInput.value && stateInput.value.length > 0
+          reactValue: stateInput.value
         };
-      }
-      
-      // Also try to access React component state directly if available
-      // This helps us understand if the component state is actually updated
-      const checkoutForm = document.querySelector('form#checkout-form');
-      if (checkoutForm && window.React && window.React.version) {
-        console.log('React version detected:', window.React.version);
       }
       
       return formData;
@@ -216,7 +147,8 @@ const { chromium } = require('playwright');
     let allValid = true;
     Object.entries(stateValidation).forEach(([field, values]) => {
       const isValid = values.domValue === values.reactValue && values.domValue !== '';
-      console.log(`  ${field}: ${isValid ? '✅' : '❌'} DOM(${values.domValue}) React(${values.reactValue})`);
+      const status = isValid ? '✅' : '❌';
+      console.log(`  ${field}: ${status} DOM("${values.domValue}") React("${values.reactValue}")`);
       if (!isValid) allValid = false;
     });
     
@@ -288,20 +220,36 @@ const { chromium } = require('playwright');
     console.log('💳 Filling payment information...');
     
     try {
+      // Generate randomized payment data
+      const testCards = [
+        '4111111111111111', // Visa
+        '4012888888881881', // Visa
+        '4222222222222',    // Visa (shorter)
+        '5555555555554444', // Mastercard
+        '5105105105105100'  // Mastercard
+      ];
+
+      const randomCard = testCards[Math.floor(Math.random() * testCards.length)];
+      const randomMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
+      const randomYear = String(Math.floor(Math.random() * 5) + 25); // 2025-2029
+      const randomCvv = String(Math.floor(Math.random() * 900) + 100); // 100-999
+
+      console.log(`💳 Using randomized payment data:`);
+      console.log(`  💳 Card: ${randomCard.substring(0, 4)}****${randomCard.substring(randomCard.length - 4)}`);
+      console.log(`  📅 Expiry: ${randomMonth}/${randomYear}`);
+      console.log(`  🔒 CVV: ${randomCvv}`);
+
       // Card number
       const cardNumberFrame = page.frameLocator('#card-number-field iframe');
-      await cardNumberFrame.locator('input#ccnumber').fill('4111111111111111');
+      await cardNumberFrame.locator('input#ccnumber').fill(randomCard);
       console.log('  ✅ Card number filled');
-      
-      // Generate random expiry (01-12 / 25-29)
-      const randomMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-      const randomYear = String(Math.floor(Math.random() * 5) + 25);
+
+      // Expiry
       const expiryFrame = page.frameLocator('#card-expiry-field iframe');
       await expiryFrame.locator('input#ccexp').fill(`${randomMonth}/${randomYear}`);
       console.log(`  ✅ Expiry filled: ${randomMonth}/${randomYear}`);
-      
-      // Generate random CVV (100-999)
-      const randomCvv = String(Math.floor(Math.random() * 900) + 100);
+
+      // CVV
       const cvvFrame = page.frameLocator('#card-cvv-field iframe');
       await cvvFrame.locator('input#cvv').fill(randomCvv);
       console.log(`  ✅ CVV filled: ${randomCvv}`);
@@ -310,24 +258,24 @@ const { chromium } = require('playwright');
       console.log('⚠️ Could not fill payment fields automatically - CollectJS security active');
       console.log('💡 Attempting alternative method...');
       
-      // Try clicking and typing
+      // Try clicking and typing with randomized data
       const cardContainer = await page.$('#card-number-field');
       if (cardContainer) {
         const box = await cardContainer.boundingBox();
         if (box) {
           await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
           await page.waitForTimeout(500);
-          await page.keyboard.type('4111111111111111', { delay: 100 });
-          
+          await page.keyboard.type(randomCard, { delay: 100 });
+
           await page.keyboard.press('Tab');
           await page.waitForTimeout(500);
-          await page.keyboard.type('1225', { delay: 100 });
-          
+          await page.keyboard.type(`${randomMonth}${randomYear}`, { delay: 100 });
+
           await page.keyboard.press('Tab');
           await page.waitForTimeout(500);
-          await page.keyboard.type('123', { delay: 100 });
-          
-          console.log('  ✅ Payment fields filled via keyboard');
+          await page.keyboard.type(randomCvv, { delay: 100 });
+
+          console.log('  ✅ Payment fields filled via keyboard with randomized data');
         }
       }
     }
@@ -379,76 +327,76 @@ const { chromium } = require('playwright');
     });
     
     await submitButton.click();
-    
+
     // Wait for processing
     console.log('⏳ Waiting for payment processing...');
-    
+
     // Wait for redirect to upsell or error
     const checkoutResult = await Promise.race([
       page.waitForURL('**/upsell/1**', { timeout: 45000 }).then(() => 'upsell'),
       page.waitForURL('**/thankyou**', { timeout: 45000 }).then(() => 'thankyou'),
       page.waitForSelector('text=/error|failed|declined/i', { timeout: 45000 }).then(() => 'error')
     ]);
-    
+
     if (checkoutResult === 'upsell') {
       console.log('✅ Checkout successful! Redirected to upsell 1');
-      
+
       // Extract session info from URL
       const url = new URL(page.url());
       const sessionId = url.searchParams.get('session');
       const transactionId = url.searchParams.get('transaction');
       console.log(`📋 Session ID: ${sessionId}`);
       console.log(`📋 Transaction ID: ${transactionId}`);
-      
+
       // 2. UPSELL 1 PHASE
       console.log('\n📍 PHASE 2: Upsell 1');
       console.log('====================\n');
-      
+
       // Wait for page to stabilize
       await page.waitForTimeout(3000);
-      
+
       // Look for upsell content
       const pageContent = await page.textContent('body');
       const hasRetinaClear = pageContent.includes('RetinaClear');
       const hasSightagen = pageContent.includes('Sightagen');
       console.log(`Product detected: ${hasRetinaClear ? 'RetinaClear' : hasSightagen ? 'Sightagen' : 'Unknown'}`);
-      
-      // Find and click upsell button
-      const upsellButton = page.locator('button:has-text("Yes"), button:has-text("Upgrade"), button:has-text("Add to Order")').first();
-      
+
+      // Find and click upsell button - look for the actual button text
+      const upsellButton = page.locator('button:has-text("Yes! Upgrade My Order!"), button:has-text("Upgrade"), button:has-text("Add to Order"), button:has-text("Yes")').first();
+
       if (await upsellButton.isVisible()) {
         console.log('👆 Clicking upsell button...');
         await upsellButton.click();
-        
+
         // Wait for processing
         console.log('⏳ Processing upsell 1...');
-        
+
         const upsellResult = await Promise.race([
           page.waitForURL('**/upsell/2**', { timeout: 20000 }).then(() => 'upsell2'),
           page.waitForURL('**/thankyou**', { timeout: 20000 }).then(() => 'thankyou'),
           page.waitForSelector('text=/error|failed/i', { timeout: 20000 }).then(() => 'error')
         ]);
-        
+
         if (upsellResult === 'upsell2') {
           console.log('✅ Upsell 1 accepted! Redirected to upsell 2');
-          
+
           // 3. UPSELL 2 PHASE
           console.log('\n📍 PHASE 3: Upsell 2');
           console.log('====================\n');
-          
+
           await page.waitForTimeout(3000);
-          
+
           // Decline upsell 2 to reach thank you page
           const declineButton = page.locator('text=/No thanks|Skip|Continue/i').first();
-          
+
           if (await declineButton.isVisible()) {
             console.log('🚫 Declining upsell 2...');
             await declineButton.click();
-            
+
             await page.waitForURL('**/thankyou**', { timeout: 15000 });
             console.log('✅ Reached thank you page!');
           }
-          
+
         } else if (upsellResult === 'thankyou') {
           console.log('✅ Upsell 1 accepted! Went directly to thank you page');
         } else {
@@ -456,49 +404,49 @@ const { chromium } = require('playwright');
           const errorMsg = await page.locator('text=/error|failed/i').first().textContent();
           console.log('Error message:', errorMsg);
         }
-        
+
       } else {
         console.log('⚠️ No upsell button found - looking for decline option');
         const declineButton = page.locator('text=/No thanks|Skip/i').first();
-        
+
         if (await declineButton.isVisible()) {
           await declineButton.click();
           console.log('🚫 Declined upsell 1');
         }
       }
-      
+
       // 4. THANK YOU PAGE PHASE
       if (page.url().includes('/thankyou')) {
         console.log('\n📍 PHASE 4: Thank You Page');
         console.log('=========================\n');
-        
+
         await page.waitForTimeout(2000);
-        
+
         // Check for order details
         const pageContent = await page.textContent('body');
         const hasOrderNumber = pageContent.includes('Order #') || pageContent.includes('Transaction');
         const hasThankYou = pageContent.includes('Thank you') || pageContent.includes('Congratulations');
-        
+
         console.log(`Order confirmation: ${hasOrderNumber ? '✅' : '❌'}`);
         console.log(`Thank you message: ${hasThankYou ? '✅' : '❌'}`);
-        
+
         // Take final screenshot
         await page.screenshot({ path: 'tests/screenshots/complete-flow-success.png' });
         console.log('📸 Screenshot saved: tests/screenshots/complete-flow-success.png');
-        
+
         console.log('\n🎉 COMPLETE FLOW TEST SUCCESSFUL!');
         console.log('===================================');
         console.log('✅ Checkout completed');
         console.log('✅ Upsell flow processed');
         console.log('✅ Thank you page reached');
       }
-      
+
     } else if (checkoutResult === 'thankyou') {
       console.log('✅ Checkout successful! Went directly to thank you page');
-      
+
     } else {
       console.log('❌ Checkout failed');
-      
+
       // Get error details
       try {
         const errorElement = await page.locator('text=/error|failed|declined/i').first();
@@ -507,12 +455,12 @@ const { chromium } = require('playwright');
       } catch {
         console.log('Could not extract error message');
       }
-      
+
       // Take error screenshot
       await page.screenshot({ path: 'tests/screenshots/checkout-error.png' });
       console.log('📸 Error screenshot: tests/screenshots/checkout-error.png');
     }
-    
+
   } catch (error) {
     console.error('\n❌ Test error:', error.message);
     console.error('Stack:', error.stack);

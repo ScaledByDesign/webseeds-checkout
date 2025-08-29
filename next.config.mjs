@@ -58,8 +58,7 @@ const nextConfig = {
     optimizePackageImports: ['react', 'react-dom'],
   },
 
-  // Vercel-specific optimizations
-  swcMinify: true,
+  // SWC minification is now enabled by default in Next.js 13+
   
   // Webpack configuration
   webpack: (config, { isServer }) => {
