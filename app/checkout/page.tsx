@@ -785,7 +785,7 @@ export default function CheckoutPage() {
                   <label className="flex items-center gap-5 cursor-pointer select-none">
                     <input type="checkbox" className="peer hidden" defaultChecked />
                     <span className="w-9 h-9 border-[3px] border-[#666666] flex items-center justify-center rounded-md peer-checked:[&>img]:block">
-                      <img src="/assets/images/check-dark.svg" alt="Checkmark" className="hidden" width={16} height={16} style={{height: "auto"}} loading="lazy" />
+                      <Image src="/assets/images/check-dark.svg" alt="Checkmark" className="hidden" width={16} height={16} style={{height: "auto"}} />
                     </span>
                     <span className="text-[#656565] font-medium text-[1.8rem]">Get SMS Alerts About Your Order</span>
                   </label>
@@ -986,10 +986,12 @@ export default function CheckoutPage() {
                           <div>
                             <picture>
                               <source srcSet="/assets/images/olivia.webp" type="image/webp" />
-                              <img
+                              <Image
                                 className="w-31.75 h-31.75 object-cover rounded-full"
                                 src="/assets/images/olivia.png"
                                 alt="Olivia Harris"
+                                width={127}
+                                height={127}
                                 width={127}
                                 height={127}
                                 loading="lazy"
@@ -999,7 +1001,7 @@ export default function CheckoutPage() {
                           <div>
                             <h4 className="text-gray-373737 font-bold text-2rem mb-2 leading-none">Olivia Harris</h4>
                             <p className="flex items-center gap-1 font-medium text-1.69rem text-purple-976987">
-                              <img className="w-7.25" src="/assets/images/circle-check.svg" alt="Verified" width={29} height={29} loading="lazy" />
+                              <Image className="w-7.25" src="/assets/images/circle-check.svg" alt="Verified" width={29} height={29} />
                               Verified Customer
                             </p>
                           </div>
@@ -1007,7 +1009,7 @@ export default function CheckoutPage() {
                         <div className="text-right">
                           <div className="flex gap-2 items-center">
                             {[...Array(5)].map((_, i) => (
-                              <img key={i} className="w-7.25" src="/assets/images/star.svg" alt="Star" width={29} height={29} loading="lazy" />
+                              <Image key={i} className="w-7.25" src="/assets/images/star.svg" alt="Star" width={29} height={29} />
                             ))}
                           </div>
                           <span className="inline-block mt-4 px-4 py-1.5 bg-purple-986988 text-white font-bold text-1.45rem rounded-[5rem] leading-none">
@@ -1026,10 +1028,12 @@ export default function CheckoutPage() {
                           <div>
                             <picture>
                               <source srcSet="/assets/images/emily.webp" type="image/webp" />
-                              <img
+                              <Image
                                 className="w-31.75 h-31.75 object-cover rounded-full"
                                 src="/assets/images/emily.png"
                                 alt="Emily Parker"
+                                width={127}
+                                height={127}
                                 width={127}
                                 height={127}
                                 loading="lazy"
@@ -1039,7 +1043,7 @@ export default function CheckoutPage() {
                           <div>
                             <h4 className="text-gray-373737 font-bold text-2rem mb-2 leading-none">Emily Parker</h4>
                             <p className="flex items-center gap-1 font-medium text-1.69rem text-purple-976987">
-                              <img className="w-7.25" src="/assets/images/circle-check.svg" alt="Verified" width={29} height={29} loading="lazy" />
+                              <Image className="w-7.25" src="/assets/images/circle-check.svg" alt="Verified" width={29} height={29} />
                               Verified Customer
                             </p>
                           </div>
@@ -1047,7 +1051,7 @@ export default function CheckoutPage() {
                         <div className="text-right">
                           <div className="flex gap-2 items-center">
                             {[...Array(5)].map((_, i) => (
-                              <img key={i} className="w-7.25" src="/assets/images/star.svg" alt="Star" width={29} height={29} loading="lazy" />
+                              <Image key={i} className="w-7.25" src="/assets/images/star.svg" alt="Star" width={29} height={29} />
                             ))}
                           </div>
                           <span className="inline-block mt-4 px-4 py-1.5 bg-purple-986988 text-white font-bold text-1.45rem rounded-[5rem] leading-none">

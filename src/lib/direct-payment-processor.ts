@@ -171,7 +171,7 @@ export class DirectPaymentProcessor {
       }
 
       console.log('✅ PAYMENT PROCESSING SUCCESS:');
-      console.log(`  💳 Transaction ID: ${paymentResult.transactionId}`);
+      console.log(`  💳 Transaction ID: ${paymentResult.transaction_id}`);
       console.log(`  🔐 Auth Code: ${paymentResult.authCode || 'N/A'}`);
       console.log(`  🏠 AVS Response: ${paymentResult.avsResponse || 'N/A'}`);
       console.log(`  🔒 CVV Response: ${paymentResult.cvvResponse || 'N/A'}`);
@@ -180,20 +180,20 @@ export class DirectPaymentProcessor {
       // Update session with transaction ID
       console.log('📋 Updating session to completed status...');
       await databaseSessionManager.updateSession(data.sessionId, {
-        transaction_id: paymentResult.transactionId,
+        transaction_id: paymentResult.transaction_id,
         status: 'completed',
         current_step: 'upsell-1'
       });
       console.log('✅ Session updated to completed');
 
-      const nextStep = `/upsell/1?session=${data.sessionId}&transaction=${paymentResult.transactionId}`;
+      const nextStep = `/upsell/1?session=${data.sessionId}&transaction=${paymentResult.transaction_id}`;
       console.log(`➡️ Next step: ${nextStep}`);
       console.log('🎉 PAYMENT PROCESSING COMPLETED SUCCESSFULLY!');
 
       return {
         success: true,
         sessionId: data.sessionId,
-        transactionId: paymentResult.transactionId,
+        transaction_id: paymentResult.transaction_id,
         vaultId: vaultResult.vaultId,
         nextStep: nextStep
       };

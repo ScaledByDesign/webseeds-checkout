@@ -842,7 +842,7 @@ export function NewDesignCheckoutForm({
         if (retryTimeout) clearTimeout(retryTimeout)
       }
     }
-  }, []) // Empty dependencies - initialization only happens once via ref check
+  }, [cardFieldsTouched, order?.items]) // Include dependencies
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
@@ -1789,23 +1789,21 @@ export function NewDesignCheckoutForm({
         </h3>
         <p className="flex gap-2 mb-10 items-center font-medium text-[1.94rem] text-[#6d6d6d] hidden md:block">
           All transactions are secure and encrypted
-          <img
+          <Image
             className="w-6 inline-block -mt-3"
             src="/assets/images/lock.svg"
             alt="Secure"
-            width="16"
-            height="16"
-            loading="lazy"
+            width={16}
+            height={16}
           />
         </p>
         <p className="absolute right-0 transform top-5 flex gap-2 items-center font-medium text-[1.94rem] text-[#6d6d6d7] sm:hidden md:hidden lg:hidden xl:hidden block">
-          <img
+          <Image
             className="w-6 inline-block"
             src="/assets/images/lock.svg"
             alt="Secure"
-            width="16"
-            height="16"
-            loading="lazy"
+            width={16}
+            height={16}
           />
           Secure & Encrypted
         </p>
@@ -1837,29 +1835,26 @@ export function NewDesignCheckoutForm({
               </div>
             )}
             <div className="absolute top-1/2 right-4 -translate-y-1/2 flex gap-2 z-10 pointer-events-none">
-              <img
+              <Image
                 className="h-14 opacity-90"
                 src="/assets/images/visa.svg"
                 alt="Visa"
-                width="52"
-                height="52"
-                loading="lazy"
+                width={52}
+                height={52}
               />
-              <img
+              <Image
                 className="h-14 opacity-90"
                 src="/assets/images/mastercard.svg"
                 alt="Mastercard"
-                width="52"
-                height="52"
-                loading="lazy"
+                width={52}
+                height={52}
               />
-              <img
+              <Image
                 className="h-14 opacity-90"
                 src="/assets/images/american-express.svg"
                 alt="American Express"
-                width="52"
-                height="52"
-                loading="lazy"
+                width={52}
+                height={52}
               />
             </div>
           </div>
@@ -1918,12 +1913,11 @@ export function NewDesignCheckoutForm({
                 </div>
               )}
               <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
-                <img
+                <Image
                   src="/assets/images/info.svg"
                   alt="Info"
-                  width="40"
-                  height="40"
-                  loading="lazy"
+                  width={40}
+                  height={40}
                 />
               </span>
             </div>
@@ -2137,27 +2131,30 @@ export function NewDesignCheckoutForm({
       {/* Trust Badges - McAfee, Norton, TRUSTe */}
       <div className="flex justify-between items-center mt-11 w-full px-7.5 gap-10">
         <div className="w-1/3 flex justify-center">
-          <img
+          <Image
             className="h-32 object-contain"
             src="/assets/images/mcafee-seeklogo.svg"
             alt="McAfee Secure"
-            loading="lazy"
+            width={128}
+            height={128}
           />
         </div>
         <div className="w-1/3 flex justify-center">
-          <img
+          <Image
             className="h-30 object-contain"
             src="/assets/images/Norton.svg"
             alt="Norton Secured"
-            loading="lazy"
+            width={120}
+            height={120}
           />
         </div>
         <div className="w-1/3 flex justify-center">
-          <img
+          <Image
             className="h-32 object-contain"
             src="/assets/images/Truste.svg"
             alt="TRUSTe Verified"
-            loading="lazy"
+            width={128}
+            height={128}
           />
         </div>
       </div>

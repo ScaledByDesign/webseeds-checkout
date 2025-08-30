@@ -33,7 +33,7 @@ export interface PaymentParams {
 
 export interface PaymentResult {
   success: boolean;
-  transactionId?: string;
+  transaction_id?: string;
   authCode?: string;
   avsResponse?: string;
   cvvResponse?: string;

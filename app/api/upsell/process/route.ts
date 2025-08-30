@@ -152,7 +152,10 @@ export async function POST(request: NextRequest) {
     console.log('📋 Session found:', {
       email: session.email,
       vaultId: vaultId,
-      originalTransaction: session.transactionId || session.transaction_id
+      originalTransaction: session.transaction_id || session.transactionId || 'Not found',
+      customerInfo: session.customer_info || session.customerInfo || 'Not found',
+      hasFirstName: !!(session.customer_info?.firstName || session.customerInfo?.firstName || session.firstName),
+      hasLastName: !!(session.customer_info?.lastName || session.customerInfo?.lastName || session.lastName)
     })
 
     // Validate vault ID (already checked above, but double-check)
@@ -201,15 +204,15 @@ export async function POST(request: NextRequest) {
       ponumber: `UPO-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       
       // Customer info (from session)
-      first_name: session.firstName,
-      last_name: session.lastName,
+      first_name: session.customer_info?.firstName || session.customerInfo?.firstName || session.firstName || '',
+      last_name: session.customer_info?.lastName || session.customerInfo?.lastName || session.lastName || '',
       email: session.email,
       
       // Merchant fields
       merchant_defined_field_1: 'webseed-upsell',
       merchant_defined_field_2: `step-${validatedData.step}`,
       merchant_defined_field_3: validatedData.productCode,
-      merchant_defined_field_4: session.transactionId // Original transaction
+      merchant_defined_field_4: session.transaction_id || session.transactionId || '' // Original transaction
     })
     
     // Add line item data for Level 3
@@ -228,6 +231,8 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Processing vault payment...')
     console.log('💳 Vault ID:', vaultId)
     console.log('💰 Total Amount (with tax):', total.toFixed(2))
+    console.log('👤 Customer Name:', `${nmiParams.get('first_name')} ${nmiParams.get('last_name')}`)
+    console.log('📋 Original Transaction ID (Field 4):', nmiParams.get('merchant_defined_field_4') || 'Not set')
     
     // Make the API request to NMI
     const nmiResponse = await fetch(NMI_API_URL, {

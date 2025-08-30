@@ -418,7 +418,7 @@ export default function CardUpdateModal({
       // Reset initialization flag when modal closes
       isInitializing.current = false;
     }
-  }, [isOpen]) // Only re-initialize when modal opens/closes, not on every render
+  }, [isOpen, collectJSService]) // Only re-initialize when modal opens/closes, not on every render
   
   // Cleanup effect when modal closes
   useEffect(() => {

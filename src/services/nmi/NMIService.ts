@@ -441,7 +441,7 @@ export class NMIService {
     
     return {
       success: isApproved,
-      transactionId: nmiResponse.transactionid,
+      transaction_id: nmiResponse.transactionid,
       authCode: nmiResponse.authcode,
       avsResponse: nmiResponse.avsresponse,
       cvvResponse: nmiResponse.cvvresponse,

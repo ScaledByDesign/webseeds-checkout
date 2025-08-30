@@ -398,7 +398,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     console.log('📊 PAYMENT RESULT ANALYSIS:');
     console.log(`  ✅ Success: ${paymentResult.success}`);
     console.log(`  🆔 Session ID: ${paymentResult.sessionId}`);
-    console.log(`  💳 Transaction ID: ${paymentResult.transactionId || 'None'}`);
+    console.log(`  💳 Transaction ID: ${paymentResult.transaction_id || 'None'}`);
     console.log(`  🏦 Vault ID: ${paymentResult.vaultId || 'None'}`);
     console.log(`  ❌ Error: ${paymentResult.error || 'None'}`);
     console.log(`  ➡️ Next Step: ${paymentResult.nextStep || 'Default'}`);
@@ -437,7 +437,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       const sessionUpdateData = {
         status: 'completed' as const,
         current_step: 'upsell-1',
-        transaction_id: paymentResult.transactionId,
+        transaction_id: paymentResult.transaction_id,
         vault_id: paymentResult.vaultId,
         metadata: {
           ...verifiedSession.metadata,
@@ -475,7 +475,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
           email: validatedData.customerInfo.email,
           firstName: validatedData.customerInfo.firstName,
           lastName: validatedData.customerInfo.lastName,
-          transactionId: paymentResult.transactionId,
+          transactionId: paymentResult.transaction_id,
           state: validatedData.customerInfo.state || 'CA'
         });
         console.log('✅ Upsell session cookie created successfully');
@@ -497,7 +497,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
         const orderCachePayload = {
           action: 'add_order',
           sessionId: verifiedSession.id,
-          transactionId: paymentResult.transactionId,
+          transactionId: paymentResult.transaction_id,
           amount: totalAmount,
           productCode: validatedData.products[0]?.id || 'FITSPRESSO_6',
           customer: {
@@ -553,14 +553,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       // Log this for monitoring but don't fail the transaction
       captureCheckoutEvent('Order cache initialization failed', 'warning', {
         sessionId: verifiedSession.id,
-        transactionId: paymentResult.transactionId,
+        transactionId: paymentResult.transaction_id,
         email: validatedData.customerInfo.email
       });
     }
 
     // Success response
     console.log('🎉 PAYMENT SUCCESS:');
-    console.log(`  💳 Transaction ID: ${paymentResult.transactionId}`);
+    console.log(`  💳 Transaction ID: ${paymentResult.transaction_id}`);
     console.log(`  🏦 Vault ID: ${paymentResult.vaultId}`);
     console.log(`  ➡️ Next Step: ${paymentResult.nextStep || '/checkout/success'}`);
     console.log(`  ⏱️ Completed in: ${processingTime}ms`);
@@ -568,7 +568,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     return NextResponse.json({
       success: true,
       sessionId: verifiedSession.id,
-      transactionId: paymentResult.transactionId,
+      transactionId: paymentResult.transaction_id,
       vaultId: paymentResult.vaultId,
       message: 'Payment processed successfully',
       nextStep: paymentResult.nextStep || `/checkout/success`,
