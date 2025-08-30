@@ -200,71 +200,128 @@ async function testThankYouPageValidation() {
           orderNumber: null,
           customerEmail: null,
           items: [],
+          mainProducts: [],
+          bonusProducts: [],
+          upsellProducts: [],
           subtotal: null,
           tax: null,
           shipping: null,
           total: null,
-          shippingAddress: null
+          shippingAddress: null,
+          debugInfo: {}
         };
         
         // Look for order number
-        const orderNumberElement = document.querySelector('h2:has-text("Order #"), h3:has-text("Order #"), .order-number');
+        const orderNumberElement = document.querySelector('h2:has-text("Order #"), h3:has-text("Order #"), [class*="order-number"]');
         if (orderNumberElement) {
           details.orderNumber = orderNumberElement.textContent.replace(/Order #?/i, '').trim();
         }
         
-        // Look for email
-        const emailElements = Array.from(document.querySelectorAll('*')).filter(el => 
-          el.textContent.includes('@') && el.textContent.includes('test')
-        );
-        if (emailElements.length > 0) {
-          const emailMatch = emailElements[0].textContent.match(/[\w.-]+@[\w.-]+\.\w+/);
+        // Look for email in customer section
+        const customerSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Customer'));
+        if (customerSection) {
+          const parentDiv = customerSection.parentElement;
+          const emailMatch = parentDiv?.textContent.match(/[\w.-]+@[\w.-]+\.\w+/);
           if (emailMatch) {
             details.customerEmail = emailMatch[0];
           }
         }
         
-        // Look for product items in order summary
-        const productRows = document.querySelectorAll('tr:has(td), .order-item, .product-row');
-        productRows.forEach(row => {
-          const text = row.textContent;
-          // Look for patterns like "RetinaClear", "bottles", quantity, price
-          if (text.includes('bottle') || text.includes('RetinaClear') || text.includes('RC')) {
-            const quantityMatch = text.match(/(\d+)\s*bottle/i) || text.match(/x\s*(\d+)/);
-            const priceMatch = text.match(/\$[\d,]+\.?\d*/);
+        // Look for products in Order Summary section
+        const orderSummarySection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Order Summary'));
+        if (orderSummarySection) {
+          const listContainer = orderSummarySection.parentElement;
+          const productItems = listContainer?.querySelectorAll('li');
+          
+          productItems?.forEach(item => {
+            const text = item.textContent || '';
+            const priceElement = item.querySelector('[class*="uppercase"]');
+            const price = priceElement?.textContent || '';
             
-            details.items.push({
-              text: text.trim(),
-              quantity: quantityMatch ? quantityMatch[1] : null,
-              price: priceMatch ? priceMatch[0] : null
+            // Extract product name from h3 elements within the item
+            const nameElement = item.querySelector('h3');
+            const name = nameElement?.textContent || '';
+            
+            // Extract description from p elements
+            const descElement = item.querySelector('p');
+            const description = descElement?.textContent || '';
+            
+            const productInfo = {
+              name: name.trim(),
+              description: description.trim(),
+              price: price.trim(),
+              fullText: text.trim().substring(0, 200)
+            };
+            
+            // Categorize products
+            if (text.includes('Bonus') || price.toLowerCase().includes('free')) {
+              details.bonusProducts.push(productInfo);
+            } else if (text.includes('RetinaClear') || text.includes('Sightagen')) {
+              details.mainProducts.push(productInfo);
+            } else if (name) {
+              details.items.push(productInfo);
+            }
+          });
+        }
+        
+        // Look for Addons section for upsells
+        const addonsSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Addons'));
+        if (addonsSection) {
+          const listContainer = addonsSection.parentElement;
+          const upsellItems = listContainer?.querySelectorAll('li');
+          
+          upsellItems?.forEach(item => {
+            const nameElement = item.querySelector('h3');
+            const priceElement = item.querySelector('[class*="uppercase"]');
+            const descElement = item.querySelector('p');
+            
+            details.upsellProducts.push({
+              name: nameElement?.textContent?.trim() || '',
+              description: descElement?.textContent?.trim() || '',
+              price: priceElement?.textContent?.trim() || '',
+              fullText: item.textContent?.trim().substring(0, 200)
             });
+          });
+        }
+        
+        // Look for totals in both Order Summary and Addons sections
+        const allListItems = document.querySelectorAll('li');
+        allListItems.forEach(item => {
+          const text = item.textContent || '';
+          if (text.includes('Shipping') && !details.shipping) {
+            const priceMatch = text.match(/\$?[\d,]+\.?\d*|free/i);
+            details.shipping = priceMatch ? priceMatch[0] : null;
           }
-        });
-        
-        // Look for totals
-        const totalElements = Array.from(document.querySelectorAll('*')).filter(el => {
-          const text = el.textContent;
-          return text.includes('Total:') || text.includes('Subtotal:') || 
-                 text.includes('Tax:') || text.includes('Shipping:');
-        });
-        
-        totalElements.forEach(el => {
-          const text = el.textContent;
-          const priceMatch = text.match(/\$[\d,]+\.?\d*/);
-          if (priceMatch) {
-            if (text.includes('Subtotal')) details.subtotal = priceMatch[0];
-            else if (text.includes('Tax')) details.tax = priceMatch[0];
-            else if (text.includes('Shipping')) details.shipping = priceMatch[0];
-            else if (text.includes('Total') && !text.includes('Subtotal')) details.total = priceMatch[0];
+          if (text.includes('Total') && !text.includes('Subtotal')) {
+            const priceMatch = text.match(/\$[\d,]+\.?\d*/);
+            if (priceMatch && !details.total) {
+              details.total = priceMatch[0];
+            }
           }
         });
         
         // Look for shipping address
-        const addressElements = Array.from(document.querySelectorAll('*')).filter(el => 
-          el.textContent.includes('Test St') || el.textContent.includes('Test City')
-        );
-        if (addressElements.length > 0) {
-          details.shippingAddress = addressElements[0].textContent.trim();
+        const shippingSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Shipping'));
+        if (shippingSection) {
+          const parentDiv = shippingSection.parentElement;
+          const addressParts = [];
+          const paragraphs = parentDiv?.querySelectorAll('p');
+          paragraphs?.forEach(p => {
+            if (p.textContent && !p.textContent.includes('Shipping')) {
+              addressParts.push(p.textContent.trim());
+            }
+          });
+          details.shippingAddress = addressParts.join(', ');
+        }
+        
+        // Capture debug info if available
+        const debugSection = document.querySelector('[class*="Debug Info"]')?.parentElement;
+        if (debugSection) {
+          const debugText = debugSection.textContent || '';
+          details.debugInfo = {
+            available: true,
+            text: debugText.substring(0, 500)
+          };
         }
         
         return details;
@@ -278,25 +335,49 @@ async function testThankYouPageValidation() {
       console.log(`  Order #: ${orderDetails.orderNumber || '❌ NOT FOUND'}`);
       console.log(`  Email: ${orderDetails.customerEmail || '❌ NOT FOUND'}`);
       
-      console.log(`\n📦 Order Items (${orderDetails.items.length} found):`);
-      if (orderDetails.items.length > 0) {
-        orderDetails.items.forEach((item, index) => {
-          console.log(`  ${index + 1}. ${item.text.substring(0, 80)}...`);
-          if (item.quantity) console.log(`     Quantity: ${item.quantity}`);
+      console.log(`\n📦 Main Products (${orderDetails.mainProducts.length} found):`);
+      if (orderDetails.mainProducts.length > 0) {
+        orderDetails.mainProducts.forEach((item, index) => {
+          console.log(`  ${index + 1}. ${item.name || 'Unknown Product'}`);
+          if (item.description) console.log(`     Description: ${item.description}`);
           if (item.price) console.log(`     Price: ${item.price}`);
         });
       } else {
-        console.log('  ❌ No product items found on page');
+        console.log('  ❌ No main products found on page');
+      }
+      
+      console.log(`\n🎁 Bonus Products (${orderDetails.bonusProducts.length} found):`);
+      if (orderDetails.bonusProducts.length > 0) {
+        orderDetails.bonusProducts.forEach((item, index) => {
+          console.log(`  ${index + 1}. ${item.name || 'Unknown Bonus'}`);
+          if (item.description) console.log(`     Description: ${item.description}`);
+          console.log(`     Price: ${item.price || 'FREE'}`);
+        });
+      } else {
+        console.log('  ❌ No bonus products found');
+      }
+      
+      console.log(`\n⬆️ Upsell Products (${orderDetails.upsellProducts.length} found):`);
+      if (orderDetails.upsellProducts.length > 0) {
+        orderDetails.upsellProducts.forEach((item, index) => {
+          console.log(`  ${index + 1}. ${item.name || 'Unknown Upsell'}`);
+          if (item.description) console.log(`     Description: ${item.description}`);
+          if (item.price) console.log(`     Price: ${item.price}`);
+        });
+      } else {
+        console.log('  ℹ️ No upsells accepted');
       }
       
       console.log(`\n💰 Order Totals:`);
-      console.log(`  Subtotal: ${orderDetails.subtotal || '❌ NOT FOUND'}`);
-      console.log(`  Tax: ${orderDetails.tax || '❌ NOT FOUND'}`);
       console.log(`  Shipping: ${orderDetails.shipping || '❌ NOT FOUND'}`);
       console.log(`  Total: ${orderDetails.total || '❌ NOT FOUND'}`);
       
       console.log(`\n📍 Shipping Address:`);
       console.log(`  ${orderDetails.shippingAddress || '❌ NOT FOUND'}`);
+      
+      if (orderDetails.debugInfo.available) {
+        console.log(`\n🔍 Debug Info Available: Yes`);
+      }
       
       // Compare with tracked order
       console.log('\n🔍 VALIDATION AGAINST TRACKED ORDER:');

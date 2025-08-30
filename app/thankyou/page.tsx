@@ -227,85 +227,97 @@ export default function ThankYouPage() {
                   Order Summary
                 </h3>
                 <ul className="flex flex-col gap-30 pb-10 md:pb-16 px-10 md:px-22 border-b-3 border-[#CDCDCD]">
-                  {/* Main Product */}
-                  <li className="flex justify-between items-center gap-5">
-                    <div className="flex gap-8 md:gap-13 items-center">
-                      <div className="max-w-40 md:max-w-44">
-                        <picture>
-                          <source srcSet="/assets/images/6-bottles.webp" type="image/webp" />
-                          <Image
-                            className="w-full max-w-40 md:max-w-44"
-                            src="/assets/images/6-bottles.png"
-                            alt="6 Bottle Pack"
-                            width={181}
-                            height={144}
-                            loading="lazy"
-                            style={{ aspectRatio: '181/144', objectFit: 'contain' }}
-                          />
-                        </picture>
+                  {/* Dynamic Main Products */}
+                  {mainProducts.length > 0 ? (
+                    mainProducts.map((product, index) => (
+                      <li key={`main-${index}`} className="flex justify-between items-center gap-5">
+                        <div className="flex gap-8 md:gap-13 items-center">
+                          <div className="max-w-40 md:max-w-44">
+                            <picture>
+                              <source srcSet={product.image?.replace('.png', '.webp') || "/assets/images/6-bottles.webp"} type="image/webp" />
+                              <Image
+                                className="w-full max-w-40 md:max-w-44"
+                                src={product.image || "/assets/images/6-bottles.png"}
+                                alt={product.name}
+                                width={181}
+                                height={144}
+                                loading="lazy"
+                                style={{ aspectRatio: '181/144', objectFit: 'contain' }}
+                              />
+                            </picture>
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
+                              {product.name}<br />{product.description || `${product.bottles || ''} Bottle Pack`}
+                            </h3>
+                            {product.quantity > 1 && (
+                              <p className="text-[#976987] font-medium text-[1.63rem]">Quantity: {product.quantity}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="font-medium text-[2.38rem] text-[#373737] uppercase">
+                          ${(product.amount || product.price || 0).toFixed(0)}
+                        </div>
+                      </li>
+                    ))
+                  ) : (
+                    /* Fallback if no products found */
+                    <li className="flex justify-between items-center gap-5">
+                      <div className="flex gap-8 md:gap-13 items-center">
+                        <div className="max-w-40 md:max-w-44">
+                          <picture>
+                            <source srcSet="/assets/images/6-bottles.webp" type="image/webp" />
+                            <Image
+                              className="w-full max-w-40 md:max-w-44"
+                              src="/assets/images/6-bottles.png"
+                              alt="Product"
+                              width={181}
+                              height={144}
+                              loading="lazy"
+                              style={{ aspectRatio: '181/144', objectFit: 'contain' }}
+                            />
+                          </picture>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
+                            Your Order
+                          </h3>
+                          <p className="text-[#976987] font-medium text-[1.63rem]">Processing...</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
-                          Fitspresso<br />6 Bottle Super Pack
-                        </h3>
-                        <p className="text-[#976987] font-medium text-[1.63rem]">Most Popular!</p>
+                      <div className="font-medium text-[2.38rem] text-[#373737] uppercase">
+                        ${totals.subtotal.toFixed(0)}
                       </div>
-                    </div>
-                    <div className="font-medium text-[2.38rem] text-[#373737] uppercase">$294</div>
-                  </li>
+                    </li>
+                  )}
 
-                  {/* Bonus eBooks */}
-                  <li className="flex justify-between items-center gap-5">
-                    <div className="flex gap-8 md:gap-13 items-center">
-                      <div className="max-w-40 md:max-w-44">
-                        <picture>
-                          <source srcSet="/assets/images/bonus-ebooks.webp" type="image/webp" />
-                          <Image
-                            className="w-full max-w-40 md:max-w-44"
-                            src="/assets/images/bonus-ebooks.png"
-                            alt="Bonus eBooks"
-                            width={176}
-                            height={176}
-                            loading="lazy"
-                          />
-                        </picture>
+                  {/* Dynamic Bonus Products */}
+                  {bonusProducts.map((product, index) => (
+                    <li key={`bonus-${index}`} className="flex justify-between items-center gap-5">
+                      <div className="flex gap-8 md:gap-13 items-center">
+                        <div className="max-w-40 md:max-w-44">
+                          <picture>
+                            <source srcSet={product.image?.replace('.png', '.webp') || "/assets/images/bonus-ebooks.webp"} type="image/webp" />
+                            <Image
+                              className="w-full max-w-40 md:max-w-44"
+                              src={product.image || "/assets/images/bonus-ebooks.png"}
+                              alt={product.name}
+                              width={176}
+                              height={176}
+                              loading="lazy"
+                            />
+                          </picture>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
+                            {product.name}
+                          </h3>
+                          <p className="text-[#976987] font-medium text-[1.63rem]">{product.description || 'Bonus'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
-                          Bonus eBooks
-                        </h3>
-                        <p className="text-[#976987] font-medium text-[1.63rem]">First Time Customer</p>
-                      </div>
-                    </div>
-                    <div className="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
-                  </li>
-
-                  {/* Bonus Coaching Call */}
-                  <li className="flex justify-between items-center gap-5">
-                    <div className="flex gap-8 md:gap-13 items-center">
-                      <div className="max-w-40 md:max-w-44">
-                        <picture>
-                          <source srcSet="/assets/images/bonus-call.webp" type="image/webp" />
-                          <Image
-                            className="w-full max-w-40 md:max-w-44"
-                            src="/assets/images/bonus-call.png"
-                            alt="Bonus Call"
-                            width={160}
-                            height={142}
-                            loading="lazy"
-                            style={{ aspectRatio: '160/142', objectFit: 'contain' }}
-                          />
-                        </picture>
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-[2.5rem] md:text-[2.13rem] leading-relaxed">
-                          Bonus Coaching Call
-                        </h3>
-                        <p className="text-[#976987] font-medium text-[1.63rem]">Limited Time</p>
-                      </div>
-                    </div>
-                    <div className="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
-                  </li>
+                      <div className="font-medium text-[2.38rem] text-[#373737] uppercase">Free</div>
+                    </li>
+                  ))}
                 </ul>
 
                 {/* Totals */}
@@ -385,8 +397,27 @@ export default function ThankYouPage() {
                     <p><strong>Session ID:</strong> {sessionId || 'None'}</p>
                     <p><strong>Order Data Available:</strong> {orderData ? 'Yes' : 'No'}</p>
                     <p><strong>Products Found:</strong> {orderData?.order?.products?.length || 0}</p>
+                    <p><strong>Main Products:</strong> {mainProducts.length} items</p>
+                    <p><strong>Bonus Products:</strong> {bonusProducts.length} items</p>
+                    <p><strong>Upsell Products:</strong> {upsellProducts.length} items</p>
+                    <p><strong>Total Amount:</strong> ${totals.total.toFixed(2)}</p>
                     <p><strong>Error:</strong> {error || 'None'}</p>
                   </div>
+                  {mainProducts.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-300">
+                      <p className="text-xs font-semibold text-gray-700">Product Details:</p>
+                      {mainProducts.map((p, i) => (
+                        <div key={i} className="text-xs text-gray-600 ml-2">
+                          - {p.name}: ${p.amount || p.price || 0} ({p.productCode})
+                        </div>
+                      ))}
+                      {upsellProducts.map((p, i) => (
+                        <div key={`u-${i}`} className="text-xs text-gray-600 ml-2">
+                          - [Upsell] {p.name}: ${p.amount || 0} ({p.productCode})
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

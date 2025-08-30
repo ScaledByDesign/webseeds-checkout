@@ -850,23 +850,218 @@ async function updateCardInModal(page) {
 
         await page.waitForTimeout(2000);
 
-        // Check for order details
-        const pageContent = await page.textContent('body');
-        const hasOrderNumber = pageContent.includes('Order #') || pageContent.includes('Transaction');
-        const hasThankYou = pageContent.includes('Thank you') || pageContent.includes('Congratulations');
-
-        console.log(`Order confirmation: ${hasOrderNumber ? '✅' : '❌'}`);
-        console.log(`Thank you message: ${hasThankYou ? '✅' : '❌'}`);
+        // Extract and validate order details from the page
+        const orderDetails = await page.evaluate(() => {
+          const details = {
+            orderNumber: null,
+            customerEmail: null,
+            items: [],
+            mainProducts: [],
+            bonusProducts: [],
+            upsellProducts: [],
+            subtotal: null,
+            tax: null,
+            shipping: null,
+            total: null,
+            shippingAddress: null
+          };
+          
+          // Look for order number
+          const allHeadings = [...document.querySelectorAll('h2, h3')];
+          const orderNumberElement = allHeadings.find(h => h.textContent.includes('Order #'));
+          if (orderNumberElement) {
+            details.orderNumber = orderNumberElement.textContent.replace(/Order #?/i, '').trim();
+          }
+          
+          // Look for email in customer section
+          const customerSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Customer'));
+          if (customerSection) {
+            const parentDiv = customerSection.parentElement;
+            const emailMatch = parentDiv?.textContent.match(/[\w.-]+@[\w.-]+\.\w+/);
+            if (emailMatch) {
+              details.customerEmail = emailMatch[0];
+            }
+          }
+          
+          // Look for products in Order Summary section
+          const orderSummarySection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Order Summary'));
+          if (orderSummarySection) {
+            const listContainer = orderSummarySection.parentElement;
+            const productItems = listContainer?.querySelectorAll('li');
+            
+            productItems?.forEach(item => {
+              const text = item.textContent || '';
+              const priceElement = item.querySelector('[class*="uppercase"]');
+              const price = priceElement?.textContent || '';
+              
+              // Extract product name from h3 elements within the item
+              const nameElement = item.querySelector('h3');
+              const name = nameElement?.textContent || '';
+              
+              // Extract description from p elements
+              const descElement = item.querySelector('p');
+              const description = descElement?.textContent || '';
+              
+              const productInfo = {
+                name: name.trim(),
+                description: description.trim(),
+                price: price.trim(),
+                fullText: text.trim().substring(0, 200)
+              };
+              
+              // Categorize products
+              if (text.includes('Bonus') || price.toLowerCase().includes('free')) {
+                details.bonusProducts.push(productInfo);
+              } else if (text.includes('RetinaClear') || text.includes('Sightagen')) {
+                details.mainProducts.push(productInfo);
+              } else if (name) {
+                details.items.push(productInfo);
+              }
+            });
+          }
+          
+          // Look for Addons section for upsells
+          const addonsSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Addons'));
+          if (addonsSection) {
+            const listContainer = addonsSection.parentElement;
+            const upsellItems = listContainer?.querySelectorAll('li');
+            
+            upsellItems?.forEach(item => {
+              const nameElement = item.querySelector('h3');
+              const priceElement = item.querySelector('[class*="uppercase"]');
+              const descElement = item.querySelector('p');
+              
+              details.upsellProducts.push({
+                name: nameElement?.textContent?.trim() || '',
+                description: descElement?.textContent?.trim() || '',
+                price: priceElement?.textContent?.trim() || '',
+                fullText: item.textContent?.trim().substring(0, 200)
+              });
+            });
+          }
+          
+          // Look for totals
+          const allListItems = document.querySelectorAll('li');
+          allListItems.forEach(item => {
+            const text = item.textContent || '';
+            if (text.includes('Shipping') && !details.shipping) {
+              const priceMatch = text.match(/\$?[\d,]+\.?\d*|free/i);
+              details.shipping = priceMatch ? priceMatch[0] : null;
+            }
+            if (text.includes('Total') && !text.includes('Subtotal')) {
+              const priceMatch = text.match(/\$[\d,]+\.?\d*/);
+              if (priceMatch && !details.total) {
+                details.total = priceMatch[0];
+              }
+            }
+          });
+          
+          // Look for shipping address
+          const shippingSection = Array.from(document.querySelectorAll('h3')).find(h => h.textContent.includes('Shipping'));
+          if (shippingSection) {
+            const parentDiv = shippingSection.parentElement;
+            const addressParts = [];
+            const paragraphs = parentDiv?.querySelectorAll('p');
+            paragraphs?.forEach(p => {
+              if (p.textContent && !p.textContent.includes('Shipping')) {
+                addressParts.push(p.textContent.trim());
+              }
+            });
+            details.shippingAddress = addressParts.join(', ');
+          }
+          
+          return details;
+        });
+        
+        // Display validation results
+        console.log('\n📊 ORDER DETAILS EXTRACTED:');
+        console.log('=' .repeat(50));
+        
+        console.log(`\n📋 Order Information:`);
+        console.log(`  Order #: ${orderDetails.orderNumber || '❌ NOT FOUND'}`);
+        console.log(`  Email: ${orderDetails.customerEmail || '❌ NOT FOUND'}`);
+        
+        console.log(`\n📦 Main Products (${orderDetails.mainProducts.length} found):`);
+        if (orderDetails.mainProducts.length > 0) {
+          orderDetails.mainProducts.forEach((item, index) => {
+            console.log(`  ${index + 1}. ${item.name || 'Unknown Product'}`);
+            if (item.description) console.log(`     Description: ${item.description}`);
+            if (item.price) console.log(`     Price: ${item.price}`);
+          });
+        } else {
+          console.log('  ❌ No main products found on page');
+        }
+        
+        console.log(`\n🎁 Bonus Products (${orderDetails.bonusProducts.length} found):`);
+        if (orderDetails.bonusProducts.length > 0) {
+          orderDetails.bonusProducts.forEach((item, index) => {
+            console.log(`  ${index + 1}. ${item.name || 'Unknown Bonus'}`);
+            if (item.description) console.log(`     Description: ${item.description}`);
+            console.log(`     Price: ${item.price || 'FREE'}`);
+          });
+        } else {
+          console.log('  ℹ️ No bonus products found');
+        }
+        
+        console.log(`\n⬆️ Upsell Products (${orderDetails.upsellProducts.length} found):`);
+        if (orderDetails.upsellProducts.length > 0) {
+          orderDetails.upsellProducts.forEach((item, index) => {
+            console.log(`  ${index + 1}. ${item.name || 'Unknown Upsell'}`);
+            if (item.description) console.log(`     Description: ${item.description}`);
+            if (item.price) console.log(`     Price: ${item.price}`);
+          });
+        } else {
+          console.log('  ℹ️ No upsells accepted');
+        }
+        
+        console.log(`\n💰 Order Totals:`);
+        console.log(`  Shipping: ${orderDetails.shipping || '❌ NOT FOUND'}`);
+        console.log(`  Total: ${orderDetails.total || '❌ NOT FOUND'}`);
+        
+        console.log(`\n📍 Shipping Address:`);
+        console.log(`  ${orderDetails.shippingAddress || '❌ NOT FOUND'}`);
+        
+        // Validation summary
+        console.log('\n' + '=' .repeat(50));
+        console.log('📊 VALIDATION SUMMARY:');
+        console.log('=' .repeat(50));
+        
+        const validationPassed = 
+          orderDetails.orderNumber && 
+          (orderDetails.mainProducts.length > 0 || orderDetails.items.length > 0) &&
+          orderDetails.total;
+        
+        if (validationPassed) {
+          console.log('✅ THANK YOU PAGE VALIDATION PASSED!');
+          console.log('  ✓ Order number displayed');
+          console.log('  ✓ Product items listed');
+          console.log('  ✓ Order total shown');
+          
+          // Check if correct products are shown (RetinaClear, not Fitspresso)
+          const hasRetinaClear = orderDetails.mainProducts.some(p => p.name.includes('RetinaClear'));
+          const hasFitspresso = orderDetails.mainProducts.some(p => p.name.includes('Fitspresso'));
+          
+          if (hasRetinaClear && !hasFitspresso) {
+            console.log('  ✓ Correct products displayed (RetinaClear)');
+          } else if (hasFitspresso) {
+            console.log('  ✗ WARNING: Showing Fitspresso instead of RetinaClear!');
+          }
+        } else {
+          console.log('❌ THANK YOU PAGE VALIDATION FAILED!');
+          if (!orderDetails.orderNumber) console.log('  ✗ Order number missing');
+          if (orderDetails.mainProducts.length === 0 && orderDetails.items.length === 0) console.log('  ✗ No product items found');
+          if (!orderDetails.total) console.log('  ✗ Order total missing');
+        }
 
         // Take final screenshot
-        await page.screenshot({ path: 'tests/screenshots/complete-flow-success.png' });
-        console.log('📸 Screenshot saved: tests/screenshots/complete-flow-success.png');
+        await page.screenshot({ path: 'tests/screenshots/complete-flow-success.png', fullPage: true });
+        console.log('\n📸 Screenshot saved: tests/screenshots/complete-flow-success.png');
 
         console.log('\n🎉 COMPLETE FLOW TEST SUCCESSFUL!');
         console.log('===================================');
         console.log('✅ Checkout completed');
         console.log('✅ Upsell flow processed');
-        console.log('✅ Thank you page reached');
+        console.log('✅ Thank you page reached and validated');
       }
 
     } else if (checkoutResult === 'thankyou') {
