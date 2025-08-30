@@ -1089,7 +1089,7 @@ export function NewDesignCheckoutForm({
           Payment
         </h3>
         <p className="flex gap-2 mb-10 items-center font-medium text-[1.94rem] text-[#6d6d6d] hidden md:block">
-          All transactions are secure and encrypted 
+          All transactions are secure and encrypted &nbsp;
           <Image
             className="w-6 inline-block -mt-3"
             src="/assets/images/lock.svg"
@@ -1210,7 +1210,7 @@ export function NewDesignCheckoutForm({
                 Security Code
               </label>
              
-              <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
+              <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2 z-10 pointer-events-none">
                 <Image
                   src="/assets/images/info.svg"
                   alt="Info"
@@ -1224,7 +1224,7 @@ export function NewDesignCheckoutForm({
               )}
             </div> 
           </div>
-          <div className="floating-label-group">
+          <div className="floating-label-group"style={{paddingTop:'1rem'}}>
             <input
               type="text"
               id="nameOnCard"

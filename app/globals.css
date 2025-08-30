@@ -49,6 +49,7 @@
   /* Floating label styles - exact match from design */
   .floating-label-group {
     position: relative;
+    margin-bottom: 1rem;
   }
 
   /* Prevent form element layout shifts */
