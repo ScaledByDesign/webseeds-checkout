@@ -1,4 +1,5 @@
 import { Page, expect } from '@playwright/test';
+import { calculateTax, getTaxRate } from '@/src/lib/constants/payment';
 
 /**
  * Checkout Flow Helper Utilities
@@ -150,10 +151,17 @@ export class OrderCalculator {
   }
 
   /**
-   * Calculate tax amount
+   * Calculate tax amount for a given state
    */
-  static calculateTax(subtotal: number, taxRate: number = 0.08): number {
-    return subtotal * taxRate;
+  static calculateTax(subtotal: number, state?: string): number {
+    return calculateTax(subtotal, state);
+  }
+
+  /**
+   * Get tax rate for a given state
+   */
+  static getTaxRate(state?: string): number {
+    return getTaxRate(state);
   }
 
   /**

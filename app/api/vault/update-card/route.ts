@@ -18,10 +18,98 @@ export async function POST(request: NextRequest) {
       name_on_card: body.name_on_card
     })
     
-    // Validate request
-    if (!body.sessionId || !body.payment_token) {
+    // Validate request - payment token is required, vault ID can come from session OR be provided directly
+    if (!body.payment_token) {
       return NextResponse.json(
-        { success: false, error: 'Session ID and payment token are required' },
+        { success: false, error: 'Payment token is required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if vault ID and customer info are provided directly (preferred method)
+    if (body.vaultId && body.customerInfo) {
+      console.log('🎯 Using provided vault ID and customer info (direct method)')
+      console.log('🏦 Vault ID:', body.vaultId)
+      console.log('👤 Customer info:', {
+        firstName: body.customerInfo.firstName,
+        lastName: body.customerInfo.lastName,
+        email: body.customerInfo.email
+      })
+
+      // Use provided data directly - no session validation needed
+      const vaultId = body.vaultId
+      const customerInfo = body.customerInfo
+
+      // Prepare NMI vault update request with provided data
+      const nmiParams = new URLSearchParams({
+        // Authentication
+        security_key: NMI_SECURITY_KEY,
+
+        // Update customer vault with new payment token
+        customer_vault: 'update_customer',
+        customer_vault_id: vaultId,
+        payment_token: body.payment_token,
+
+        // Customer information from request
+        first_name: customerInfo.firstName,
+        last_name: customerInfo.lastName,
+        email: customerInfo.email,
+
+        // Merchant defined fields
+        merchant_defined_field_1: 'vault-update-direct',
+        merchant_defined_field_2: Date.now().toString()
+      })
+
+      console.log('🔄 Sending direct vault update request to NMI...')
+      console.log('📋 NMI request parameters:', {
+        customer_vault: 'update_customer',
+        customer_vault_id: vaultId,
+        payment_token: body.payment_token.substring(0, 10) + '...',
+        first_name: customerInfo.firstName,
+        last_name: customerInfo.lastName,
+        email: customerInfo.email
+      })
+
+      // Make the NMI API call
+      const nmiResponse = await fetch(NMI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: nmiParams.toString()
+      })
+
+      const responseText = await nmiResponse.text()
+      console.log('📡 NMI vault update response:', responseText)
+
+      // Parse NMI response
+      const responseParams = new URLSearchParams(responseText)
+      const response = responseParams.get('response')
+      const responseText2 = responseParams.get('responsetext')
+      const customerVaultId = responseParams.get('customer_vault_id')
+
+      if (response === '1') {
+        console.log('✅ Vault update successful')
+        console.log('🏦 Updated vault ID:', customerVaultId)
+
+        return NextResponse.json({
+          success: true,
+          message: 'Payment method updated successfully',
+          vaultId: customerVaultId
+        })
+      } else {
+        console.log('❌ Vault update failed:', responseText2)
+        return NextResponse.json(
+          { success: false, error: responseText2 || 'Vault update failed' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Fallback to session-based method if vault ID not provided directly
+    if (!body.sessionId) {
+      return NextResponse.json(
+        { success: false, error: 'Either (vaultId + customerInfo) or sessionId is required' },
         { status: 400 }
       )
     }

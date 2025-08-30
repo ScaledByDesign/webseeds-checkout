@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { CollectJSService, type TokenResult } from '@/src/lib/collectjs-service'
 
 interface TestCheckoutFormProps {
   order: any
@@ -39,6 +40,7 @@ export function TestCheckoutForm({
   const [collectJSLoaded, setCollectJSLoaded] = useState(false)
   const [paymentToken, setPaymentToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const collectJSService = CollectJSService.getInstance()
   
   // Use ref to ensure CollectJS callback has latest form data
   const formDataRef = useRef(formData)
@@ -160,90 +162,50 @@ export function TestCheckoutForm({
     }
   }, [onPaymentError, onPaymentSuccess, order])
 
-  // Load CollectJS
+  // Initialize CollectJS service
   useEffect(() => {
-    const loadCollectJS = async () => {
+    const initializeCollectJS = async () => {
       try {
-        // Check if already loaded
-        if (document.querySelector('script[src*="Collect.js"]')) {
-          if (window.CollectJS) {
-            setCollectJSLoaded(true)
-            return
-          }
-        }
-
-        // Load CollectJS script
-        const script = document.createElement('script')
-        script.src = process.env.NEXT_PUBLIC_COLLECT_JS_URL || 'https://secure.nmi.com/token/Collect.js'
-        script.async = true
-        script.setAttribute('data-tokenization-key', process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY || 'vZ668s-j859wu-6THDmy-kA46Hh')
-        
-        script.onload = () => {
-          console.log('CollectJS script loaded')
-          // Wait a bit for full initialization
-          setTimeout(() => {
-            // Configure CollectJS
-            if (window.CollectJS) {
-              window.CollectJS.configure({
-                paymentSelector: '#payment-button',
-                variant: 'inline',
-                tokenizationKey: process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY || 'vZ668s-j859wu-6THDmy-kA46Hh',
-                
-                fields: {
-                  ccnumber: {
-                    selector: '#card-number-field',
-                    placeholder: '•••• •••• •••• ••••'
-                  },
-                  ccexp: {
-                    selector: '#card-expiry-field',
-                    placeholder: 'MM / YY'
-                  },
-                  cvv: {
-                    display: 'show',
-                    selector: '#card-cvv-field',
-                    placeholder: '•••'
-                  }
-                },
-                fieldsAvailableCallback: () => {
-                  console.log('CollectJS fields are ready')
-                  setCollectJSLoaded(true)
-                },
-                callback: (response: any) => {
-                  console.log('CollectJS callback:', response)
-                  if (response.token) {
-                    console.log('Payment token received:', response.token)
-                    setPaymentToken(response.token)
-                    handleFormSubmission(response.token)
-                  } else {
-                    console.error('Tokenization failed:', response)
-                    onPaymentError('Payment tokenization failed. Please check your card details.')
-                    setLoading(false)
-                  }
-                },
-                timeoutCallback: () => {
-                  console.error('Tokenization timeout')
-                  onPaymentError('Payment processing timed out. Please try again.')
-                  setLoading(false)
-                }
-              })
+        await collectJSService.initialize({
+          fieldSelectors: {
+            cardNumber: '#card-number-field',
+            expiry: '#card-expiry-field',
+            cvv: '#card-cvv-field'
+          },
+          onToken: (result: TokenResult) => {
+            if (result.success && result.token) {
+              console.log('Payment token received:', result.token)
+              setPaymentToken(result.token)
+              handleFormSubmission(result.token)
+            } else {
+              console.error('Tokenization failed:', result.error)
+              onPaymentError(result.error || 'Payment tokenization failed. Please check your card details.')
+              setLoading(false)
             }
-          }, 1000)
-        }
-
-        script.onerror = () => {
-          onPaymentError('Failed to load payment system. Please refresh and try again.')
-        }
-
-        document.body.appendChild(script)
-
+          },
+          onReady: () => {
+            console.log('CollectJS is ready')
+            setCollectJSLoaded(true)
+          },
+          onError: (error: string) => {
+            console.error('CollectJS error:', error)
+            onPaymentError(error)
+            setLoading(false)
+          }
+        })
       } catch (error) {
+        console.error('Failed to initialize CollectJS:', error)
         onPaymentError('Failed to initialize payment system.')
-        console.error('CollectJS loading error:', error)
       }
     }
 
-    loadCollectJS()
-  }, [handleFormSubmission, onPaymentError])
+    initializeCollectJS()
+    
+    // Cleanup on unmount
+    return () => {
+      collectJSService.reset()
+    }
+  }, [handleFormSubmission, onPaymentError, collectJSService])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -263,7 +225,7 @@ export function TestCheckoutForm({
 
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Basic validation
@@ -295,14 +257,21 @@ export function TestCheckoutForm({
       return
     }
     
-    if (!collectJSLoaded) {
+    if (!collectJSLoaded || !collectJSService.isReady()) {
       onPaymentError('Payment system is still loading. Please wait a moment and try again.')
       return
     }
 
     setLoading(true)
-    // CollectJS will handle the submission automatically and call the callback
-    console.log('Form submitted - CollectJS will handle tokenization')
+    // Use CollectJS service to handle tokenization
+    console.log('Form submitted - CollectJS service will handle tokenization')
+    try {
+      await collectJSService.startPaymentRequest()
+    } catch (error) {
+      console.error('Payment request error:', error)
+      onPaymentError('Failed to process payment request')
+      setLoading(false)
+    }
   }
 
   const inputStyle = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

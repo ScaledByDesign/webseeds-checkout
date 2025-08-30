@@ -32,6 +32,16 @@ export default function Upsell1() {
   const [retryAmount, setRetryAmount] = useState(0);
   const [retryBottles, setRetryBottles] = useState(0);
 
+  // Session data for card update modal
+  const [sessionData, setSessionData] = useState<{
+    vaultId?: string;
+    customerInfo?: {
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  }>({});
+
   // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => {
@@ -81,6 +91,39 @@ export default function Upsell1() {
       router.push('/checkout');
     }
   }, [sessionId, router]);
+
+  // Fetch session data for card update modal
+  useEffect(() => {
+    if (sessionId) {
+      console.log('🔍 Fetching session data for card update modal...');
+      fetch(`/api/session/order-summary?session=${sessionId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            console.log('✅ Session data fetched for card update:', {
+              vaultId: data.session?.vaultId,
+              customerEmail: data.order?.customer?.email,
+              sessionAvailable: !!data.session,
+              orderAvailable: !!data.order
+            });
+
+            setSessionData({
+              vaultId: data.session?.vaultId,
+              customerInfo: data.order?.customer ? {
+                firstName: data.order.customer.firstName,
+                lastName: data.order.customer.lastName,
+                email: data.order.customer.email
+              } : undefined
+            });
+          } else {
+            console.warn('⚠️ Could not fetch session data for card update:', data.error);
+          }
+        })
+        .catch(err => {
+          console.error('❌ Error fetching session data:', err);
+        });
+    }
+  }, [sessionId]);
 
   // Handle upsell errors with user-friendly messages
   const handleUpsellError = (result: any, productCode: string, amount: number, bottles: number) => {
@@ -518,13 +561,13 @@ export default function Upsell1() {
                   <div className="columns is-vcentered">
                     <div className="column is-narrow pb-0 has-text-centered is-hidden-mobile">
                       <picture>
-                        <Image src="/assets/upsells/shared/guarantee.jpg" width={200} height={200} alt="" style={{ width: 'auto', height: 'auto' }} />
+                        <Image src="/assets/upsells/shared/guarantee.jpg" width={200} height={200} alt="" style={{ maxWidth: '200px', height: 'auto' }} />
                       </picture>
                     </div>
                     <div className="column">
                       <div className="is-hidden-tablet has-text-centered my-3">
                         <picture>
-                          <Image src="/assets/upsells/shared/guarantee.jpg" width={160} height={160} alt="" style={{ width: 'auto', height: 'auto' }} />
+                          <Image src="/assets/upsells/shared/guarantee.jpg" width={160} height={160} alt="" style={{ maxWidth: '160px', height: 'auto' }} />
                         </picture>
                       </div>
                       <p className="has-text-weight-bold has-text-left is-size-2 is-size-3-touch lh1 headlineColor1 is-capitalized">No-Risk 60-Day 100% Money-Back Guarantee</p>
@@ -1295,6 +1338,8 @@ export default function Upsell1() {
         isOpen={showCardUpdateModal}
         onClose={() => setShowCardUpdateModal(false)}
         sessionId={sessionId}
+        vaultId={sessionData.vaultId}
+        customerInfo={sessionData.customerInfo}
         onSuccess={handleCardUpdateSuccess}
         onError={handleCardUpdateError}
         errorMessage={originalErrorMessage}

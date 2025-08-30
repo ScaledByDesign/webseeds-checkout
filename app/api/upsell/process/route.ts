@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession, getSessionById } from '@/src/lib/cookie-session'
 import { funnelSessionManager } from '@/src/lib/funnel-session'
+import { databaseSessionManager } from '@/src/lib/database-session-manager'
+import { calculateTax, getTaxRate } from '@/src/lib/constants/payment'
+import { z } from 'zod'
 
 // NMI API Configuration - using existing env variables
 const NMI_API_URL = process.env.NMI_ENDPOINT || process.env.NEXT_PUBLIC_NMI_API_URL || 'https://secure.nmi.com/api/transact.php'
 const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY || ''
+
+// Upsell request validation schema
+const upsellRequestSchema = z.object({
+  sessionId: z.string().min(1, 'Session ID is required'),
+  productCode: z.string().min(1, 'Product code is required'),
+  amount: z.number().positive('Amount must be positive'),
+  bottles: z.number().int().positive('Bottles must be a positive integer'),
+  step: z.number().int().positive('Step must be a positive integer')
+})
 
 interface UpsellRequest {
   sessionId: string
@@ -21,14 +33,18 @@ export async function POST(request: NextRequest) {
   console.log('📋 All request headers:', Object.fromEntries(request.headers.entries()))
   
   try {
-    const body: UpsellRequest = await request.json()
+    const body = await request.json()
     console.log('📦 Upsell request:', body)
     
-    // Validate request
-    if (!body.sessionId) {
-      console.error('❌ No session ID provided in request')
+    // Validate request using shared schema
+    let validatedData: UpsellRequest
+    try {
+      validatedData = upsellRequestSchema.parse(body)
+      console.log('✅ Upsell request validation successful')
+    } catch (error) {
+      console.error('❌ Upsell request validation failed:', error)
       return NextResponse.json(
-        { success: false, error: 'Session ID is required' },
+        { success: false, error: 'Invalid upsell request data' },
         { status: 400 }
       )
     }
@@ -38,9 +54,9 @@ export async function POST(request: NextRequest) {
     console.log('🍪 Session from cookie:', session ? 'Found' : 'Not found')
     
     // If cookie session fails, try fallback cache using sessionId
-    if (!session && body.sessionId) {
-      console.log('💾 Trying fallback: session cache lookup for ID:', body.sessionId)
-      session = getSessionById(body.sessionId)
+    if (!session && validatedData.sessionId) {
+      console.log('💾 Trying fallback: session cache lookup for ID:', validatedData.sessionId)
+      session = getSessionById(validatedData.sessionId)
       console.log('💾 Cache lookup result:', session ? 'Found session' : 'No session found')
     }
     
@@ -68,12 +84,43 @@ export async function POST(request: NextRequest) {
     }
     
     // Verify session ID matches
-    if (session.id !== body.sessionId) {
-      console.log('❌ Session ID mismatch:', session.id, 'vs', body.sessionId)
+    if (session.id !== validatedData.sessionId) {
+      console.log('❌ Session ID mismatch:', session.id, 'vs', validatedData.sessionId)
       return NextResponse.json(
         { success: false, error: 'Session ID mismatch' },
         { status: 401 }
       )
+    }
+
+    // Validate upsell eligibility
+    console.log('🔍 Validating upsell eligibility...')
+    const eligibilityErrors: string[] = []
+    const eligibilityWarnings: string[] = []
+
+    // Check if session has required fields for upsell
+    if (!session.vaultId) {
+      eligibilityErrors.push('No vault ID found - cannot process upsell')
+    }
+
+    if (!session.email) {
+      eligibilityErrors.push('No email found in session')
+    }
+
+    // Check if amount is reasonable
+    if (validatedData.amount > 1000) {
+      eligibilityWarnings.push('High upsell amount detected')
+    }
+
+    if (eligibilityErrors.length > 0) {
+      console.error('❌ Upsell eligibility validation failed:', eligibilityErrors)
+      return NextResponse.json(
+        { success: false, error: eligibilityErrors.join(', ') },
+        { status: 400 }
+      )
+    }
+
+    if (eligibilityWarnings.length > 0) {
+      console.warn('⚠️ Upsell eligibility warnings:', eligibilityWarnings)
     }
     
     console.log('📋 Session found:', {
@@ -94,23 +141,14 @@ export async function POST(request: NextRequest) {
     const state = session.state || 'CA'
     
     // Tax calculation - same logic as checkout
-    const TAX_RATES: Record<string, number> = {
-      'CA': 0.0725,  // California: 7.25%
-      'TX': 0.0625,  // Texas: 6.25%
-      'NY': 0.08,    // New York: 8%
-      'FL': 0.06,    // Florida: 6%
-      'WA': 0.065,   // Washington: 6.5%
-      'DEFAULT': 0.0 // No tax for other states
-    }
-    
-    const taxRate = TAX_RATES[state?.toUpperCase()] || TAX_RATES.DEFAULT
-    const subtotal = body.amount
-    const tax = parseFloat((subtotal * taxRate).toFixed(2))
+    const taxRate = getTaxRate(state)
+    const subtotal = validatedData.amount
+    const tax = calculateTax(subtotal, state)
     const shipping = 0.00 // Free shipping
     const total = subtotal + tax + shipping
     
     console.log('💰 Upsell amount calculation:')
-    console.log('  - Product:', body.productCode)
+    console.log('  - Product:', validatedData.productCode)
     console.log('  - Subtotal:', subtotal.toFixed(2))
     console.log('  - Tax:', tax.toFixed(2), `(${(taxRate * 100).toFixed(2)}% for ${state})`)
     console.log('  - Total:', total.toFixed(2))
@@ -132,8 +170,8 @@ export async function POST(request: NextRequest) {
       shipping: shipping.toFixed(2),
       
       // Order details - add random component to prevent duplicates
-      orderid: `UPSELL${body.step}-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      order_description: `${body.productCode} - ${body.bottles} bottles`,
+      orderid: `UPSELL${validatedData.step}-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      order_description: `${validatedData.productCode} - ${validatedData.bottles} bottles`,
       ponumber: `UPO-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       
       // Customer info (from session)
@@ -143,15 +181,15 @@ export async function POST(request: NextRequest) {
       
       // Merchant fields
       merchant_defined_field_1: 'webseed-upsell',
-      merchant_defined_field_2: `step-${body.step}`,
-      merchant_defined_field_3: body.productCode,
+      merchant_defined_field_2: `step-${validatedData.step}`,
+      merchant_defined_field_3: validatedData.productCode,
       merchant_defined_field_4: session.transactionId // Original transaction
     })
     
     // Add line item data for Level 3
-    const itemDescription = body.productCode.includes('RC') ? 'RetinaClear' : 'Sightagen'
-    nmiParams.append('item_product_code_1', body.productCode)
-    nmiParams.append('item_description_1', `${itemDescription} - ${body.bottles} Bottle Pack`)
+    const itemDescription = validatedData.productCode.includes('RC') ? 'RetinaClear' : 'Sightagen'
+    nmiParams.append('item_product_code_1', validatedData.productCode)
+    nmiParams.append('item_description_1', `${itemDescription} - ${validatedData.bottles} Bottle Pack`)
     nmiParams.append('item_quantity_1', '1')
     nmiParams.append('item_unit_cost_1', subtotal.toFixed(2))
     nmiParams.append('item_unit_of_measure_1', 'EA')
@@ -192,19 +230,73 @@ export async function POST(request: NextRequest) {
     if (isApproved && responseData.transactionid) {
       console.log('✅ Upsell payment approved!')
       
-      // Store upsell details for thank you page
+      // Store upsell details for thank you page (DATABASE SESSION FIRST - PRIMARY)
       try {
-        // Store in funnel session manager
+        console.log('🎯 Storing upsell details in multiple systems...')
+
+        // PRIORITY 1: Store in database session (primary source)
+        try {
+          console.log('📥 Storing upsell in DATABASE SESSION (primary)...')
+
+          // Get current database session
+          const currentDbSession = await databaseSessionManager.getSession(session.id)
+          if (currentDbSession) {
+            // Prepare upsell data
+            const upsellData = {
+              step: validatedData.step,
+              productCode: validatedData.productCode,
+              amount: total,
+              bottles: validatedData.bottles,
+              transactionId: responseData.transactionid,
+              timestamp: new Date().toISOString()
+            }
+
+            // Get existing upsells from metadata or initialize empty array
+            let existingUpsells = []
+            if (currentDbSession.metadata?.upsells) {
+              existingUpsells = Array.isArray(currentDbSession.metadata.upsells)
+                ? currentDbSession.metadata.upsells
+                : JSON.parse(currentDbSession.metadata.upsells)
+            }
+
+            // Add new upsell
+            existingUpsells.push(upsellData)
+
+            // Update database session with upsell data
+            const sessionUpdateData = {
+              metadata: {
+                ...currentDbSession.metadata,
+                upsells: existingUpsells,
+                lastUpsellStep: validatedData.step,
+                lastUpsellTransactionId: responseData.transactionid,
+                lastUpsellAmount: total
+              }
+            }
+
+            const updatedSession = await databaseSessionManager.updateSession(session.id, sessionUpdateData)
+            console.log('✅ Upsell stored in database session successfully')
+            console.log(`  📊 Total upsells: ${existingUpsells.length}`)
+            console.log(`  💰 Upsell amount: $${total}`)
+            console.log(`  🆔 Transaction ID: ${responseData.transactionid}`)
+          } else {
+            console.warn('⚠️ Database session not found for upsell storage')
+          }
+        } catch (dbError) {
+          console.error('❌ Failed to store upsell in database session:', dbError)
+          // Continue with fallback methods
+        }
+
+        // PRIORITY 2: Store in funnel session manager (fallback)
         funnelSessionManager.addUpsellDetails(session.id, {
-          step: body.step,
-          productCode: body.productCode,
+          step: validatedData.step,
+          productCode: validatedData.productCode,
           amount: total,
-          bottles: body.bottles,
+          bottles: validatedData.bottles,
           transactionId: responseData.transactionid
         })
-        console.log('🎯 Upsell details stored in funnel session')
-        
-        // Also store in order details API for backward compatibility
+        console.log('✅ Upsell details stored in funnel session (fallback)')
+
+        // PRIORITY 3: Store in order details API (backward compatibility)
         const baseUrl = new URL(request.url).origin
         const response = await fetch(`${baseUrl}/api/order/details`, {
           method: 'POST',
@@ -214,14 +306,15 @@ export async function POST(request: NextRequest) {
             sessionId: session.id,
             transactionId: responseData.transactionid,
             amount: total,
-            productCode: body.productCode,
-            step: body.step
+            productCode: validatedData.productCode,
+            step: validatedData.step
           })
         })
         const result = await response.json()
-        console.log('🎯 Upsell details stored in order cache:', result.success ? 'Success' : result.error)
+        console.log('✅ Upsell details stored in order cache:', result.success ? 'Success' : result.error)
+
       } catch (error) {
-        console.error('⚠️ Failed to store upsell details:', error)
+        console.error('❌ Failed to store upsell details:', error)
         // Don't fail the whole transaction for this
       }
       
@@ -236,8 +329,8 @@ export async function POST(request: NextRequest) {
         subtotal: subtotal,
         tax: tax,
         shipping: shipping,
-        productCode: body.productCode,
-        step: body.step,
+        productCode: validatedData.productCode,
+        step: validatedData.step,
         timestamp: Date.now()
       }
       

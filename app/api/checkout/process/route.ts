@@ -4,45 +4,110 @@ import { databaseSessionManager } from '@/src/lib/database-session-manager';
 import { directPaymentProcessor } from '@/src/lib/direct-payment-processor';
 import { captureCheckoutEvent } from '@/src/lib/sentry';
 import { createSession } from '@/src/lib/cookie-session';
+import { calculateTax, getTaxRate } from '@/src/lib/constants/payment';
 
-// Validation schemas
-const customerInfoSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  phone: z.string().optional(),
-  address: z.string().min(1, 'Address is required'),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().min(2, 'State is required').max(3),
-  zipCode: z.string().min(5, 'Valid zip code is required'),
-  country: z.string().default('US'),
-});
+// Import shared validation schemas and utilities
+import {
+  checkoutRequestSchema,
+  validateSessionData,
+  validatePaymentData,
+  validateOrderCompleteness,
+  createUserFriendlyValidationErrors,
+  type CheckoutRequest,
+  type ValidationResult
+} from '@/src/lib/validation';
 
-const productSchema = z.object({
-  id: z.string().min(1, 'Product ID is required'),
-  name: z.string().min(1, 'Product name is required'),
-  price: z.number().positive('Price must be positive'),
-  quantity: z.number().int().positive('Quantity must be positive'),
-});
+// Structured Logging Utilities
+interface LogContext {
+  sessionId?: string;
+  email?: string;
+  transactionId?: string;
+  step?: string;
+  duration?: number;
+  amount?: number;
+  [key: string]: any;
+}
 
-const billingInfoSchema = z.object({
-  address: z.string().min(1, 'Billing address is required'),
-  city: z.string().min(1, 'Billing city is required'),
-  state: z.string().min(2, 'Billing state is required').max(3),
-  zipCode: z.string().min(5, 'Valid billing zip code is required'),
-  country: z.string().default('US'),
-});
+interface LogEntry {
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  context: LogContext;
+  component: string;
+}
 
-const checkoutRequestSchema = z.object({
-  customerInfo: customerInfoSchema,
-  paymentToken: z.string().min(1, 'Payment token is required'),
-  products: z.array(productSchema).min(1, 'At least one product is required'),
-  billingInfo: billingInfoSchema.optional(),
-  couponCode: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-});
+class CheckoutLogger {
+  private component = 'checkout-process';
 
-type CheckoutRequest = z.infer<typeof checkoutRequestSchema>;
+  private createLogEntry(level: LogEntry['level'], message: string, context: LogContext = {}): LogEntry {
+    return {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      context,
+      component: this.component
+    };
+  }
+
+  info(message: string, context: LogContext = {}) {
+    const entry = this.createLogEntry('info', message, context);
+    console.log(`ℹ️ [${entry.timestamp}] ${entry.message}`, entry.context);
+    return entry;
+  }
+
+  warn(message: string, context: LogContext = {}) {
+    const entry = this.createLogEntry('warn', message, context);
+    console.warn(`⚠️ [${entry.timestamp}] ${entry.message}`, entry.context);
+    return entry;
+  }
+
+  error(message: string, context: LogContext = {}) {
+    const entry = this.createLogEntry('error', message, context);
+    console.error(`❌ [${entry.timestamp}] ${entry.message}`, entry.context);
+    return entry;
+  }
+
+  debug(message: string, context: LogContext = {}) {
+    const entry = this.createLogEntry('debug', message, context);
+    console.log(`🔍 [${entry.timestamp}] ${entry.message}`, entry.context);
+    return entry;
+  }
+
+  // Session lifecycle tracking
+  sessionCreated(sessionId: string, context: LogContext = {}) {
+    return this.info('Session created', { ...context, sessionId, lifecycle: 'created' });
+  }
+
+  sessionUpdated(sessionId: string, status: string, context: LogContext = {}) {
+    return this.info('Session updated', { ...context, sessionId, status, lifecycle: 'updated' });
+  }
+
+  paymentStarted(sessionId: string, amount: number, context: LogContext = {}) {
+    return this.info('Payment processing started', { ...context, sessionId, amount, lifecycle: 'payment-started' });
+  }
+
+  paymentCompleted(sessionId: string, transactionId: string, amount: number, success: boolean, context: LogContext = {}) {
+    const level = success ? 'info' : 'error';
+    const message = success ? 'Payment completed successfully' : 'Payment failed';
+    return this[level](message, {
+      ...context,
+      sessionId,
+      transactionId,
+      amount,
+      success,
+      lifecycle: 'payment-completed'
+    });
+  }
+
+  // Performance tracking
+  performanceLog(operation: string, duration: number, context: LogContext = {}) {
+    return this.info(`Performance: ${operation}`, { ...context, duration, performance: true });
+  }
+}
+
+const logger = new CheckoutLogger();
+
+// Note: Validation schemas and utilities are now imported from @/src/lib/validation
 
 interface CheckoutResponse {
   success: boolean;
@@ -54,7 +119,13 @@ interface CheckoutResponse {
 
 export async function POST(request: NextRequest): Promise<NextResponse<CheckoutResponse>> {
   const startTime = Date.now();
-  console.log('🚀 CHECKOUT API STARTED', { timestamp: new Date().toISOString() });
+
+  // Initialize structured logging
+  logger.info('Checkout API started', {
+    timestamp: new Date().toISOString(),
+    userAgent: request.headers.get('user-agent'),
+    ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
+  });
 
   try {
     // Parse and validate request body
@@ -81,15 +152,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       console.log('✅ Payload validation successful');
     } catch (error) {
       if (error instanceof z.ZodError) {
+        // Use shared validation error handling
+        const userFriendlyErrors = createUserFriendlyValidationErrors(error);
         const fieldErrors: Record<string, string> = {};
-        error.errors.forEach((err) => {
-          const path = err.path.join('.');
-          fieldErrors[path] = err.message;
+        
+        userFriendlyErrors.forEach((err) => {
+          fieldErrors[err.field] = err.userFriendlyMessage;
         });
 
         // Enhanced validation error logging
         console.error('❌ VALIDATION FAILED:');
-        console.error('📋 Field Errors:', fieldErrors);
+        console.error('📋 User-Friendly Errors:', userFriendlyErrors.map(e => ({ field: e.field, message: e.userFriendlyMessage })));
         console.error('📄 Problem Fields:');
         Object.entries(fieldErrors).forEach(([field, message]) => {
           console.error(`  • ${field}: ${message}`);
@@ -104,6 +177,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
 
         captureCheckoutEvent('Checkout validation failed', 'warning', {
           errors: fieldErrors,
+          validationErrors: userFriendlyErrors,
           receivedFields: Object.keys(body),
           duration: Date.now() - startTime,
         });
@@ -121,17 +195,28 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       throw error;
     }
 
-    // Calculate total amount
+    // Calculate total amount including tax
     console.log('📥 Step 3: Calculating order total...');
-    const totalAmount = validatedData.products.reduce(
+    const subtotal = validatedData.products.reduce(
       (sum, product) => sum + (product.price * product.quantity),
       0
     );
+
+    // Tax calculation based on customer location
+    const customerState = validatedData.customerInfo.state || 'CA';
+    const taxRate = getTaxRate(customerState);
+    const tax = calculateTax(subtotal, customerState);
+    const shipping = 0.00; // Free shipping
+    const totalAmount = subtotal + tax + shipping;
+
     console.log('💰 ORDER SUMMARY:');
     validatedData.products.forEach((product, index) => {
       console.log(`  ${index + 1}. ${product.name} - $${product.price} x ${product.quantity} = $${product.price * product.quantity}`);
     });
-    console.log(`  📊 Total Amount: $${totalAmount}`);
+    console.log(`  📊 Subtotal: $${subtotal.toFixed(2)}`);
+    console.log(`  🏛️ Tax: $${tax.toFixed(2)} (${(taxRate * 100).toFixed(2)}% for ${customerState?.toUpperCase()})`);
+    console.log(`  🚚 Shipping: $${shipping.toFixed(2)}`);
+    console.log(`  📊 Total Amount: $${totalAmount.toFixed(2)}`);
 
     // Create funnel session in database
     console.log('📥 Step 4: Creating database session...');
@@ -152,7 +237,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       metadata: {
         ...validatedData.metadata,
         billingInfo: validatedData.billingInfo, // Store billing info in metadata
+        subtotal,
+        tax,
+        taxRate,
+        shipping,
         totalAmount,
+        taxState: customerState,
         createdAt: new Date().toISOString(),
       },
     };
@@ -164,7 +254,48 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     console.log(`  🛒 Products: ${sessionData.products.length} items`);
 
     const session = await databaseSessionManager.createSession(sessionData);
-    console.log(`✅ Session created successfully: ${session.id}`);
+
+    // Log session creation with structured logging
+    logger.sessionCreated(session.id, {
+      email: sessionData.email,
+      customerName: `${sessionData.customerInfo.firstName} ${sessionData.customerInfo.lastName}`,
+      productCount: sessionData.products.length,
+      totalAmount,
+      step: 'session-created'
+    });
+
+    // Validate session data integrity
+    logger.debug('Validating session data integrity', { sessionId: session.id });
+    const sessionValidation = validateSessionData(session, ['id', 'email', 'customer_info']);
+    if (!sessionValidation.isValid) {
+      logger.error('Session validation failed', {
+        sessionId: session.id,
+        errors: sessionValidation.errors,
+        warnings: sessionValidation.warnings
+      });
+
+      captureCheckoutEvent('Session validation failed', 'error', {
+        sessionId: session.id,
+        errors: sessionValidation.errors,
+        warnings: sessionValidation.warnings
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Session creation validation failed',
+          errors: sessionValidation.errors
+        },
+        { status: 500 }
+      );
+    }
+
+    if (sessionValidation.warnings.length > 0) {
+      logger.warn('Session validation warnings', {
+        sessionId: session.id,
+        warnings: sessionValidation.warnings
+      });
+    }
 
     // Update session status to processing and ensure it's committed
     console.log('📥 Step 5: Updating session status to processing...');
@@ -221,18 +352,47 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       billingInfo: billingInfo,
     };
 
-    console.log('📤 PAYMENT PROCESSOR INPUT:');
-    console.log(`  🆔 Session ID: ${paymentData.sessionId}`);
-    console.log(`  🎫 Payment Token: ${paymentData.paymentToken.substring(0, 15)}...`);
-    console.log(`  💰 Amount: $${paymentData.amount}`);
-    console.log(`  👤 Customer: ${paymentData.customerInfo.firstName} ${paymentData.customerInfo.lastName}`);
-    console.log(`  🛒 Products: ${paymentData.products.length} items`);
-    console.log(`  🎟️ Coupon: ${paymentData.couponCode || 'None'}`);
+    // Log payment processing start with structured logging
+    logger.paymentStarted(verifiedSession.id, totalAmount, {
+      paymentTokenPrefix: paymentData.paymentToken.substring(0, 15),
+      customerName: `${paymentData.customerInfo.firstName} ${paymentData.customerInfo.lastName}`,
+      productCount: paymentData.products.length,
+      couponCode: paymentData.couponCode || 'None',
+      step: 'payment-processing'
+    });
 
     const paymentResult = await directPaymentProcessor.processPayment(paymentData);
 
     const processingTime = Date.now() - startTime;
-    console.log(`⏱️ Total processing time: ${processingTime}ms`);
+
+    // Log performance
+    logger.performanceLog('Total checkout processing', processingTime, {
+      sessionId: verifiedSession.id,
+      amount: totalAmount
+    });
+
+    // Validate payment result
+    logger.debug('Validating payment result', { sessionId: verifiedSession.id });
+    const paymentValidation = validatePaymentData(paymentResult);
+    if (!paymentValidation.isValid) {
+      logger.error('Payment validation failed', {
+        sessionId: verifiedSession.id,
+        errors: paymentValidation.errors,
+        warnings: paymentValidation.warnings,
+        paymentResult
+      });
+
+      captureCheckoutEvent('Payment validation failed', 'error', {
+        sessionId: verifiedSession.id,
+        errors: paymentValidation.errors,
+        warnings: paymentValidation.warnings,
+        paymentResult
+      });
+    }
+
+    if (paymentValidation.warnings.length > 0) {
+      console.warn('⚠️ Payment validation warnings:', paymentValidation.warnings);
+    }
 
     // Enhanced result logging
     console.log('📊 PAYMENT RESULT ANALYSIS:');
@@ -242,6 +402,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     console.log(`  🏦 Vault ID: ${paymentResult.vaultId || 'None'}`);
     console.log(`  ❌ Error: ${paymentResult.error || 'None'}`);
     console.log(`  ➡️ Next Step: ${paymentResult.nextStep || 'Default'}`);
+    console.log(`  🔍 Validation: ${paymentValidation.isValid ? 'PASSED' : 'FAILED'}`);
 
     // Log checkout result with enhanced data
     captureCheckoutEvent('Checkout processing completed', paymentResult.success ? 'info' : 'error', {
@@ -270,6 +431,39 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       }, { status: 400 });
     }
 
+    // Update database session with payment success details
+    console.log('📥 Updating database session with payment success...');
+    try {
+      const sessionUpdateData = {
+        status: 'completed' as const,
+        current_step: 'upsell-1',
+        transaction_id: paymentResult.transactionId,
+        vault_id: paymentResult.vaultId,
+        metadata: {
+          ...verifiedSession.metadata,
+          paymentCompleted: true,
+          paymentCompletedAt: new Date().toISOString(),
+          subtotal,
+          tax,
+          taxRate,
+          shipping,
+          totalAmount,
+          taxState: customerState,
+          products: validatedData.products, // Ensure products are stored in metadata
+          billingInfo: billingInfo,
+        }
+      };
+
+      const completedSession = await databaseSessionManager.updateSession(verifiedSession.id, sessionUpdateData);
+      console.log('✅ Database session updated with payment success');
+      console.log(`  📊 Status: ${completedSession?.status}`);
+      console.log(`  💳 Transaction ID: ${completedSession?.transaction_id}`);
+      console.log(`  🏦 Vault ID: ${completedSession?.vault_id}`);
+    } catch (error) {
+      console.error('⚠️ Failed to update database session:', error);
+      // Don't fail the entire request for this
+    }
+
     // Create upsell session cookie for authenticated upsell flow
     if (paymentResult.vaultId) {
       console.log('🍪 Creating upsell session cookie...');
@@ -291,38 +485,77 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
       }
     }
 
-    // Initialize order cache with main order data for thank you page
-    try {
-      const baseUrl = new URL(request.url).origin
-      const orderCacheResponse = await fetch(`${baseUrl}/api/order/details`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'initialize',
+    // Initialize order cache with main order data for thank you page (with retry logic)
+    const initializeOrderCache = async (retryCount = 0): Promise<boolean> => {
+      const maxRetries = 3;
+      const retryDelay = 1000; // 1 second
+
+      try {
+        console.log(`🎯 Initializing order cache (attempt ${retryCount + 1}/${maxRetries + 1})...`);
+        const baseUrl = new URL(request.url).origin;
+
+        const orderCachePayload = {
+          action: 'add_order',
           sessionId: verifiedSession.id,
+          transactionId: paymentResult.transactionId,
+          amount: totalAmount,
+          productCode: validatedData.products[0]?.id || 'FITSPRESSO_6',
           customer: {
-            firstName: customerInfo.firstName,
-            lastName: customerInfo.lastName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-            address: customerInfo.address,
-            city: customerInfo.city,
-            state: customerInfo.state,
-            zipCode: customerInfo.zipCode
-          },
-          mainOrder: {
-            transactionId: paymentResult.transactionId,
-            amount: amount,
-            productCode: products[0]?.id || 'FITSPRESSO_6',
-            products: products
+            firstName: validatedData.customerInfo.firstName,
+            lastName: validatedData.customerInfo.lastName,
+            email: validatedData.customerInfo.email,
+            phone: validatedData.customerInfo.phone,
+            address: validatedData.customerInfo.address,
+            city: validatedData.customerInfo.city,
+            state: validatedData.customerInfo.state,
+            zipCode: validatedData.customerInfo.zipCode
           }
-        })
-      })
-      const orderCacheResult = await orderCacheResponse.json()
-      console.log('🎯 Order cache initialized:', orderCacheResult.success ? 'Success' : orderCacheResult.error)
-    } catch (error) {
-      console.warn('⚠️ Failed to initialize order cache:', error)
-      // Don't fail the whole transaction for this
+        };
+
+        console.log('📦 Order cache payload:', JSON.stringify(orderCachePayload, null, 2));
+
+        const orderCacheResponse = await fetch(`${baseUrl}/api/order/details`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orderCachePayload)
+        });
+
+        if (!orderCacheResponse.ok) {
+          throw new Error(`HTTP ${orderCacheResponse.status}: ${orderCacheResponse.statusText}`);
+        }
+
+        const orderCacheResult = await orderCacheResponse.json();
+
+        if (orderCacheResult.success) {
+          console.log('✅ Order cache initialized successfully');
+          return true;
+        } else {
+          throw new Error(orderCacheResult.error || 'Unknown order cache error');
+        }
+
+      } catch (error) {
+        console.error(`❌ Order cache initialization failed (attempt ${retryCount + 1}):`, error);
+
+        if (retryCount < maxRetries) {
+          console.log(`🔄 Retrying order cache initialization in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return initializeOrderCache(retryCount + 1);
+        } else {
+          console.error('💥 Order cache initialization failed after all retries');
+          return false;
+        }
+      }
+    };
+
+    const orderCacheSuccess = await initializeOrderCache();
+    if (!orderCacheSuccess) {
+      console.warn('⚠️ Order cache initialization failed - thank you page may have incomplete data');
+      // Log this for monitoring but don't fail the transaction
+      captureCheckoutEvent('Order cache initialization failed', 'warning', {
+        sessionId: verifiedSession.id,
+        transactionId: paymentResult.transactionId,
+        email: validatedData.customerInfo.email
+      });
     }
 
     // Success response

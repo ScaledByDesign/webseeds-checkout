@@ -482,13 +482,13 @@ export default function Upsell2() {
                   <div className="columns is-vcentered">
                     <div className="column is-narrow pb-0 has-text-centered is-hidden-mobile">
                       <picture>
-                        <Image src="/assets/upsells/shared/guarantee.jpg" width={200} height={200} alt="" style={{ width: 'auto', height: 'auto' }} />
+                        <Image src="/assets/upsells/shared/guarantee.jpg" width={200} height={200} alt="" style={{ maxWidth: '200px', height: 'auto' }} />
                       </picture>
                     </div>
                     <div className="column">
                       <div className="is-hidden-tablet has-text-centered my-3">
                         <picture>
-                          <Image src="/assets/upsells/shared/guarantee.jpg" width={160} height={160} alt="" style={{ width: 'auto', height: 'auto' }} />
+                          <Image src="/assets/upsells/shared/guarantee.jpg" width={160} height={160} alt="" style={{ maxWidth: '160px', height: 'auto' }} />
                         </picture>
                       </div>
                       <p className="has-text-weight-bold has-text-left is-size-2 is-size-3-touch lh1 headlineColor1 is-capitalized">No-Risk 60-Day 100% Money-Back Guarantee</p>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSession } from '@/src/lib/cookie-session'
+import { calculateTax, getTaxRate } from '@/src/lib/constants/payment'
 
 // NMI API Configuration - using existing env variables
 const NMI_API_URL = process.env.NMI_ENDPOINT || process.env.NEXT_PUBLIC_NMI_API_URL || 'https://secure.nmi.com/api/transact.php'
@@ -77,19 +78,9 @@ export async function POST(request: NextRequest) {
     const randomCents = Math.floor(Math.random() * 10) / 100 // 0.00 to 0.09
     const subtotal = 294.00 + randomCents // Product price with variation
     
-    // Tax calculation - should be based on state/location
-    // TODO: Implement proper tax calculation based on customer location
-    const TAX_RATES: Record<string, number> = {
-      'CA': 0.0725,  // California: 7.25%
-      'TX': 0.0625,  // Texas: 6.25%
-      'NY': 0.08,    // New York: 8%
-      'FL': 0.06,    // Florida: 6%
-      'WA': 0.065,   // Washington: 6.5%
-      'DEFAULT': 0.0 // No tax for other states (simplified)
-    }
-    
-    const taxRate = TAX_RATES[state?.toUpperCase()] || TAX_RATES.DEFAULT
-    const tax = parseFloat((subtotal * taxRate).toFixed(2))
+    // Tax calculation based on customer location
+    const taxRate = getTaxRate(state)
+    const tax = calculateTax(subtotal, state)
     const shipping = 0.00 // Free shipping
     const total = subtotal + tax + shipping
 

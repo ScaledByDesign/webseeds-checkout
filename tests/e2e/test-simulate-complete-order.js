@@ -11,15 +11,71 @@ const { chromium } = require('playwright');
   const page = await context.newPage();
   
   try {
-    // Create a test session with complete order data by calling the API directly
-    const sessionId = `${Date.now()}-test${Math.random().toString(36).substring(2, 6)}`;
-    
-    console.log('📝 Creating simulated complete order data...');
-    console.log('🆔 Test Session ID:', sessionId);
-    
+    console.log('🚀 STEP 1: Creating Real Session via Checkout API');
+    console.log('================================================');
+
     // Navigate to the site first to establish the domain context
     await page.goto('http://localhost:3255');
     await page.waitForTimeout(1000);
+
+    // Create a REAL session by calling the checkout API with proper data
+    const checkoutResponse = await page.evaluate(async () => {
+      const testEmail = `test-card-update-${Date.now()}@example.com`;
+
+      return await fetch('/api/checkout/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerInfo: {
+            email: testEmail,
+            firstName: 'Card',
+            lastName: 'Update',
+            phone: '5551234567',
+            address: '123 Test Street',
+            city: 'Test City',
+            state: 'CA',
+            zipCode: '90210',
+            country: 'US'
+          },
+          paymentToken: `TEST-TOKEN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+          products: [
+            {
+              id: 'FITSPRESSO_6',
+              name: 'FitSpresso 6-Month Supply',
+              price: 294,
+              quantity: 1
+            }
+          ],
+          billingInfo: {
+            address: '123 Test Street',
+            city: 'Test City',
+            state: 'CA',
+            zipCode: '90210',
+            country: 'US'
+          }
+        })
+      }).then(r => r.json()).catch(e => ({ success: false, error: e.message }));
+    });
+
+    console.log('📊 Checkout API Result:', checkoutResponse.success ?
+      `✅ Success - Session: ${checkoutResponse.sessionId}, Transaction: ${checkoutResponse.transactionId}, Vault: ${checkoutResponse.vaultId}` :
+      `❌ Failed - ${checkoutResponse.error}`);
+
+    if (!checkoutResponse.success) {
+      throw new Error(`Failed to create real session: ${checkoutResponse.error}`);
+    }
+
+    const sessionId = checkoutResponse.sessionId;
+    const vaultId = checkoutResponse.vaultId;
+    const transactionId = checkoutResponse.transactionId;
+
+    console.log('✅ Real session created successfully!');
+    console.log(`🆔 Session ID: ${sessionId}`);
+    console.log(`🏦 Vault ID: ${vaultId}`);
+    console.log(`💳 Transaction ID: ${transactionId}`);
+
+    console.log('\n🚀 STEP 2: Adding Upsells to Real Session');
+    console.log('==========================================');
 
     // First, create main order
     const mainOrderResponse = await page.evaluate(async (sessionId) => {
@@ -83,7 +139,104 @@ const { chromium } = require('playwright');
     }, sessionId);
     
     console.log('✅ Upsell 2 created:', upsell2Response.success ? 'Success (Sightagen 6-bottle)' : upsell2Response.error);
-    
+
+    // 🧪 NEW: Test Card Update Functionality with REAL session data
+    console.log('\n🔧 TESTING CARD UPDATE FUNCTIONALITY WITH REAL SESSION');
+    console.log('======================================================');
+
+    // Test 1: Simulate vault update API call with REAL session and vault data
+    console.log('\n🧪 Test 1: Vault Update API (with real session data)');
+    const vaultUpdateResponse = await page.evaluate(async (sessionData) => {
+      // Simulate a CollectJS token for card update
+      const mockToken = `UPDATED-TOKEN-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+      console.log('🔧 Calling vault update with:', {
+        sessionId: sessionData.sessionId,
+        vaultId: sessionData.vaultId,
+        tokenPrefix: mockToken.substring(0, 20) + '...'
+      });
+
+      return await fetch('/api/vault/update-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionData.sessionId,
+          paymentToken: mockToken,
+          vaultId: sessionData.vaultId, // Use REAL vault ID
+          customerInfo: {
+            firstName: 'Card',
+            lastName: 'Update',
+            email: `test-card-update-${Date.now()}@example.com`
+          }
+        })
+      }).then(r => r.json()).catch(e => ({ success: false, error: e.message }));
+    }, { sessionId, vaultId, transactionId });
+
+    console.log('📊 Vault Update Result:', vaultUpdateResponse.success ?
+      `✅ Success - Vault ID: ${vaultUpdateResponse.vaultId || 'N/A'}` :
+      `❌ Failed - ${vaultUpdateResponse.error}`);
+
+    // Test 2: Simulate upsell processing with REAL session data
+    console.log('\n🧪 Test 2: Upsell Processing (with real session data)');
+    const upsellWithCardUpdateResponse = await page.evaluate(async (sessionData) => {
+      console.log('🔧 Calling upsell process with:', {
+        sessionId: sessionData.sessionId,
+        vaultId: sessionData.vaultId,
+        productCode: 'RC12_296'
+      });
+
+      return await fetch('/api/upsell/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: sessionData.sessionId,
+          productCode: 'RC12_296',
+          amount: 296,
+          bottles: 12,
+          step: 1
+        })
+      }).then(r => r.json()).catch(e => ({ success: false, error: e.message }));
+    }, { sessionId, vaultId, transactionId });
+
+    console.log('📊 Upsell Processing Result:', upsellWithCardUpdateResponse.success ?
+      `✅ Success - Transaction: ${upsellWithCardUpdateResponse.transactionId || 'N/A'}` :
+      `❌ Failed - ${upsellWithCardUpdateResponse.error}`);
+
+    // Test 3: Check session data integrity with REAL session
+    console.log('\n🧪 Test 3: Session Data Integrity (with real session)');
+    const sessionDataResponse = await page.evaluate(async (sessionData) => {
+      console.log('🔧 Checking session data for:', sessionData.sessionId);
+      return await fetch(`/api/session/order-summary?session=${sessionData.sessionId}`)
+        .then(r => r.json()).catch(e => ({ success: false, error: e.message }));
+    }, { sessionId, vaultId, transactionId });
+
+    console.log('📊 Session Data Result:', sessionDataResponse.success ?
+      `✅ Success - Products: ${sessionDataResponse.order?.products?.length || 0}, Total: $${sessionDataResponse.order?.totals?.total || 0}` :
+      `❌ Failed - ${sessionDataResponse.error}`);
+
+    // Test 4: Database session validation with REAL session
+    console.log('\n🧪 Test 4: Database Session Validation (with real session)');
+    const dbSessionResponse = await page.evaluate(async (sessionData) => {
+      console.log('🔧 Checking database session for:', sessionData.sessionId);
+      return await fetch(`/api/session/${sessionData.sessionId}`)
+        .then(r => r.json()).catch(e => ({ success: false, error: e.message }));
+    }, { sessionId, vaultId, transactionId });
+
+    console.log('📊 Database Session Result:', dbSessionResponse.success ?
+      `✅ Success - Status: ${dbSessionResponse.session?.status || 'N/A'}, Email: ${dbSessionResponse.session?.email || 'N/A'}` :
+      `❌ Failed - ${dbSessionResponse.error}`);
+
+    // Test 5: Verify vault ID is accessible
+    console.log('\n🧪 Test 5: Vault ID Verification');
+    console.log(`📊 Vault ID from checkout: ${vaultId || 'N/A'}`);
+    console.log(`📊 Transaction ID from checkout: ${transactionId || 'N/A'}`);
+
+    if (vaultId) {
+      console.log('✅ Vault ID is available for card updates');
+    } else {
+      console.log('❌ No vault ID - card updates will fail');
+    }
+
     // Now test the thank you page with this complete order
     console.log('\n📍 Testing dynamic thank you page with complete order...');
 
@@ -312,8 +465,16 @@ const { chromium } = require('playwright');
       jsErrors.forEach(error => console.log(`      ❌ ${error}`));
     }
 
-    console.log('\n🎉 COMPREHENSIVE THANK YOU PAGE TEST RESULTS:');
-    console.log('==============================================');
+    console.log('\n🎉 COMPREHENSIVE TEST RESULTS:');
+    console.log('===============================');
+
+    console.log('\n🔧 CARD UPDATE FUNCTIONALITY:');
+    console.log('✅ Vault Update API: ' + (vaultUpdateResponse.success ? 'Working' : 'Failed'));
+    console.log('✅ Upsell Processing: ' + (upsellWithCardUpdateResponse.success ? 'Working' : 'Failed'));
+    console.log('✅ Session Data Integrity: ' + (sessionDataResponse.success ? 'Working' : 'Failed'));
+    console.log('✅ Database Session: ' + (dbSessionResponse.success ? 'Working' : 'Failed'));
+
+    console.log('\n📄 THANK YOU PAGE FUNCTIONALITY:');
     console.log('✅ Page Structure: Header, customer info, and order summary present');
     console.log('✅ Product Display: Dynamic product listing with details and pricing');
     console.log('✅ Total Calculation: Grand total displayed and accessible');
@@ -324,6 +485,26 @@ const { chromium } = require('playwright');
     console.log('✅ JavaScript: No critical errors affecting page functionality');
     console.log('✅ Responsive Design: Page adapts to different screen sizes');
     console.log('✅ User Experience: Complete order information clearly presented');
+
+    console.log('\n🎯 CARD UPDATE TEST SUMMARY:');
+    console.log('============================');
+    if (vaultUpdateResponse.success) {
+      console.log('🟢 Vault Update API is functional');
+    } else {
+      console.log('🔴 Vault Update API needs attention: ' + vaultUpdateResponse.error);
+    }
+
+    if (upsellWithCardUpdateResponse.success) {
+      console.log('🟢 Upsell processing is working');
+    } else {
+      console.log('🔴 Upsell processing issues: ' + upsellWithCardUpdateResponse.error);
+    }
+
+    if (sessionDataResponse.success) {
+      console.log('🟢 Session data retrieval is working');
+    } else {
+      console.log('🔴 Session data issues: ' + sessionDataResponse.error);
+    }
     
   } catch (error) {
     console.error('\n❌ Test error:', error.message);

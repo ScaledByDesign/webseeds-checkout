@@ -1,5 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { capturePaymentError } from '@/src/lib/sentry';
+import { calculateTax, getTaxRate } from '@/src/lib/constants/payment';
 import {
   PaymentParams,
   PaymentResult,
@@ -358,19 +359,10 @@ export class NMIService {
   private addLevel3Data(data: Record<string, string>, params: PaymentParams): void {
     try {
       // Calculate tax and shipping
-      const state = params.customerInfo?.state?.toUpperCase() || 'CA';
-      const TAX_RATES: Record<string, number> = {
-        'CA': 0.0725,  // California: 7.25%
-        'TX': 0.0625,  // Texas: 6.25%
-        'NY': 0.08,    // New York: 8%
-        'FL': 0.06,    // Florida: 6%
-        'WA': 0.065,   // Washington: 6.5%
-        'DEFAULT': 0.0 // No tax for other states
-      };
-
-      const taxRate = TAX_RATES[state] || TAX_RATES.DEFAULT;
+      const state = params.customerInfo?.state || 'CA';
+      const taxRate = getTaxRate(state);
       const subtotal = params.amount;
-      const tax = parseFloat((subtotal * taxRate).toFixed(2));
+      const tax = calculateTax(subtotal, state);
       const shipping = 0.00; // Free shipping
 
       // Add Level 3 transaction data
@@ -403,7 +395,7 @@ export class NMIService {
 
       console.log('📊 LEVEL 3 DATA ADDED:');
       console.log(`  💰 Subtotal: $${subtotal.toFixed(2)}`);
-      console.log(`  🏛️ Tax: $${tax.toFixed(2)} (${(taxRate * 100).toFixed(2)}% for ${state})`);
+      console.log(`  🏛️ Tax: $${tax.toFixed(2)} (${(taxRate * 100).toFixed(2)}% for ${state?.toUpperCase()})`);
       console.log(`  🚚 Shipping: $${shipping.toFixed(2)}`);
       console.log(`  📦 Products: ${params.products?.length || 0} items`);
       console.log(`  🆔 PO Number: ${data.ponumber}`);
