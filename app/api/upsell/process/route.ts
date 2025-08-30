@@ -49,25 +49,50 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Get session from cookie first
-    let session = await getSession()
-    console.log('🍪 Session from cookie:', session ? 'Found' : 'Not found')
-    
-    // If cookie session fails, try fallback cache using sessionId
+    // PRIORITY 1: Get session from database session manager (primary source)
+    let session = null
+    try {
+      console.log('🎯 Trying DATABASE SESSION MANAGER (primary source)...')
+      session = await databaseSessionManager.getSession(validatedData.sessionId)
+      console.log('📋 Database session result:', session ? 'Found' : 'Not found')
+      if (session) {
+        console.log('✅ Using DATABASE SESSION for upsell processing')
+        console.log('📊 Database session details:', {
+          id: session.id,
+          email: session.email,
+          vaultId: session.vaultId ? 'Present' : 'Missing',
+          status: session.status,
+          currentStep: session.currentStep
+        })
+      }
+    } catch (error) {
+      console.warn('⚠️ Database session lookup failed:', error)
+    }
+
+    // PRIORITY 2: Fallback to cookie session
+    if (!session) {
+      console.log('🍪 Trying COOKIE SESSION (fallback)...')
+      session = await getSession()
+      console.log('🍪 Cookie session result:', session ? 'Found' : 'Not found')
+    }
+
+    // PRIORITY 3: Fallback to session cache using sessionId
     if (!session && validatedData.sessionId) {
-      console.log('💾 Trying fallback: session cache lookup for ID:', validatedData.sessionId)
+      console.log('💾 Trying SESSION CACHE (fallback)...')
       session = getSessionById(validatedData.sessionId)
       console.log('💾 Cache lookup result:', session ? 'Found session' : 'No session found')
     }
     
-    console.log('🍪 Final session details:', session ? {
+    console.log('🎯 Final session details:', session ? {
       id: session.id,
       email: session.email,
-      vaultId: session.vaultId ? 'Present' : 'Missing',
-      createdAt: new Date(session.createdAt).toISOString(),
-      expiresAt: new Date(session.expiresAt).toISOString(),
-      isExpired: Date.now() > session.expiresAt,
-      source: session === await getSession() ? 'cookie' : 'cache'
+      vaultId: (session.vaultId || session.vault_id) ? 'Present' : 'Missing',
+      status: session.status || 'N/A',
+      currentStep: session.currentStep || session.current_step || 'N/A',
+      createdAt: session.createdAt ? new Date(session.createdAt).toISOString() : 'N/A',
+      expiresAt: session.expiresAt ? new Date(session.expiresAt).toISOString() : 'N/A',
+      isExpired: session.expiresAt ? Date.now() > session.expiresAt : false,
+      source: session.status ? 'database' : 'cookie/cache'
     } : 'No session')
     
     if (!session) {
@@ -97,8 +122,9 @@ export async function POST(request: NextRequest) {
     const eligibilityErrors: string[] = []
     const eligibilityWarnings: string[] = []
 
-    // Check if session has required fields for upsell
-    if (!session.vaultId) {
+    // Check if session has required fields for upsell (handle both database and cookie session formats)
+    const vaultId = session.vaultId || session.vault_id
+    if (!vaultId) {
       eligibilityErrors.push('No vault ID found - cannot process upsell')
     }
 
@@ -125,12 +151,12 @@ export async function POST(request: NextRequest) {
     
     console.log('📋 Session found:', {
       email: session.email,
-      vaultId: session.vaultId,
-      originalTransaction: session.transactionId
+      vaultId: vaultId,
+      originalTransaction: session.transactionId || session.transaction_id
     })
-    
-    // Validate vault ID
-    if (!session.vaultId) {
+
+    // Validate vault ID (already checked above, but double-check)
+    if (!vaultId) {
       return NextResponse.json(
         { success: false, error: 'No payment method on file' },
         { status: 400 }
@@ -160,7 +186,7 @@ export async function POST(request: NextRequest) {
       
       // Transaction type - using customer vault
       type: 'sale',
-      customer_vault_id: session.vaultId,
+      customer_vault_id: vaultId,
       
       // Amount with tax
       amount: total.toFixed(2),
@@ -200,7 +226,7 @@ export async function POST(request: NextRequest) {
     nmiParams.append('item_discount_amount_1', '0.00')
     
     console.log('🔄 Processing vault payment...')
-    console.log('💳 Vault ID:', session.vaultId)
+    console.log('💳 Vault ID:', vaultId)
     console.log('💰 Total Amount (with tax):', total.toFixed(2))
     
     // Make the API request to NMI

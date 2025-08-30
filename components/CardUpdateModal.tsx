@@ -183,6 +183,15 @@ export default function CardUpdateModal({
         };
       }
 
+      // Debug: Log the exact request being sent
+      console.log('📤 API Request Details:');
+      console.log('  URL: /api/vault/update-card');
+      console.log('  Method: POST');
+      console.log('  Body:', JSON.stringify(requestBody, null, 2));
+      console.log('  Time:', new Date().toISOString());
+
+      const fetchStartTime = Date.now();
+      
       const response = await fetch('/api/vault/update-card', {
         method: 'POST',
         headers: {
@@ -192,31 +201,96 @@ export default function CardUpdateModal({
         body: JSON.stringify(requestBody)
       });
       
-      console.log('📡 Vault update API response status:', response.status);
+      const fetchEndTime = Date.now();
+      const fetchDuration = fetchEndTime - fetchStartTime;
+      
+      console.log('📡 Vault update API response received:');
+      console.log(`  Status: ${response.status} ${response.statusText}`);
+      console.log(`  Duration: ${fetchDuration}ms`);
+      console.log(`  OK: ${response.ok}`);
+      console.log(`  Headers:`, Object.fromEntries(response.headers.entries()));
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('❌ Response is not JSON. Content-Type:', contentType);
+        const text = await response.text();
+        console.error('Response text:', text);
+        throw new Error('Invalid response format from server');
+      }
       
       const result = await response.json();
-      console.log('📦 Vault update API result:', result);
+      console.log('📦 Vault update API result:', JSON.stringify(result, null, 2));
       
       if (result.success) {
         console.log('✅ Vault updated successfully! New payment method is now active.');
+        console.log('🎯 Vault Update Success Details:');
+        console.log('  Vault ID:', result.vaultId);
+        console.log('  Response Code:', result.responseCode);
+        console.log('  Timestamp:', new Date(result.timestamp || Date.now()).toISOString());
         console.log('🎯 Calling onSuccess callback to trigger upsell retry...');
         
         // Set loading to false before calling onSuccess to ensure UI updates
         setUpdateLoading(false);
         
-        // Small delay to ensure state updates are processed
+        // Increase delay to ensure vault update propagates through the system
+        const delayMs = 500; // Increased from 100ms to 500ms
+        console.log(`⏳ Waiting ${delayMs}ms to ensure vault update is fully propagated...`);
+        
         setTimeout(() => {
           console.log('🔄 Executing onSuccess callback now...');
-          onSuccess();
-        }, 100);
+          console.log('  Callback function exists:', typeof onSuccess === 'function');
+          
+          try {
+            onSuccess();
+            console.log('✅ onSuccess callback executed successfully');
+          } catch (callbackError) {
+            console.error('❌ Error in onSuccess callback:', callbackError);
+          }
+        }, delayMs);
       } else {
         console.error('❌ Vault update failed:', result.error);
+        console.error('  Error details:', {
+          error: result.error,
+          message: result.message,
+          responseCode: result.responseCode,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Check if it's a temporary error that might benefit from retry
+        const isTemporaryError = result.error && (
+          result.error.toLowerCase().includes('timeout') ||
+          result.error.toLowerCase().includes('network') ||
+          result.error.toLowerCase().includes('temporary')
+        );
+        
+        if (isTemporaryError) {
+          console.log('⚠️ This appears to be a temporary error. Consider retrying.');
+        }
+        
         setUpdateError(result.error || 'Failed to update payment method');
         setUpdateLoading(false);
       }
     } catch (error) {
-      console.error('❌ Vault update network error:', error);
-      setUpdateError('Network error occurred while updating payment method');
+      console.error('❌ Vault update network/parsing error:', error);
+      console.error('  Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('  Error message:', error instanceof Error ? error.message : String(error));
+      console.error('  Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // More specific error messages based on error type
+      let errorMessage = 'An error occurred while updating payment method';
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = 'Network connection error. Please check your internet connection.';
+      } else if (error instanceof SyntaxError) {
+        errorMessage = 'Server response error. Please try again.';
+      } else if (error instanceof Error && error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setUpdateError(errorMessage);
       setUpdateLoading(false);
     }
   };
