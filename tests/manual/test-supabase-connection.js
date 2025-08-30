@@ -6,7 +6,7 @@ async function testSupabaseConnection() {
     console.log('=' .repeat(40));
 
     // Import the database session manager
-    const { databaseSessionManager } = require('./src/lib/database-session-manager.ts');
+    const { legacyDatabaseSessionManager: databaseSessionManager } = require('./src/lib/unified-session-manager.ts');
 
     console.log('📡 Testing database session creation...');
 

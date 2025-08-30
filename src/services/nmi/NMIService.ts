@@ -1,6 +1,12 @@
 import axios, { AxiosResponse } from 'axios';
 import { capturePaymentError } from '@/src/lib/sentry';
 import { calculateTax, getTaxRate } from '@/src/lib/constants/payment';
+import { 
+  ErrorHandlingService, 
+  ErrorCategory, 
+  ErrorSeverity,
+  ERROR_DEFINITIONS 
+} from '@/src/lib/error-handling-service';
 import {
   PaymentParams,
   PaymentResult,
@@ -17,7 +23,7 @@ export class NMIService {
   private constructor() {
     this.config = {
       securityKey: process.env.NMI_SECURITY_KEY || '',
-      endpoint: process.env.NMI_ENDPOINT || 'https://secure.networkmerchants.com/api/transact.php',
+      endpoint: process.env.NMI_ENDPOINT || 'https://secure.nmi.com/api/transact.php',
       collectJsUrl: process.env.NEXT_PUBLIC_COLLECT_JS_URL || 'https://secure.nmi.com/token/Collect.js',
       publicKey: process.env.NEXT_PUBLIC_NMI_PUBLIC_KEY || '',
       mode: (process.env.NODE_ENV === 'production' ? 'production' : 'sandbox') as 'production' | 'sandbox',
@@ -86,15 +92,80 @@ export class NMIService {
       return this.mapPaymentResponse(parsedResponse);
 
     } catch (error) {
+      const errorHandler = ErrorHandlingService.getInstance();
+      
+      // Capture to Sentry for monitoring
       capturePaymentError(error as Error, {
         amount: params.amount,
         step: 'payment_processing',
+        });
+
+      // Create standardized error with proper categorization
+      let standardizedError;
+      
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          standardizedError = errorHandler.createError('Payment request timed out', {
+            code: 'PAYMENT_TIMEOUT',
+            category: ErrorCategory.NETWORK,
+            severity: ErrorSeverity.ERROR,
+            retryable: true,
+          });
+        } else if (error.response?.status === 401) {
+          standardizedError = errorHandler.createError('Payment authentication failed', {
+            code: 'PAYMENT_AUTH_ERROR',
+            category: ErrorCategory.SECURITY,
+            severity: ErrorSeverity.CRITICAL,
+            retryable: false,
+          });
+        } else if ((error.response?.status ?? 0) >= 500) {
+          standardizedError = errorHandler.createError('Payment gateway unavailable', {
+            code: 'PAYMENT_GATEWAY_ERROR',
+            category: ErrorCategory.SYSTEM,
+            severity: ErrorSeverity.ERROR,
+            retryable: true,
+          });
+        } else {
+          // Use the error handler's payment error mapping
+          standardizedError = errorHandler.mapPaymentError(
+            { responsetext: error.message },
+            { amount: params.amount }
+          );
+        }
+      } else if (!this.config.securityKey) {
+        standardizedError = errorHandler.createError('Payment system is not configured', {
+          code: 'PAYMENT_CONFIG_ERROR',
+          category: ErrorCategory.SYSTEM,
+          severity: ErrorSeverity.CRITICAL,
+          retryable: false,
+        });
+      } else {
+        // Generic payment error using standard definition
+        standardizedError = errorHandler.createError(
+          ERROR_DEFINITIONS.PAYMENT_PROCESSING_ERROR.message,
+          {
+            code: ERROR_DEFINITIONS.PAYMENT_PROCESSING_ERROR.code,
+            amount: params.amount,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        );
+      }
+      
+      // Log the standardized error
+      errorHandler.logError(standardizedError);
+      
+      console.error('❌ Payment processing error:', {
+        id: standardizedError.id,
+        code: standardizedError.code,
+        message: standardizedError.userMessage,
+        mode: this.config.mode,
+        retryable: standardizedError.retryable,
       });
 
       return {
         success: false,
-        error: 'Payment processing failed. Please try again.',
-        errorCode: 'PROCESSING_ERROR',
+        error: standardizedError.userMessage,
+        errorCode: standardizedError.code,
       };
     }
   }
@@ -148,15 +219,64 @@ export class NMIService {
       return this.mapVaultResponse(parsedResponse);
 
     } catch (error) {
+      const errorHandler = ErrorHandlingService.getInstance();
+      
+      // Capture to Sentry for monitoring
       capturePaymentError(error as Error, {
         sessionId: params.sessionId,
         step: 'vault_creation',
       });
 
+      // Create standardized error for vault creation
+      let standardizedError;
+      
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          standardizedError = errorHandler.createError('Vault creation timed out', {
+            code: 'VAULT_TIMEOUT',
+            category: ErrorCategory.NETWORK,
+            severity: ErrorSeverity.ERROR,
+            retryable: true,
+          });
+        } else if (error.response?.status === 401) {
+          standardizedError = errorHandler.createError('Vault authentication failed', {
+            code: 'VAULT_AUTH_ERROR',
+            category: ErrorCategory.SECURITY,
+            severity: ErrorSeverity.CRITICAL,
+            retryable: false,
+          });
+        } else {
+          standardizedError = errorHandler.createError('Failed to create secure payment method', {
+            code: 'VAULT_CREATION_ERROR',
+            category: ErrorCategory.PAYMENT,
+            severity: ErrorSeverity.ERROR,
+            retryable: true,
+          });
+        }
+      } else {
+        standardizedError = errorHandler.createError('Vault creation system error', {
+          code: 'VAULT_SYSTEM_ERROR',
+          category: ErrorCategory.SYSTEM,
+          severity: ErrorSeverity.ERROR,
+          retryable: true,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      
+      // Log the standardized error
+      errorHandler.logError(standardizedError);
+      
+      console.error('❌ Vault creation error:', {
+        id: standardizedError.id,
+        code: standardizedError.code,
+        message: standardizedError.userMessage,
+        retryable: standardizedError.retryable,
+      });
+
       return {
         success: false,
-        error: 'Failed to create secure payment method. Please try again.',
-        errorCode: 'VAULT_ERROR',
+        error: standardizedError.userMessage,
+        errorCode: standardizedError.code,
       };
     }
   }
@@ -237,7 +357,7 @@ export class NMIService {
       // Primary: Use customerInfo for shipping
       data.shipping_firstname = params.customerInfo.firstName;
       data.shipping_lastname = params.customerInfo.lastName;
-      data.shipping_address1 = params.customerInfo.address;
+      data.shipping_address1 = params.customerInfo.address || '';
       data.shipping_city = params.customerInfo.city || '';
       data.shipping_state = params.customerInfo.state || '';
       data.shipping_zip = params.customerInfo.zipCode || '';
@@ -269,7 +389,7 @@ export class NMIService {
       data.country = params.billingInfo.country || 'US';
     } else if (hasShippingAddress && params.customerInfo) {
       // Fallback: Use customerInfo for billing when no billing address
-      data.address1 = params.customerInfo.address;
+      data.address1 = params.customerInfo.address || '';
       data.city = params.customerInfo.city || '';
       data.state = params.customerInfo.state || '';
       data.zip = params.customerInfo.zipCode || '';
@@ -311,7 +431,7 @@ export class NMIService {
       // Primary: Use customerInfo for shipping
       data.shipping_firstname = params.customerInfo.firstName;
       data.shipping_lastname = params.customerInfo.lastName;
-      data.shipping_address1 = params.customerInfo.address;
+      data.shipping_address1 = params.customerInfo.address || '';
       data.shipping_city = params.customerInfo.city || '';
       data.shipping_state = params.customerInfo.state || '';
       data.shipping_zip = params.customerInfo.zipCode || '';
@@ -343,7 +463,7 @@ export class NMIService {
       data.country = params.billingInfo.country || 'US';
     } else if (hasShippingAddress && params.customerInfo) {
       // Fallback: Use customerInfo for billing when no billing address
-      data.address1 = params.customerInfo.address;
+    data.address1 = params.customerInfo.address || '';
       data.city = params.customerInfo.city || '';
       data.state = params.customerInfo.state || '';
       data.zip = params.customerInfo.zipCode || '';

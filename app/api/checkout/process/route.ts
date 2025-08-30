@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { databaseSessionManager } from '@/src/lib/database-session-manager';
+import { UnifiedSessionManager } from '@/src/lib/unified-session-manager';
 import { directPaymentProcessor } from '@/src/lib/direct-payment-processor';
 import { captureCheckoutEvent } from '@/src/lib/sentry';
-import { createSession } from '@/src/lib/cookie-session';
 import { calculateTax, getTaxRate } from '@/src/lib/constants/payment';
 
 // Import shared validation schemas and utilities
@@ -253,7 +252,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     console.log(`  📍 Address: ${sessionData.customerInfo.address}, ${sessionData.customerInfo.city}, ${sessionData.customerInfo.state}`);
     console.log(`  🛒 Products: ${sessionData.products.length} items`);
 
-    const session = await databaseSessionManager.createSession(sessionData);
+    const session = await UnifiedSessionManager.getInstance().createSession(sessionData);
 
     // Log session creation with structured logging
     logger.sessionCreated(session.id, {
@@ -266,7 +265,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
 
     // Validate session data integrity
     logger.debug('Validating session data integrity', { sessionId: session.id });
-    const sessionValidation = validateSessionData(session, ['id', 'email', 'customer_info']);
+    const sessionValidation = validateSessionData(session, ['id', 'email', 'customerInfo']);
     if (!sessionValidation.isValid) {
       logger.error('Session validation failed', {
         sessionId: session.id,
@@ -299,10 +298,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
 
     // Update session status to processing and ensure it's committed
     console.log('📥 Step 5: Updating session status to processing...');
-    const updatedSession = await databaseSessionManager.updateSession(session.id, {
+    const updatedSession = await UnifiedSessionManager.getInstance().updateSession(session.id, {
       status: 'processing',
-      current_step: 'processing',
-      payment_token: validatedData.paymentToken,
+      currentStep: 'processing',
+      paymentToken: validatedData.paymentToken,
     });
 
     if (!updatedSession) {
@@ -313,7 +312,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
 
     // Verify session exists in database before proceeding
     console.log('📥 Step 6: Verifying session in database...');
-    const verifiedSession = await databaseSessionManager.getSession(session.id);
+    const verifiedSession = await UnifiedSessionManager.getInstance().getSession(session.id);
     if (!verifiedSession) {
       console.error('❌ Session not found after creation');
       throw new Error('Session not found after creation');
@@ -436,9 +435,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     try {
       const sessionUpdateData = {
         status: 'completed' as const,
-        current_step: 'upsell-1',
-        transaction_id: paymentResult.transaction_id,
-        vault_id: paymentResult.vaultId,
+        currentStep: 'upsell-1',
+        transactionId: paymentResult.transaction_id,
+        vaultId: paymentResult.vaultId,
         metadata: {
           ...verifiedSession.metadata,
           paymentCompleted: true,
@@ -454,11 +453,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
         }
       };
 
-      const completedSession = await databaseSessionManager.updateSession(verifiedSession.id, sessionUpdateData);
+      const completedSession = await UnifiedSessionManager.getInstance().updateSession(verifiedSession.id, sessionUpdateData);
       console.log('✅ Database session updated with payment success');
       console.log(`  📊 Status: ${completedSession?.status}`);
-      console.log(`  💳 Transaction ID: ${completedSession?.transaction_id}`);
-      console.log(`  🏦 Vault ID: ${completedSession?.vault_id}`);
+      console.log(`  💳 Transaction ID: ${completedSession?.transactionId}`);
+      console.log(`  🏦 Vault ID: ${completedSession?.vaultId}`);
     } catch (error) {
       console.error('⚠️ Failed to update database session:', error);
       // Don't fail the entire request for this
@@ -468,19 +467,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<CheckoutR
     if (paymentResult.vaultId) {
       console.log('🍪 Creating upsell session cookie...');
       try {
-        await createSession({
-          id: verifiedSession.id,
-          vaultId: paymentResult.vaultId,
-          customerId: validatedData.customerInfo.email,
-          email: validatedData.customerInfo.email,
-          firstName: validatedData.customerInfo.firstName,
-          lastName: validatedData.customerInfo.lastName,
-          transactionId: paymentResult.transaction_id,
-          state: validatedData.customerInfo.state || 'CA'
-        });
-        console.log('✅ Upsell session cookie created successfully');
+        // The UnifiedSessionManager handles both database and cookie storage automatically
+        console.log('✅ Upsell session already created via UnifiedSessionManager');
       } catch (error) {
-        console.error('⚠️ Failed to create upsell session cookie:', error);
+        console.error('⚠️ Session handling error:', error);
         // Don't fail the entire request for this
       }
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getSessionById, updateSession } from '@/src/lib/cookie-session'
+import { legacyCookieSessionManager } from '@/src/lib/unified-session-manager'
+const { getSession, getSessionById, updateSession } = legacyCookieSessionManager
 
 // NMI API Configuration - using existing env variables
 const NMI_API_URL = process.env.NMI_ENDPOINT || process.env.NEXT_PUBLIC_NMI_API_URL || 'https://secure.nmi.com/api/transact.php'

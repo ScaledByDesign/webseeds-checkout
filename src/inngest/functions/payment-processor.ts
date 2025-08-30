@@ -1,7 +1,7 @@
 import { inngest } from '@/src/lib/inngest';
 import { NMIService } from '@/src/services/nmi/NMIService';
 import { NMICustomerVaultService } from '@/src/services/nmi/NMICustomerVaultService';
-import { databaseSessionManager } from '@/src/lib/database-session-manager';
+import { legacyDatabaseSessionManager as databaseSessionManager } from '@/src/lib/unified-session-manager';
 import { capturePaymentError } from '@/src/lib/sentry';
 import * as Sentry from '@sentry/nextjs';
 

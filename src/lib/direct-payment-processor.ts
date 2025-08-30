@@ -1,4 +1,4 @@
-import { databaseSessionManager } from './database-session-manager';
+import { UnifiedSessionManager } from './unified-session-manager';
 import { NMIService } from '../services/nmi/NMIService';
 import { NMICustomerVaultService } from '../services/nmi/NMICustomerVaultService';
 
@@ -66,7 +66,7 @@ export class DirectPaymentProcessor {
     try {
       // Step 1: Validate and get session
       console.log('📋 STEP 1: Validating session...');
-      const session = await databaseSessionManager.getSession(data.sessionId);
+      const session = await UnifiedSessionManager.getInstance().getSession(data.sessionId);
 
       if (!session) {
         console.error('❌ SESSION VALIDATION FAILED:');
@@ -87,7 +87,7 @@ export class DirectPaymentProcessor {
 
       // Update session to processing
       console.log('📋 Updating session status to processing...');
-      await databaseSessionManager.updateSessionStatus(data.sessionId, 'processing');
+      await UnifiedSessionManager.getInstance().updateSession(data.sessionId, { status: 'processing' });
       console.log('✅ Session status updated to processing');
 
       // Step 2: Create customer vault
@@ -113,7 +113,7 @@ export class DirectPaymentProcessor {
         console.error(`  🆔 Session: ${data.sessionId}`);
         console.error(`  ⏱️ Failed after: ${Date.now() - startTime}ms`);
 
-        await databaseSessionManager.updateSessionStatus(data.sessionId, 'failed');
+        await UnifiedSessionManager.getInstance().updateSession(data.sessionId, { status: 'failed' });
         return {
           success: false,
           sessionId: data.sessionId,
@@ -128,7 +128,7 @@ export class DirectPaymentProcessor {
 
       // Update session with vault ID
       console.log('📋 Updating session with vault ID...');
-      await databaseSessionManager.updateSession(data.sessionId, {
+      await UnifiedSessionManager.getInstance().updateSession(data.sessionId, {
         vault_id: vaultResult.vaultId
       });
       console.log('✅ Session updated with vault ID');
@@ -162,7 +162,7 @@ export class DirectPaymentProcessor {
         console.error(`  💰 Amount: $${data.amount}`);
         console.error(`  ⏱️ Failed after: ${Date.now() - startTime}ms`);
 
-        await databaseSessionManager.updateSessionStatus(data.sessionId, 'failed');
+        await UnifiedSessionManager.getInstance().updateSession(data.sessionId, { status: 'failed' });
         return {
           success: false,
           sessionId: data.sessionId,
@@ -179,7 +179,7 @@ export class DirectPaymentProcessor {
 
       // Update session with transaction ID
       console.log('📋 Updating session to completed status...');
-      await databaseSessionManager.updateSession(data.sessionId, {
+      await UnifiedSessionManager.getInstance().updateSession(data.sessionId, {
         transaction_id: paymentResult.transaction_id,
         status: 'completed',
         current_step: 'upsell-1'
@@ -210,7 +210,7 @@ export class DirectPaymentProcessor {
       // Update session to failed
       try {
         console.log('📋 Updating session status to failed...');
-        await databaseSessionManager.updateSessionStatus(data.sessionId, 'failed');
+        await UnifiedSessionManager.getInstance().updateSession(data.sessionId, { status: 'failed' });
         console.log('✅ Session status updated to failed');
       } catch (updateError) {
         console.error('❌ Failed to update session status:', updateError);

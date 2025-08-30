@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { databaseSessionManager } from '@/src/lib/database-session-manager';
+import { legacyDatabaseSessionManager as databaseSessionManager } from '@/src/lib/unified-session-manager';
 import { captureCheckoutEvent } from '@/src/lib/sentry';
 
 interface StatusResponse {

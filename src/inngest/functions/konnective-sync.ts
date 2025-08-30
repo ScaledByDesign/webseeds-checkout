@@ -1,6 +1,6 @@
 import { inngest } from '@/src/lib/inngest';
 import { KonnectiveService } from '@/src/services/konnective/KonnectiveService';
-import { databaseSessionManager } from '@/src/lib/database-session-manager';
+import { legacyDatabaseSessionManager as databaseSessionManager } from '@/src/lib/unified-session-manager';
 import { captureIntegrationError } from '@/src/lib/sentry';
 import * as Sentry from '@sentry/nextjs';
 

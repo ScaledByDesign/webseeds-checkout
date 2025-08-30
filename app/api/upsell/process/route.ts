@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getSessionById } from '@/src/lib/cookie-session'
-import { funnelSessionManager } from '@/src/lib/funnel-session'
-import { databaseSessionManager } from '@/src/lib/database-session-manager'
+import { UnifiedSessionManager } from '@/src/lib/unified-session-manager'
 import { calculateTax, getTaxRate } from '@/src/lib/constants/payment'
 import { z } from 'zod'
 
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest) {
     let session = null
     try {
       console.log('🎯 Trying DATABASE SESSION MANAGER (primary source)...')
-      session = await databaseSessionManager.getSession(validatedData.sessionId)
+      session = await UnifiedSessionManager.getInstance().getSession(validatedData.sessionId)
       console.log('📋 Database session result:', session ? 'Found' : 'Not found')
       if (session) {
         console.log('✅ Using DATABASE SESSION for upsell processing')
@@ -270,7 +268,7 @@ export async function POST(request: NextRequest) {
           console.log('📥 Storing upsell in DATABASE SESSION (primary)...')
 
           // Get current database session
-          const currentDbSession = await databaseSessionManager.getSession(session.id)
+          const currentDbSession = await UnifiedSessionManager.getInstance().getSession(session.id)
           if (currentDbSession) {
             // Prepare upsell data
             const upsellData = {
@@ -304,7 +302,7 @@ export async function POST(request: NextRequest) {
               }
             }
 
-            const updatedSession = await databaseSessionManager.updateSession(session.id, sessionUpdateData)
+            const updatedSession = await UnifiedSessionManager.getInstance().updateSession(session.id, sessionUpdateData)
             console.log('✅ Upsell stored in database session successfully')
             console.log(`  📊 Total upsells: ${existingUpsells.length}`)
             console.log(`  💰 Upsell amount: $${total}`)
@@ -317,15 +315,8 @@ export async function POST(request: NextRequest) {
           // Continue with fallback methods
         }
 
-        // PRIORITY 2: Store in funnel session manager (fallback)
-        funnelSessionManager.addUpsellDetails(session.id, {
-          step: validatedData.step,
-          productCode: validatedData.productCode,
-          amount: total,
-          bottles: validatedData.bottles,
-          transactionId: responseData.transactionid
-        })
-        console.log('✅ Upsell details stored in funnel session (fallback)')
+        // PRIORITY 2: Legacy compatibility - unified manager handles this automatically
+        console.log('✅ Upsell details handled by unified session manager')
 
         // PRIORITY 3: Store in order details API (backward compatibility)
         const baseUrl = new URL(request.url).origin

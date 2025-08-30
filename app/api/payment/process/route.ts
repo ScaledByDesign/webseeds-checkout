@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSession } from '@/src/lib/cookie-session'
+import { UnifiedSessionManager } from '@/src/lib/unified-session-manager'
 import { calculateTax, getTaxRate } from '@/src/lib/constants/payment'
 
 // NMI API Configuration - using existing env variables
@@ -216,8 +216,8 @@ export async function POST(request: NextRequest) {
       // Create session for upsell flow
       const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
       
-      // Store session data in cookie
-      console.log('🍪 Creating session cookie:', {
+      // Create unified session for upsell flow
+      console.log('🍪 Creating unified session:', {
         sessionId,
         vaultId: vaultId ? 'Present' : 'Missing',
         email,
@@ -227,18 +227,34 @@ export async function POST(request: NextRequest) {
         state: state || 'CA'
       })
       
-      await createSession({
-        id: sessionId,
+      await UnifiedSessionManager.getInstance().createSession({
+        email: email,
+        customerInfo: {
+          firstName: firstName,
+          lastName: lastName,
+          address: address || '',
+          city: city || '',
+          state: state || 'CA',
+          zipCode: zipCode || '',
+          country: country,
+          phone: phone || ''
+        },
+        products: [{
+          id: 'FITSPRESSO-6PK',
+          name: 'Fitspresso 6 Bottle Super Pack',
+          price: subtotal,
+          quantity: 1
+        }],
         vaultId: vaultId || '',
         customerId: email,
-        email: email,
-        firstName: firstName,
-        lastName: lastName,
-        transactionId: responseData.transactionid,
-        state: state || 'CA'
+        metadata: {
+          originalSessionId: sessionId,
+          transactionId: responseData.transactionid,
+          state: state || 'CA'
+        }
       })
       
-      console.log('✅ Session cookie created successfully')
+      console.log('✅ Unified session created successfully')
       
       // Store order details for thank you page
       try {

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getSessionById } from '@/src/lib/cookie-session'
-import { funnelSessionManager } from '@/src/lib/funnel-session'
-import { databaseSessionManager } from '@/src/lib/database-session-manager'
+import { 
+  legacyCookieSessionManager, 
+  legacyFunnelSessionManager, 
+  legacyDatabaseSessionManager,
+  UnifiedSessionManager 
+} from '@/src/lib/unified-session-manager'
+
+const { getSession, getSessionById } = legacyCookieSessionManager
+const funnelSessionManager = legacyFunnelSessionManager.getInstance()
+const databaseSessionManager = legacyDatabaseSessionManager
 
 // Data validation utilities for order summary
 interface OrderValidationResult {
@@ -163,6 +170,20 @@ export async function GET(request: NextRequest) {
       )
     }
     
+    // First try to get unified session data
+    let unifiedSession;
+    try {
+      const sessionManager = UnifiedSessionManager.getInstance()
+      unifiedSession = await sessionManager.getSession(sessionId)
+      console.log('🔄 Unified session lookup:', {
+        sessionId,
+        found: !!unifiedSession,
+        products: unifiedSession?.products?.length || 0
+      })
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch unified session:', error)
+    }
+
     // Get session data from cookie
     let cookieSession = await getSession()
     if (!cookieSession && sessionId) {
@@ -193,21 +214,62 @@ export async function GET(request: NextRequest) {
       console.warn('⚠️ Failed to fetch database session:', error)
     }
 
-    if (!funnelSession && !cookieSession && !databaseSession) {
+    if (!unifiedSession && !funnelSession && !cookieSession && !databaseSession) {
       return NextResponse.json(
         { success: false, error: 'Session not found' },
         { status: 404 }
       )
     }
     
-    // Build products array from all sources (DATABASE SESSION FIRST - PRIMARY SOURCE)
+    // Build products array from all sources (UNIFIED SESSION FIRST - PRIMARY SOURCE)
     const products: any[] = []
     let totalAmount = 0
     let productsSource = 'none'
 
-    // PRIORITY 1: Database session (primary source for checkout orders)
-    if (databaseSession) {
-      console.log('🎯 Using DATABASE SESSION as primary source')
+    // Priority 1: Unified Session (most comprehensive and up-to-date)
+    if (unifiedSession?.products && unifiedSession.products.length > 0) {
+      console.log('📦 Using products from unified session')
+      productsSource = 'unified_session'
+
+      // Add main products
+      unifiedSession.products.forEach(product => {
+        products.push({
+          name: product.name,
+          description: `${product.quantity} bottle${product.quantity > 1 ? 's' : ''}`,
+          image: '/assets/images/6-bottles.png', // Default image
+          category: 'main',
+          bottles: product.quantity,
+          transactionId: unifiedSession.transactionId || '',
+          amount: product.price * product.quantity,
+          productCode: product.id,
+          type: 'main'
+        })
+        totalAmount += product.price * product.quantity
+      })
+
+      // Add upsell products if present
+      if (unifiedSession.upsells && unifiedSession.upsells.length > 0) {
+        unifiedSession.upsells.forEach(upsell => {
+          products.push({
+            name: `Upsell ${upsell.step}`,
+            description: `${upsell.bottles} bottle${upsell.bottles > 1 ? 's' : ''}`,
+            image: '/assets/images/6-bottles.png',
+            category: upsell.step === 1 ? 'upsell1' : 'upsell2',
+            bottles: upsell.bottles,
+            transactionId: upsell.transactionId,
+            amount: upsell.amount,
+            productCode: upsell.productCode,
+            step: upsell.step,
+            type: 'upsell'
+          })
+          totalAmount += upsell.amount
+        })
+      }
+    }
+
+    // Priority 2: Database session (fallback for legacy data)
+    else if (databaseSession) {
+      console.log('🎯 Using DATABASE SESSION as fallback source')
       productsSource = 'database'
 
       let dbProducts = null
@@ -410,8 +472,24 @@ export async function GET(request: NextRequest) {
     const response = {
       success: true,
       session: (() => {
-        // PRIORITY 1: Database session (primary source)
-        if (databaseSession) {
+        // PRIORITY 1: Unified session (most comprehensive)
+        if (unifiedSession) {
+          console.log('🎯 Using UNIFIED SESSION for response session data')
+          return {
+            id: unifiedSession.id,
+            vaultId: unifiedSession.vaultId,
+            customerId: unifiedSession.customerId,
+            email: unifiedSession.email,
+            firstName: unifiedSession.customerInfo?.firstName || '',
+            lastName: unifiedSession.customerInfo?.lastName || '',
+            transactionId: unifiedSession.transactionId || '',
+            createdAt: typeof unifiedSession.createdAt === 'number' ? unifiedSession.createdAt : unifiedSession.createdAt.getTime(),
+            expiresAt: typeof unifiedSession.expiresAt === 'number' ? unifiedSession.expiresAt : unifiedSession.expiresAt.getTime(),
+          }
+        }
+
+        // PRIORITY 2: Database session (fallback)
+        else if (databaseSession) {
           console.log('🎯 Using DATABASE SESSION for response session data')
           console.log('📊 Database session fields:', {
             id: databaseSession.id,
@@ -454,10 +532,25 @@ export async function GET(request: NextRequest) {
       order: {
         products,
         customer: await (async () => {
-          console.log(`🎯 Customer info source priority: DATABASE SESSION FIRST`)
+          console.log(`🎯 Customer info source priority: UNIFIED SESSION FIRST`)
 
-          // PRIORITY 1: Database session (primary source)
-          if (databaseSession) {
+          // PRIORITY 1: Unified session (most comprehensive)
+          if (unifiedSession) {
+            console.log('👤 Using customer info from unified session')
+            return {
+              firstName: unifiedSession.customerInfo?.firstName || '',
+              lastName: unifiedSession.customerInfo?.lastName || '',
+              email: unifiedSession.email,
+              phone: unifiedSession.customerInfo?.phone || '',
+              address: unifiedSession.customerInfo?.address || unifiedSession.billingInfo?.address || '',
+              city: unifiedSession.customerInfo?.city || unifiedSession.billingInfo?.city || '',
+              state: unifiedSession.customerInfo?.state || unifiedSession.billingInfo?.state || '',
+              zipCode: unifiedSession.customerInfo?.zipCode || unifiedSession.billingInfo?.zipCode || ''
+            }
+          }
+
+          // PRIORITY 2: Database session (fallback)
+          else if (databaseSession) {
             console.log('🎯 Using DATABASE SESSION for customer info');
             try {
               const customerInfo = typeof databaseSession.customer_info === 'string'

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getSessionById } from '@/src/lib/cookie-session'
+import { legacyCookieSessionManager } from '@/src/lib/unified-session-manager'
+const { getSession, getSessionById } = legacyCookieSessionManager
 
 // Product catalog for mapping product codes
 const PRODUCT_CATALOG: Record<string, {

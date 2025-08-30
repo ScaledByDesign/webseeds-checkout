@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { FloatingLabelSelect } from './FloatingLabelInput'
-import { validateCheckoutForm, type FormValidationResult } from '@/src/lib/validation/form-validation'
-import { getCollectJSService } from '@/src/lib/collectjs-service'
 
-// Google Places type declaration
+// CollectJS and Google Places type declaration
 declare global {
   interface Window {
+    CollectJS: {
+      configure: (config: any) => void
+      startPaymentRequest: () => void
+      isValid?: (field: string) => boolean
+    }
     google?: {
       maps: {
         places: {
@@ -82,6 +85,16 @@ export function NewDesignCheckoutForm({
     cvv: false
   })
   
+  // CollectJS doesn't support real-time card type detection
+  // Card type is only available after tokenization via response.card.type
+  const [isValidating, setIsValidating] = useState(false)
+  const [fieldFocus, setFieldFocus] = useState<string>('')
+  const [fieldInteractions, setFieldInteractions] = useState({
+    ccnumber: { focused: 0, blurred: 0, changed: 0 },
+    ccexp: { focused: 0, blurred: 0, changed: 0 },
+    cvv: { focused: 0, blurred: 0, changed: 0 }
+  })
+  // Card icons are always visible since we can't detect card type in real-time
 
   // Removed floating states - using pure CSS approach like the design
   const collectJSInitializedRef = useRef(false)
@@ -101,176 +114,57 @@ export function NewDesignCheckoutForm({
     orderRef.current = order
   }, [onPaymentSuccess, onPaymentError, apiEndpoint, order])
   
-  // Initialize CollectJS service
-  const collectJSService = getCollectJSService()
-  
-  // Initialize CollectJS service with proper configuration and callbacks
+  // Load CollectJS script if not already present
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const initializeCollectJS = async () => {
-      try {
-        console.log('🚀 Initializing CollectJS service...')
+    const existing = document.querySelector('script[src*="Collect.js"]') as HTMLScriptElement | null
+    if (existing) return
 
-        await collectJSService.initialize({
-          fieldSelectors: {
-            cardNumber: '#card-number-field',
-            expiry: '#card-expiry-field',
-            cvv: '#card-cvv-field'
-          },
-          onToken: (result) => {
-            console.log('🎯 Token generated:', result)
-            if (result.success && result.token) {
-              // Process payment with the token
-              const paymentData = {
-                ...formData,
-                paymentToken: result.token
-              }
-              console.log('💳 Processing payment with token...')
-              onPaymentSuccessRef.current(paymentData)
-            } else {
-              console.error('❌ Token generation failed:', result.error)
-              onPaymentErrorRef.current(result.error || 'Payment token generation failed')
-            }
-            setLoading(false)
-          },
-          onValidation: (field, status, message) => {
-            console.log(`📝 Form received validation: ${field} - ${status} - "${message}"`)
+    const script = document.createElement('script')
+    script.src = 'https://secure.nmi.com/token/Collect.js'
+    script.async = true
+    const tk = process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY
+    if (tk) script.setAttribute('data-tokenization-key', tk)
 
-            // Special debugging for card number with test card
-            if (field === 'cardNumber' && message) {
-              console.log(`💳 Card number validation details:`, {
-                field,
-                status,
-                message,
-                isTestCard: message.includes('4111') || status === 'valid'
-              })
-            }
-
-            // Track that user has interacted with card fields
-            if (!cardFieldsTouched) {
-              setCardFieldsTouched(true)
-              console.log('🎯 Card fields touched for first time')
-            }
-
-            // Update field validation states
-            console.log(`🔄 Updating field errors: ${field} -> status: ${status}, shouldShowError: ${status === 'invalid' || status === 'blank'}`)
-
-            if (field === 'cardNumber') {
-              const shouldShowError = (status === 'invalid' || status === 'blank')
-              const errorMessage = shouldShowError ? (message || 'Invalid card number') : ''
-              console.log(`💳 Card number error update: "${errorMessage}"`)
-              setErrors(prev => ({
-                ...prev,
-                cardNumber: errorMessage
-              }))
-            } else if (field === 'expiry') {
-              setErrors(prev => ({
-                ...prev,
-                expiry: (status === 'invalid' || status === 'blank') ? message || 'Invalid expiry date' : ''
-              }))
-            } else if (field === 'cvv') {
-              setErrors(prev => ({
-                ...prev,
-                cvv: (status === 'invalid' || status === 'blank') ? message || 'Invalid CVV' : ''
-              }))
-            }
-
-            // Update individual field validation states
-            setFieldValidationState(prev => {
-              // The service already maps ccnumber->cardNumber, ccexp->expiry, cvv->cvv
-              // So we need to map back to the legacy field names for the state
-              const fieldMap: Record<string, string> = {
-                'cardNumber': 'ccnumber',
-                'expiry': 'ccexp',
-                'cvv': 'cvv'
-              }
-
-              const legacyFieldName = fieldMap[field] || field
-              const newState = {
-                ...prev,
-                [legacyFieldName]: status === 'valid'
-              }
-
-              // Check if ALL fields are valid
-              const allFieldsValid = newState.ccnumber && newState.ccexp && newState.cvv
-              setFieldsValid(allFieldsValid)
-
-              console.log(`📊 Field validation update - ${field}: ${status}, All fields valid: ${allFieldsValid}`)
-
-              return newState
-            })
-          },
-          onReady: () => {
-            console.log('✅ CollectJS service ready for tokenization')
-            setCollectJSLoaded(true)
-            setCollectJSInitializing(false)
-          },
-          onError: (error) => {
-            console.error('❌ CollectJS error:', error)
-            onPaymentErrorRef.current(error)
-          }
-        })
-
-        console.log('✅ CollectJS service initialized successfully')
-
-        // Add debugging function to window for testing
-        if (typeof window !== 'undefined') {
-          (window as any).debugCollectJS = () => {
-            console.log('🔍 CollectJS Debug Info:');
-            console.log('  Service ready:', collectJSService.isReady());
-            console.log('  Fields touched:', collectJSService.areFieldsTouched());
-            console.log('  Fields valid:', collectJSService.areFieldsValid());
-            console.log('  Field errors:', collectJSService.getFieldErrors());
-            console.log('  Validation state:', collectJSService.getValidationState());
-            console.log('  Local state - cardFieldsTouched:', cardFieldsTouched);
-            console.log('  Local state - fieldsValid:', fieldsValid);
-            console.log('  Local state - errors:', errors);
-            console.log('  window.CollectJS:', !!window.CollectJS);
-            console.log('  CollectJS iframes:', {
-              cardNumber: !!document.querySelector('#card-number-field iframe'),
-              expiry: !!document.querySelector('#card-expiry-field iframe'),
-              cvv: !!document.querySelector('#card-cvv-field iframe')
-            });
-          };
-
-          // Add manual test function
-          (window as any).testCollectJS = () => {
-            console.log('🧪 Testing CollectJS manually...');
-            if (window.CollectJS) {
-              try {
-                console.log('  Attempting to start payment request...');
-                window.CollectJS.startPaymentRequest();
-              } catch (error) {
-                console.error('  Error starting payment request:', error);
-              }
-            } else {
-              console.error('  CollectJS not available');
-            }
-          };
-
-          console.log('🛠️ Debug functions available:');
-          console.log('  - window.debugCollectJS() - Show current state');
-          console.log('  - window.testCollectJS() - Test manual tokenization');
+    script.onload = () => {
+      console.log('✅ CollectJS script loaded')
+      // Override console.error temporarily to suppress PaymentRequestAbstraction error
+      const originalError = console.error
+      console.error = (...args: any[]) => {
+        // Filter out PaymentRequestAbstraction errors
+        if (args[0] && typeof args[0] === 'string' && args[0].includes('PaymentRequestAbstraction')) {
+          return // Silently ignore
         }
-      } catch (error) {
-        console.error('❌ Failed to initialize CollectJS service:', error)
-        onPaymentErrorRef.current('Failed to initialize payment system. Please refresh the page.')
+        originalError.apply(console, args)
       }
+      
+      // Restore original console.error after a short delay
+      setTimeout(() => {
+        console.error = originalError
+      }, 1000)
+    }
+    script.onerror = () => {
+      console.error('❌ Failed to load CollectJS script')
+      onPaymentErrorRef.current('Failed to load payment system. Please refresh the page.')
     }
 
-    // Initialize after a short delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      initializeCollectJS()
-    }, 500)
+    document.body.appendChild(script)
 
     return () => {
-      clearTimeout(timer)
+      script.onload = null
+      script.onerror = null
     }
-  }, []) // Empty dependencies - initialization happens once
+  }, []) // Empty dependencies - we use ref for the callback
 
+  // Google Places Autocomplete placeholder - matching design
+  // The design includes Google Places but only loads if API key is configured
+  // Since we're using GeoIP for auto-filling country/state, Google Places is optional
+  // To enable: Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local
   useEffect(() => {
-   
+    // Placeholder for Google Places - not needed since GeoIP handles location detection
+    // The design only loads Google Maps if a valid API key exists (not "YOUR_GOOGLE_API_KEY")
+    // We're focusing on GeoIP which works without any API key
   }, [])
 
   // GeoIP detection to auto-fill country and state - matching design
@@ -320,8 +214,13 @@ export function NewDesignCheckoutForm({
           country: prev.country || mappedCountry,
           state: prev.state || data.region_code || '',
           city: prev.city || data.city || '',
+          // Removed auto zip population as it's often incorrect
+          // zip: prev.zip || data.postal || '',
+          // Also fill billing address fields if they're empty
           billingCity: prev.billingCity || data.city || '',
           billingState: prev.billingState || data.region_code || '',
+          // Removed auto billing zip population as well
+          // billingZip: prev.billingZip || data.postal || ''
         }))
         
         console.log('✅ GeoIP detection successful:', {
@@ -337,8 +236,121 @@ export function NewDesignCheckoutForm({
     detectLocationAndFill()
   }, [])
 
-  // Note: Card validation and formatting is handled by CollectJS
-  // No need for client-side card detection since CollectJS uses secure iframes
+  // Get card type icon
+  const getCardIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      visa: '💳',
+      mastercard: '💳',
+      amex: '💳',
+      discover: '💳',
+      jcb: '💳',
+      diners: '💳',
+      unionpay: '💳'
+    }
+    return icons[type] || '💳'
+  }
+
+  // Get card type display name
+  const getCardDisplayName = (type: string) => {
+    const names: Record<string, string> = {
+      visa: 'Visa',
+      mastercard: 'Mastercard',
+      amex: 'American Express',
+      discover: 'Discover',
+      jcb: 'JCB',
+      diners: 'Diners Club',
+      unionpay: 'UnionPay'
+    }
+    return names[type] || ''
+  }
+
+  // Card type detection based on BIN (Bank Identification Number)
+  const detectCardType = (cardNumber: string) => {
+    const cleaned = cardNumber.replace(/\D/g, '')
+    
+    // Card type patterns with length requirements
+    const patterns = {
+      visa: /^4/,
+      mastercard: /^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[0-1]|2720)/,
+      amex: /^3[47]/,
+      discover: /^(6011|622|64[4-9]|65)/,
+      diners: /^(300|301|302|303|304|305|36|38)/,
+      jcb: /^35/,
+      unionpay: /^62/
+    }
+    
+    let detectedType = ''
+    for (const [type, pattern] of Object.entries(patterns)) {
+      if (pattern.test(cleaned)) {
+        detectedType = type
+        break
+      }
+    }
+    
+    // Note: Card type detection doesn't work with CollectJS iframes
+    // This function is kept for reference but isn't used
+    
+    return detectedType
+  }
+  
+  // Luhn algorithm for card validation
+  const luhnCheck = (cardNumber: string) => {
+    const cleaned = cardNumber.replace(/\D/g, '')
+    if (cleaned.length < 13) return false
+    
+    let sum = 0
+    let isEven = false
+    
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned[i], 10)
+      
+      if (isEven) {
+        digit *= 2
+        if (digit > 9) {
+          digit -= 9
+        }
+      }
+      
+      sum += digit
+      isEven = !isEven
+    }
+    
+    return sum % 10 === 0
+  }
+  
+  // Format card number with spaces
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '')
+    const type = detectCardType(cleaned)
+    
+    // Format based on card type
+    if (type === 'amex') {
+      // Amex: 4-6-5
+      return cleaned.replace(/(\d{4})(\d{6})(\d{5})/, '$1 $2 $3').trim()
+    } else if (type === 'diners') {
+      // Diners: 4-6-4
+      return cleaned.replace(/(\d{4})(\d{6})(\d{4})/, '$1 $2 $3').trim()
+    } else {
+      // Default: 4-4-4-4
+      return cleaned.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+    }
+  }
+  
+  // Test card numbers for development (DO NOT use in production)
+  const TEST_CARDS = {
+    visa: '4111111111111111',           // Visa test card
+    mastercard: '5555555555554444',     // Mastercard test card  
+    amex: '378282246310005',            // American Express test card
+    discover: '6011111111111117',       // Discover test card
+    jcb: '3530111333300000',            // JCB test card
+    diners: '30569309025904',            // Diners Club test card
+    // Additional test cards for specific scenarios
+    visa_debit: '4000056655665556',     // Visa debit test
+    mastercard_2series: '2223003122003222', // Mastercard 2-series
+    insufficient_funds: '4000000000000002', // Will decline - insufficient funds
+    expired_card: '4000000000000069',    // Will decline - expired card
+    cvc_fail: '4000000000000127',        // Will decline - incorrect CVC
+  }
 
   // Generate random realistic test data
   const generateRandomTestData = () => {
@@ -379,31 +391,7 @@ export function NewDesignCheckoutForm({
     const phonePrefix = randomNumber(200, 999)
     const phoneSuffix = randomNumber(1000, 9999)
     const phone = `${areaCode}-${phonePrefix}-${phoneSuffix}`
-
-    // Determine if using same address (70% chance of using same address)
-    const useSameAddress = Math.random() > 0.3
-
-    // Generate billing address data if not using same address
-    let billingData = {}
-    if (!useSameAddress) {
-      // Generate different billing address
-      const billingStreetNumber = randomNumber(100, 9999)
-      const billingStreetName = streetNames[Math.floor(Math.random() * streetNames.length)]
-      const billingStreetType = streetTypes[Math.floor(Math.random() * streetTypes.length)]
-      const billingAddress = `${billingStreetNumber} ${billingStreetName} ${billingStreetType}`
-
-      const billingCity = cities[Math.floor(Math.random() * cities.length)]
-      const billingState = states[Math.floor(Math.random() * states.length)]
-      const billingZip = `${randomNumber(10000, 99999)}`
-
-      billingData = {
-        billingAddress,
-        billingCity,
-        billingState,
-        billingZip
-      }
-    }
-
+    
     return {
       email,
       address,
@@ -414,8 +402,7 @@ export function NewDesignCheckoutForm({
       country: 'US',
       phone,
       nameOnCard: fullName,
-      useSameAddress,
-      ...billingData
+      useSameAddress: Math.random() > 0.3 // 70% chance of using same address
     }
   }
   
@@ -431,7 +418,431 @@ export function NewDesignCheckoutForm({
     }
   }, [autoFillTrigger])
 
+  // Add passive event listeners to improve performance
+  useEffect(() => {
+    const handlePassiveEvents = () => {
+      // Let passive events pass through without preventDefault
+    }
+    
+    // Add passive listeners for common scroll-blocking events
+    document.addEventListener('touchstart', handlePassiveEvents, { passive: true })
+    document.addEventListener('touchmove', handlePassiveEvents, { passive: true })
+    document.addEventListener('wheel', handlePassiveEvents, { passive: true })
+    document.addEventListener('mousewheel', handlePassiveEvents, { passive: true })
+    
+    return () => {
+      document.removeEventListener('touchstart', handlePassiveEvents)
+      document.removeEventListener('touchmove', handlePassiveEvents) 
+      document.removeEventListener('wheel', handlePassiveEvents)
+      document.removeEventListener('mousewheel', handlePassiveEvents)
+    }
+  }, [])
 
+  // Initialize CollectJS - only once even with React StrictMode
+  useEffect(() => {
+    // Use ref to prevent multiple initializations even in StrictMode
+    if (collectJSInitializedRef.current) {
+      console.log('⏭️ CollectJS already initialized, skipping...')
+      return
+    }
+    
+    const initializeCollectJS = () => {
+      if (typeof window !== 'undefined' && window.CollectJS && !collectJSInitializedRef.current) {
+        console.log('🔧 Initializing CollectJS (once)...')
+        collectJSInitializedRef.current = true // Mark as initialized immediately using ref
+        
+        // Check if we're in development mode
+        const isDev = process.env.NODE_ENV === 'development';
+        
+        if (isDev) {
+          console.log('🔧 Development mode: CollectJS initialized');
+        }
+        
+        window.CollectJS.configure({
+          variant: 'inline',
+          styleSniffer: true, // This will automatically copy styles from the container div
+          tokenizationKey: process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY || undefined,
+          // Minimal custom CSS to enhance the styleSniffer behavior
+          customCss: {
+            'font-family': 'inherit', // Ensure font family matches
+            'line-height': 'inherit',  // Match line height
+            'letter-spacing': 'inherit' // Match letter spacing
+          },
+          // Enhanced validation styling
+          invalidCss: {
+            'border-color': '#dc2626 !important', // Red border for invalid fields
+            'color': '#dc2626'
+          },
+          validCss: {
+            'border-color': '#059669 !important', // Green border for valid fields
+            'color': '#059669'
+          },
+          focusCss: {
+            'border-color': '#3b82f6 !important', // Blue border on focus
+            'outline': 'none'
+          },
+          fields: {
+            ccnumber: {
+              selector: '#card-number-field',
+              title: 'Card Number',
+              placeholder: ' ', // Empty placeholder to work with floating labels
+            },
+            ccexp: {
+              selector: '#card-expiry-field',
+              title: 'Expiry Date',
+              placeholder: ' ', // Empty placeholder to work with floating labels
+            },
+            cvv: {
+              selector: '#card-cvv-field',
+              title: 'Security Code',
+              placeholder: ' ', // Empty placeholder to work with floating labels
+            }
+          },
+          callback: async (response: any) => {
+            console.log('🎯 CollectJS callback triggered:', response)
+
+            if (response.token) {
+              // Handle successful tokenization
+              console.log('✅ Payment token received:', response.token)
+
+              try {
+                // Fix: Read form data directly from DOM to avoid React state closure issues
+                console.log('🔍 Reading form data directly from DOM...')
+
+                const getCurrentFormData = () => {
+                  const email = (document.querySelector('input[name="email"]') as HTMLInputElement)?.value || ''
+                  const nameOnCard = (document.querySelector('input[name="nameOnCard"]') as HTMLInputElement)?.value || ''
+                  const phone = (document.querySelector('input[name="phone"]') as HTMLInputElement)?.value || ''
+                  const address = (document.querySelector('input[name="address"]') as HTMLInputElement)?.value || ''
+                  const city = (document.querySelector('input[name="city"]') as HTMLInputElement)?.value || ''
+                  const state = (document.querySelector('input#state') as HTMLInputElement)?.value || ''
+                  const zip = (document.querySelector('input[name="zip"]') as HTMLInputElement)?.value || ''
+                  const country = (document.querySelector('input[name="country"]') as HTMLInputElement)?.value || 'US'
+                  const useSameAddress = (document.querySelector('input[name="useSameAddress"]') as HTMLInputElement)?.checked ?? true
+
+                  // Collect billing address fields when not using same address
+                  const billingAddress = (document.querySelector('input[name="billingAddress"]') as HTMLInputElement)?.value || ''
+                  const billingCity = (document.querySelector('input[name="billingCity"]') as HTMLInputElement)?.value || ''
+                  const billingState = (document.querySelector('input[name="billingState"]') as HTMLInputElement)?.value || ''
+                  const billingZip = (document.querySelector('input[name="billingZip"]') as HTMLInputElement)?.value || ''
+
+                  return {
+                    email, nameOnCard, phone, address, city, state, zip, country, useSameAddress,
+                    billingAddress, billingCity, billingState, billingZip
+                  }
+                }
+
+                const currentFormData = getCurrentFormData()
+                console.log('📋 Current form data from DOM:', currentFormData)
+
+                // Normalize form data before submission
+                const normalizedEmail = currentFormData.email.trim().toLowerCase()
+                const normalizedName = currentFormData.nameOnCard.trim()
+                const normalizedPhone = currentFormData.phone.replace(/\D/g, '') // Remove all non-digits
+                const normalizedZip = currentFormData.zip.replace(/\D/g, '') // Remove all non-digits
+                
+                // Submit the form with the token (match /api/checkout/process schema)
+                const body = {
+                  customerInfo: {
+                    email: normalizedEmail,
+                    // Better name parsing with fallback
+                    firstName: normalizedName.split(' ')[0] || 'Customer',
+                    lastName: normalizedName.split(' ').slice(1).join(' ') || normalizedName.split(' ')[0] || 'Customer',
+                    phone: normalizedPhone,
+                    address: currentFormData.address.trim(),
+                    city: currentFormData.city.trim(),
+                    state: currentFormData.state.trim().toUpperCase(), // Normalize state to uppercase
+                    zipCode: normalizedZip,
+                    country: currentFormData.country.trim().toUpperCase(),
+                  },
+                  paymentToken: response.token,
+                  products: (order?.items || []).map((it: any) => ({
+                    id: it.id,
+                    name: it.name,
+                    price: it.price,
+                    quantity: it.quantity ?? 1,
+                  })),
+                  billingInfo: currentFormData.useSameAddress ? undefined : {
+                    address: currentFormData.billingAddress.trim() || currentFormData.address.trim(),
+                    city: currentFormData.billingCity.trim() || currentFormData.city.trim(),
+                    state: (currentFormData.billingState.trim() || currentFormData.state.trim()).toUpperCase(),
+                    zipCode: currentFormData.billingZip.replace(/\D/g, '') || normalizedZip,
+                    country: currentFormData.country.trim().toUpperCase(),
+                  },
+                }
+
+                // Enhanced debug logging
+                console.log('📤 FINAL API PAYLOAD:')
+                console.log('  � Email:', body.customerInfo.email)
+                console.log('  👤 Name:', body.customerInfo.firstName, body.customerInfo.lastName)
+                console.log('  📞 Phone:', body.customerInfo.phone)
+                console.log('  🏠 Address:', body.customerInfo.address)
+                console.log('  🏙️ City:', body.customerInfo.city)
+                console.log('  🗺️ State:', body.customerInfo.state)
+                console.log('  📮 ZIP:', body.customerInfo.zipCode)
+                console.log('  🌍 Country:', body.customerInfo.country)
+                console.log('  🎫 Token:', body.paymentToken.substring(0, 20) + '...')
+                console.log('🏦 Use Same Address:', currentFormData.useSameAddress)
+                if (body.billingInfo) {
+                  console.log('💳 BILLING Address:', body.billingInfo.address)
+                  console.log('💳 BILLING City:', body.billingInfo.city)
+                  console.log('💳 BILLING State:', body.billingInfo.state)
+                  console.log('💳 BILLING ZIP:', body.billingInfo.zipCode)
+                  console.log('💳 BILLING Country:', body.billingInfo.country)
+                } else {
+                  console.log('💳 BILLING: Using shipping address')
+                }
+                console.log('📋 Current form data from DOM:', currentFormData)
+                console.log('🛒 Order items:', orderRef.current?.items)
+
+                const result = await fetch(apiEndpointRef.current, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(body)
+                })
+
+                const data = await result.json()
+
+                if (data.success) {
+                  onPaymentSuccessRef.current(data)
+                } else {
+                  // Pass sessionId to error handler for duplicate transaction handling
+                  console.log('📋 API error response:', data)
+                  onPaymentErrorRef.current(data.message || 'Payment processing failed.', data.errors, data.sessionId)
+                }
+              } catch (error) {
+                console.error('Order submission error:', error)
+                onPaymentErrorRef.current('Failed to process your order. Please try again.')
+              } finally {
+                setLoading(false)
+              }
+            } else {
+              // Handle tokenization error
+              console.error('❌ CollectJS tokenization failed:', response)
+              console.error('📋 Response details:', JSON.stringify(response, null, 2))
+
+              // Provide specific error messages based on response
+              let errorMessage = 'Payment processing failed. Please check your card details.'
+              if (response.error) {
+                console.error('🔍 Specific error:', response.error)
+                errorMessage = `Payment error: ${response.error}`
+              }
+
+              onPaymentErrorRef.current(errorMessage)
+              setLoading(false)
+            }
+          },
+          fieldsAvailableCallback: () => {
+            console.log('✅ CollectJS fields are now available and ready for input')
+            setCollectJSLoaded(true)
+            setCollectJSInitializing(false)
+            
+            // Additional validation to ensure fields are truly ready
+            setTimeout(() => {
+              const checkFields = () => {
+                const cardField = document.querySelector('#card-number-field iframe')
+                const expiryField = document.querySelector('#card-expiry-field iframe')
+                const cvvField = document.querySelector('#card-cvv-field iframe')
+                
+                if (cardField && expiryField && cvvField) {
+                  console.log('✅ All payment field iframes confirmed ready')
+                  console.log('📝 You can now safely enter payment information')
+                  console.log('  - Card Number iframe:', cardField ? 'present' : 'missing')
+                  console.log('  - Expiry iframe:', expiryField ? 'present' : 'missing')  
+                  console.log('  - CVV iframe:', cvvField ? 'present' : 'missing')
+                  
+                  // Check available CollectJS functions
+                  if (window.CollectJS) {
+                    const functions = Object.keys(window.CollectJS).filter(key => typeof (window.CollectJS as any)[key] === 'function')
+                    console.log(`📌 Available CollectJS functions: ${functions.join(', ')}`)
+                    
+                    // Note: isValid() function is not available in this version of CollectJS
+                    // Field validation is handled through the validationCallback instead
+                    console.log('ℹ️ CollectJS fields ready for user input')
+                  }
+                  
+                  // Dispatch custom event for testing
+                  window.dispatchEvent(new CustomEvent('collectjs:ready', { 
+                    detail: { 
+                      cardField: !!cardField, 
+                      expiryField: !!expiryField, 
+                      cvvField: !!cvvField 
+                    } 
+                  }))
+                  
+                  // Note: CollectJS doesn't support real-time card type detection
+                  // Card type is only available after successful tokenization
+                } else {
+                  console.log('⚠️ Payment iframes not yet detected, checking again...')
+                  console.log('  - Card Number iframe:', cardField ? 'present' : 'missing')
+                  console.log('  - Expiry iframe:', expiryField ? 'present' : 'missing')
+                  console.log('  - CVV iframe:', cvvField ? 'present' : 'missing')
+                }
+              }
+              checkFields()
+            }, 500)
+          },
+          // NOTE: The following callbacks are NOT valid CollectJS options:
+          // - focusCallback (not supported)
+          // - blurCallback (not supported)  
+          // - binChangedCallback (not supported)
+          // - enableCardBrandPreviews (not supported)
+          // 
+          // Card type detection is only available from response.card.type after tokenization
+          validationCallback: (field: string, status: boolean, message: string) => {
+            // Track that user has interacted with card fields
+            if (!cardFieldsTouched) {
+              setCardFieldsTouched(true)
+            }
+            
+            // Map CollectJS field names to our error keys
+            const fieldMap: Record<string, string> = {
+              'ccnumber': 'cardNumber',
+              'ccexp': 'expiry',
+              'cvv': 'cvv'
+            }
+            
+            const errorField = fieldMap[field] || field
+            
+            // Update inline errors based on validation status with enhanced messages
+            if (!status) {
+              setIsValidating(true)
+              
+              if (message === 'Field is empty') {
+                // Clear error for empty fields (will be set when form is submitted)
+                setErrors(prev => ({
+                  ...prev,
+                  [errorField]: ''
+                }))
+              } else {
+                // Set specific validation error with enhanced messages
+                console.log(`Field ${field} validation error:`, message)
+                
+                // Provide more user-friendly error messages
+                let enhancedMessage = message
+                if (field === 'ccnumber') {
+                  if (message.includes('invalid')) {
+                    enhancedMessage = 'Please enter a valid card number'
+                    // Check Luhn algorithm
+                    const cardInput = (document.querySelector('#card-number-field iframe') as any)?.value || ''
+                    if (cardInput && !luhnCheck(cardInput)) {
+                      enhancedMessage = 'Card number is invalid. Please check and try again'
+                    }
+                  }
+                } else if (field === 'ccexp') {
+                  if (message.includes('past') || message.includes('expired')) {
+                    enhancedMessage = 'Card has expired. Please use a different card'
+                  } else if (message.includes('invalid')) {
+                    enhancedMessage = 'Please enter a valid expiration date (MM/YY)'
+                  }
+                } else if (field === 'cvv') {
+                  if (message.includes('invalid')) {
+                    // Since we can't detect card type in real-time with CollectJS,
+                    // show a generic message that covers both 3 and 4 digit CVV codes
+                    enhancedMessage = 'Please enter the 3 or 4-digit security code from your card'
+                  }
+                }
+                
+                setErrors(prev => ({
+                  ...prev,
+                  [errorField]: enhancedMessage
+                }))
+              }
+            } else {
+              // Clear error when field becomes valid
+              setIsValidating(false)
+              setErrors(prev => ({
+                ...prev,
+                [errorField]: ''
+              }))
+            }
+
+            // Track individual field validation status
+            setFieldValidationState(prev => {
+              const newState = {
+                ...prev,
+                [field]: status && message !== 'Field is empty'
+              }
+              
+              // Check if ALL fields are valid (not empty and valid format)
+              const allFieldsValid = newState.ccnumber && newState.ccexp && newState.cvv
+              
+              // Update the overall fieldsValid state
+              setFieldsValid(allFieldsValid)
+              
+              console.log(`📊 Field validation update - ${field}: ${status}, All fields valid: ${allFieldsValid}`)
+              console.log('   Current field states:', newState)
+              
+              return newState
+            })
+          },
+          timeoutCallback: () => {
+            console.error('CollectJS timeout')
+            onPaymentErrorRef.current('Payment system timeout. Please refresh and try again.')
+            setLoading(false)
+          }
+        })
+      }
+    }
+
+    // Check if CollectJS is already loaded
+    if (typeof window !== 'undefined' && window.CollectJS) {
+      initializeCollectJS()
+    } else {
+      // Wait for CollectJS to load
+      const checkCollectJS = setInterval(() => {
+        if (typeof window !== 'undefined' && window.CollectJS) {
+          clearInterval(checkCollectJS)
+          initializeCollectJS()
+        }
+      }, 100)
+
+      // Implement retry logic with exponential backoff
+      let retryCount = 0
+      const maxRetries = 3
+      let retryTimeout: NodeJS.Timeout | null = null
+      
+      const retryInitialization = () => {
+        if (retryCount < maxRetries && !collectJSInitializedRef.current) {
+          retryCount++
+          console.log(`🔄 Retrying CollectJS initialization (attempt ${retryCount}/${maxRetries})`)
+          
+          // Exponential backoff: 2s, 4s, 8s
+          const delay = Math.pow(2, retryCount) * 1000
+          retryTimeout = setTimeout(() => {
+            if (!collectJSInitializedRef.current && window.CollectJS) {
+              initializeCollectJS()
+            }
+          }, delay)
+        }
+      }
+      
+      // Reduced timeout from 60s to 30s with retry logic
+      const timeoutId = setTimeout(() => {
+        clearInterval(checkCollectJS)
+        if (!collectJSInitializedRef.current) {
+          console.error('CollectJS failed to load within 30 seconds')
+          retryInitialization()
+          
+          // Final timeout after all retries
+          setTimeout(() => {
+            if (!collectJSInitializedRef.current) {
+              onPaymentErrorRef.current('Payment system failed to load. Please refresh the page.')
+            }
+          }, 15000) // Additional 15 seconds for retries
+        }
+      }, 30000)
+
+      // Cleanup function - clear all timers
+      return () => {
+        clearInterval(checkCollectJS)
+        clearTimeout(timeoutId)
+        if (retryTimeout) clearTimeout(retryTimeout)
+      }
+    }
+  }, [cardFieldsTouched, order?.items]) // Include dependencies
 
   // Initialize Google Places Autocomplete
   useEffect(() => {
@@ -517,6 +928,9 @@ export function NewDesignCheckoutForm({
     }
   }, [])
 
+  // Pure CSS floating labels - no JavaScript state management needed
+  // The CSS :focus and :not(:placeholder-shown) pseudo-selectors handle everything
+
   // Handle input focus to ensure floating label consistency
   const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     // Add a class to the parent to force label floating on focus
@@ -583,6 +997,317 @@ export function NewDesignCheckoutForm({
     }
   }
 
+  // onBlur validation handlers - standard behavior
+  const handleEmailValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, email: 'Email is required' }))
+    } else if (!validateEmail(value)) {
+      setErrors(prev => ({ ...prev, email: 'Please enter a valid email' }))
+    } else {
+      setErrors(prev => ({ ...prev, email: '' }))
+    }
+  }
+
+  const handleAddressValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, address: 'Address is required' }))
+    } else {
+      setErrors(prev => ({ ...prev, address: '' }))
+    }
+  }
+
+  const handleCityValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, city: 'City is required' }))
+    } else {
+      setErrors(prev => ({ ...prev, city: '' }))
+    }
+  }
+
+  const handleStateValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, state: 'State is required' }))
+    } else {
+      setErrors(prev => ({ ...prev, state: '' }))
+    }
+  }
+
+  const handleZipValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, zip: 'Postal code is required' }))
+    } else if (!validateZip(value)) {
+      setErrors(prev => ({ ...prev, zip: 'Please enter a valid postal code' }))
+    } else {
+      setErrors(prev => ({ ...prev, zip: '' }))
+    }
+  }
+
+  const handlePhoneValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    if (!value) {
+      setErrors(prev => ({ ...prev, phone: 'Phone is required' }))
+    } else if (!validatePhone(value)) {
+      setErrors(prev => ({ ...prev, phone: 'Please enter a valid phone number' }))
+    } else {
+      setErrors(prev => ({ ...prev, phone: '' }))
+    }
+  }
+
+  // Billing address onBlur handlers - only validate if not using same address
+  const handleBillingAddressValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingAddress: 'Billing address is required' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingAddress: '' }))
+      }
+    }
+  }
+
+  const handleBillingCityValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingCity: 'Billing city is required' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingCity: '' }))
+      }
+    }
+  }
+
+  const handleBillingStateValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingState: 'Billing state is required' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingState: '' }))
+      }
+    }
+  }
+
+  const handleBillingZipValidation = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Only validate if not using same address
+    if (!formData.useSameAddress) {
+      const value = e.target.value.trim()
+      if (!value) {
+        setErrors(prev => ({ ...prev, billingZip: 'Billing postal code is required' }))
+      } else if (!validateZip(value)) {
+        setErrors(prev => ({ ...prev, billingZip: 'Please enter a valid billing postal code' }))
+      } else {
+        setErrors(prev => ({ ...prev, billingZip: '' }))
+      }
+    }
+  }
+
+  // Standard validation functions - less strict
+  const validateEmail = (email: string): boolean => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return re.test(email)
+  }
+
+  const validatePhone = (phone: string): boolean => {
+    const trimmed = phone.trim()
+
+    // Allow empty for optional phone fields
+    if (!trimmed) return false
+
+    // Remove all non-digit characters for length check
+    const cleaned = phone.replace(/\D/g, '')
+
+    // International phone validation - much more flexible
+    // Support various international formats:
+    // - US/Canada: 10-11 digits (5551234567, 15551234567)
+    // - UK: 10-11 digits (02012345678, 442012345678)
+    // - Australia: 9-10 digits (0412345678, 61412345678)
+    // - Germany: 10-12 digits
+    // - France: 10 digits
+    // - And many others
+
+    // Basic validation: 7-15 digits (covers most international formats)
+    // Also allow common formatting characters: +, -, (, ), spaces
+    const internationalPhoneRegex = /^[\+]?[\d\s\-\(\)]{7,20}$/
+
+    // Must have at least 7 digits and at most 15 digits (ITU-T E.164 standard)
+    const hasValidDigitCount = cleaned.length >= 7 && cleaned.length <= 15
+
+    return internationalPhoneRegex.test(trimmed) && hasValidDigitCount
+  }
+
+  const validateZip = (zip: string): boolean => {
+    const trimmed = zip.trim()
+
+    // Allow empty for international customers who may not have postal codes
+    if (!trimmed) return false
+
+    // International postal code validation - much more flexible
+    // Support various formats:
+    // - US: 12345 or 12345-6789
+    // - Canada: A1A 1A1 or A1A1A1
+    // - UK: SW1A 1AA, M1 1AA, B33 8TH
+    // - Australia: 1234
+    // - Germany: 12345
+    // - France: 12345
+    // - And many others
+
+    // Basic validation: 3-10 characters, alphanumeric with spaces and hyphens
+    const internationalPostalRegex = /^[A-Za-z0-9\s\-]{3,10}$/
+
+    return internationalPostalRegex.test(trimmed)
+  }
+
+  const validateCVV = (cvv: string): boolean => {
+    const cleaned = cvv.replace(/\D/g, '')
+    // Real CVV validation: 3 digits for Visa/MC, 4 digits for Amex
+    return cleaned.length === 3 || cleaned.length === 4
+  }
+
+  const validateExpiryDate = (expiry: string): boolean => {
+    // Format: MM/YY - strict validation
+    const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/
+    if (!regex.test(expiry)) return false
+
+    const [monthStr, yearStr] = expiry.split('/')
+    const month = parseInt(monthStr, 10)
+    const year = parseInt(yearStr, 10)
+
+    // Validate month range (1-12)
+    if (month < 1 || month > 12) return false
+
+    const currentDate = new Date()
+    const currentMonth = currentDate.getMonth() + 1
+
+    // Handle year wraparound (e.g., current year 2024 -> 24, max year 2039 -> 39)
+    const currentFullYear = currentDate.getFullYear()
+    const inputFullYear = year + (year < 50 ? 2000 : 1900) // Assume 00-49 is 2000s, 50-99 is 1900s
+
+    // Check if year is too far in the past
+    if (inputFullYear < currentFullYear) return false
+
+    // Check if year is too far in the future (more than 15 years)
+    if (inputFullYear > currentFullYear + 15) return false
+
+    // Check if it's current year but past month
+    if (inputFullYear === currentFullYear && month < currentMonth) return false
+
+    return true // Valid future date within 15 years
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {}
+
+    // VALIDATION ORDER: Top to Bottom as displayed in form
+    
+    // 1. CONTACT SECTION
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email'
+    }
+
+    // 2. SHIPPING SECTION (in visual order)
+    // Address validation
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required'
+    }
+    
+    // Apartment is optional - no validation
+    
+    // City validation
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required'
+    }
+
+    // State validation
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required'
+    }
+
+    // Postal code validation
+    if (!formData.zip.trim()) {
+      newErrors.zip = 'Postal code is required'
+    } else if (!validateZip(formData.zip)) {
+      newErrors.zip = 'Please enter a valid postal code'
+    }
+    
+    // Country validation happens separately
+    
+    // Phone validation
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone is required'
+    } else if (!validatePhone(formData.phone)) {
+      newErrors.phone = 'Please enter a valid phone number'
+    }
+
+    // 3. PAYMENT SECTION
+    // Name on Card validation
+    if (!formData.nameOnCard.trim()) {
+      newErrors.nameOnCard = 'Name on card is required'
+    }
+
+    // CollectJS field validation - check if CollectJS validates the fields
+    // CollectJS handles its own validation internally, but we can check if it's been initialized
+    if (collectJSLoaded && window.CollectJS && window.CollectJS.isValid) {
+      // Check card number
+      if (!window.CollectJS.isValid('ccnumber')) {
+        newErrors.cardNumber = 'Please enter a valid card number'
+      }
+      // Check expiry
+      if (!window.CollectJS.isValid('ccexp')) {
+        newErrors.expiry = 'Please enter a valid expiration date'
+      }
+      // Check CVV
+      if (!window.CollectJS.isValid('cvv')) {
+        newErrors.cvv = 'Please enter a valid security code'
+      }
+    } else if (!collectJSLoaded) {
+      // If CollectJS isn't loaded yet, prevent submission
+      newErrors.payment = 'Payment system is loading, please wait...'
+    }
+
+    // Country validation
+    if (!formData.country) newErrors.country = 'Country is required'
+
+    // Billing address validation (only if not using same address)
+    if (!formData.useSameAddress) {
+      if (!formData.billingAddress?.trim()) {
+        newErrors.billingAddress = 'Billing address is required'
+      } else if (formData.billingAddress.trim().length < 5) {
+        newErrors.billingAddress = 'Please enter a valid billing address'
+      }
+
+      if (!formData.billingCity?.trim()) {
+        newErrors.billingCity = 'Billing city is required'
+      } else if (formData.billingCity.trim().length < 2) {
+        newErrors.billingCity = 'Please enter a valid billing city'
+      }
+
+      if (!formData.billingState?.trim()) {
+        newErrors.billingState = 'Billing state is required'
+      } else if (formData.billingState.trim().length < 2) {
+        newErrors.billingState = 'Please enter a valid billing state'
+      }
+
+      if (!formData.billingZip?.trim()) {
+        newErrors.billingZip = 'Billing postal code is required'
+      } else if (!validateZip(formData.billingZip)) {
+        newErrors.billingZip = 'Please enter a valid billing postal code'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -637,53 +1362,20 @@ export function NewDesignCheckoutForm({
     }
     
     // 4. CollectJS Card Validation - CRITICAL for payment processing
-    if (collectJSLoaded && collectJSService.isReady()) {
-      // Get individual field validation states
-      const validationState = collectJSService.getValidationState()
-      const serviceFieldErrors = collectJSService.getFieldErrors()
-
-      console.log('🔍 Service validation state:', {
-        validationState,
-        errors: serviceFieldErrors
-      })
-
-      // Debug: Check if CollectJS is actually working
-      console.log('🔧 CollectJS Debug Info:')
-      console.log('  - window.CollectJS exists:', !!window.CollectJS)
-      console.log('  - Service isReady:', collectJSService.isReady())
-      console.log('  - collectJSLoaded:', collectJSLoaded)
-      console.log('  - Card iframes present:', {
-        cardNumber: !!document.querySelector('#card-number-field iframe'),
-        expiry: !!document.querySelector('#card-expiry-field iframe'),
-        cvv: !!document.querySelector('#card-cvv-field iframe')
-      })
-
-      // Check each field individually - required for form submission
-      const cardNumberField = validationState.cardNumber
-      const expiryField = validationState.expiry
-      const cvvField = validationState.cvv
-
-      // Card Number validation
-      if (!cardNumberField || !cardNumberField.isTouched) {
+    if (collectJSLoaded && window.CollectJS) {
+      // CollectJS validation is handled through validationCallback, not isValid()
+      // Check if user has interacted with card fields and if they're valid
+      if (!cardFieldsTouched) {
+        // User hasn't entered any card information yet
         newErrors.cardNumber = 'Please enter your card number'
-      } else if (!cardNumberField.isValid) {
-        newErrors.cardNumber = serviceFieldErrors.cardNumber || 'Please enter a valid card number'
-      }
-
-      // Expiry validation
-      if (!expiryField || !expiryField.isTouched) {
         newErrors.expiry = 'Please enter the expiration date (MM/YY)'
-      } else if (!expiryField.isValid) {
-        newErrors.expiry = serviceFieldErrors.expiry || 'Please enter a valid expiration date'
-      }
-
-      // CVV validation
-      if (!cvvField || !cvvField.isTouched) {
         newErrors.cvv = 'Please enter the 3 or 4 digit security code'
-      } else if (!cvvField.isValid) {
-        newErrors.cvv = serviceFieldErrors.cvv || 'Please enter a valid security code'
+      } else if (!fieldsValid) {
+        // User has entered something but fields are not valid
+        // Since we can't check individual fields without isValid(), show general error
+        newErrors.payment = 'Please check your card information and ensure all fields are filled correctly'
       }
-
+      // If cardFieldsTouched && fieldsValid, card fields are good to go
     } else if (!collectJSLoaded) {
       newErrors.payment = 'Payment system is still loading. Please wait...'
     }
@@ -721,32 +1413,28 @@ export function NewDesignCheckoutForm({
       return
     }
 
+    // CollectJS loading is already checked above in validation
+
+    // CollectJS will validate the payment fields when startPaymentRequest is called
+    // No need to pre-check fieldsValid here as CollectJS handles validation internally
+
     setLoading(true)
     console.log('🚀 Starting payment submission process...')
     console.log('📋 Form data at submission:', formData)
 
     try {
-      // Use centralized CollectJS service for payment
-      console.log('🔍 Checking CollectJS service readiness...')
-      console.log('  - Service exists:', !!collectJSService)
-      console.log('  - isReady:', collectJSService.isReady())
-      
-      if (collectJSService.isReady()) {
-        console.log('🎯 Using CollectJS service for tokenization...')
+      // Trigger CollectJS tokenization
+      if (window.CollectJS) {
+        console.log('🎯 Calling CollectJS.startPaymentRequest()...')
 
         // Check if CollectJS fields are valid before starting
+        // Since isValid() is not available, use our state tracking
         console.log('🔍 CollectJS field validation status:')
-        console.log(`  📝 Card fields touched (local): ${cardFieldsTouched ? '✅' : '❌'}`)
-        console.log(`  📝 Card fields touched (service): ${collectJSService.areFieldsTouched() ? '✅' : '❌'}`)
-        console.log(`  ✔️ Fields valid (local): ${fieldsValid ? '✅' : '❌'}`)
-        console.log(`  ✔️ Fields valid (service): ${collectJSService.areFieldsValid() ? '✅' : '❌'}`)
-
-        // Use service validation state as primary source of truth
-        const serviceFieldsTouched = collectJSService.areFieldsTouched()
-        const serviceFieldsValid = collectJSService.areFieldsValid()
+        console.log(`  📝 Card fields touched: ${cardFieldsTouched ? '✅' : '❌'}`)
+        console.log(`  ✔️ Fields valid: ${fieldsValid ? '✅' : '❌'}`)
 
         // Check if user has entered card information
-        if (!serviceFieldsTouched) {
+        if (!cardFieldsTouched) {
           console.warn('⚠️ No card information entered')
           // Set inline errors for empty fields
           setErrors(prev => ({
@@ -769,19 +1457,15 @@ export function NewDesignCheckoutForm({
         }
         
         // Check if entered card information is valid
-        if (!serviceFieldsValid) {
+        if (!fieldsValid) {
           console.warn('⚠️ Card information is invalid')
-
-          // Get specific field errors from the service
-          const fieldErrors = collectJSService.getFieldErrors()
-          console.log('🔍 Service field errors:', fieldErrors)
-
           // Set inline errors for invalid fields
+          // Note: These will be more specific once CollectJS provides field-level validation
           setErrors(prev => ({
             ...prev,
-            cardNumber: fieldErrors.cardNumber || prev.cardNumber || 'Please check your card number',
-            expiry: fieldErrors.expiry || prev.expiry || 'Please check the expiration date',
-            cvv: fieldErrors.cvv || prev.cvv || 'Please check the security code'
+            cardNumber: prev.cardNumber || 'Please check your card number',
+            expiry: prev.expiry || 'Please check the expiration date',
+            cvv: prev.cvv || 'Please check the security code'
           }))
           
           // Focus first error field
@@ -795,12 +1479,19 @@ export function NewDesignCheckoutForm({
           return
         }
 
-        // Use CollectJS service to start payment request
-        await collectJSService.startPaymentRequest()
-        console.log('✅ CollectJS service payment request initiated')
+        window.CollectJS.startPaymentRequest()
+        console.log('✅ CollectJS.startPaymentRequest() called successfully')
 
+        // Set a timeout to detect if callback never fires
+        setTimeout(() => {
+          if (loading) {
+            console.error('⏰ CollectJS callback timeout - no response after 30 seconds')
+            onPaymentErrorRef.current('Payment processing is taking too long. Please try again.')
+            setLoading(false)
+          }
+        }, 30000) // 30 second timeout
       } else {
-        throw new Error('CollectJS service not ready')
+        throw new Error('CollectJS not available')
       }
     } catch (error) {
       console.error('❌ Payment submission error:', error)
@@ -825,7 +1516,7 @@ export function NewDesignCheckoutForm({
         <h3 className="mb-6 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
           Contact
         </h3>
-        <div className="">
+        <div className="space-y-8">
           <div className="floating-label-group">
             <input
               type="email"
@@ -842,12 +1533,15 @@ export function NewDesignCheckoutForm({
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
             />
+            <label htmlFor="email" className="floating-label bg-transparent sm:hidden block">
+              Email{' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(To receive order confirmation email)</span>
+            </label>
             <label htmlFor="email" className="floating-label bg-transparent hidden sm:block">
               Email{' '}
               <span className="text-[1.6rem] text-[#a2a2a2]">(To receive order confirmation email)</span>
             </label>
-            
-          </div>{errors.email && (
+            {errors.email && (
               <div
                 id="email-error"
                 className="text-2xl mt-2 error-message"
@@ -856,6 +1550,7 @@ export function NewDesignCheckoutForm({
                 {errors.email}
               </div>
             )}
+          </div>
         </div>
       </div>
 
@@ -866,7 +1561,7 @@ export function NewDesignCheckoutForm({
         <h3 className="mb-6 text-[#373738] font-medium sm:text-[2.7rem] text-[3.5rem]">
           Shipping
         </h3>
-        <div className="">
+        <div className="space-y-8">
           <div className="floating-label-group">
             <input
               ref={addressInputRef}
@@ -886,8 +1581,7 @@ export function NewDesignCheckoutForm({
             <label htmlFor="address" className="floating-label bg-transparent">
               Street Address
             </label>
-           
-          </div> {errors.address && (
+            {errors.address && (
               <div
                 id="address-error"
                 className="text-2xl mt-2 error-message"
@@ -896,6 +1590,7 @@ export function NewDesignCheckoutForm({
                 {errors.address}
               </div>
             )}
+          </div>
 
           <div className="floating-label-group">
             <input
@@ -915,9 +1610,7 @@ export function NewDesignCheckoutForm({
               Apartment, suite, etc{' '}
               <span className="text-[1.6rem] text-[#a2a2a2]">(optional)</span>
             </label>
-            
-          </div>
-{errors.apartment && (
+            {errors.apartment && (
               <div
                 id="apartment-error"
                 className="text-2xl mt-2 error-message"
@@ -926,7 +1619,9 @@ export function NewDesignCheckoutForm({
                 {errors.apartment}
               </div>
             )}
-          <div className="sm:flex justify-between gap-7 sm:space-y-0">
+          </div>
+
+          <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
             <div className="w-full">
               <div className="floating-label-group">
                 <input
@@ -946,8 +1641,7 @@ export function NewDesignCheckoutForm({
                 <label htmlFor="city" className="floating-label bg-transparent">
                   City
                 </label>
-                
-              </div>{errors.city && (
+                {errors.city && (
                   <div
                     id="city-error"
                     className="text-2xl mt-2 error-message"
@@ -956,6 +1650,7 @@ export function NewDesignCheckoutForm({
                     {errors.city}
                   </div>
                 )}
+              </div>
             </div>
             <div className="w-full">
               <div className="floating-label-group">
@@ -976,8 +1671,7 @@ export function NewDesignCheckoutForm({
                 <label htmlFor="state" className="floating-label bg-transparent">
                   State
                 </label>
-                
-              </div>{errors.state && (
+                {errors.state && (
                   <div
                     id="state-error"
                     className="text-2xl mt-2 error-message"
@@ -986,6 +1680,7 @@ export function NewDesignCheckoutForm({
                     {errors.state}
                   </div>
                 )}
+              </div>
             </div>
             <div className="w-full">
               <div className="floating-label-group">
@@ -1009,8 +1704,7 @@ export function NewDesignCheckoutForm({
                 <label htmlFor="zip" className="floating-label bg-transparent">
                   Zip Code
                 </label>
-                
-              </div>{errors.zip && (
+                {errors.zip && (
                   <div
                     id="zip-error"
                     className="text-2xl mt-2 error-message"
@@ -1019,6 +1713,7 @@ export function NewDesignCheckoutForm({
                     {errors.zip}
                   </div>
                 )}
+              </div>
             </div>
           </div>
 
@@ -1058,6 +1753,10 @@ export function NewDesignCheckoutForm({
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
             />
+            <label htmlFor="phone" className="floating-label bg-transparent sm:hidden block">
+              Phone Number{' '}
+              <span className="text-[1.6rem] text-[#a2a2a2]">(For delivery confirmation texts)</span>
+            </label>
             <label htmlFor="phone" className="floating-label bg-transparent hidden sm:block">
               Phone Number {' '}
               <span className="text-[1.6rem] text-[#a2a2a2]">(For delivery confirmation texts)</span>
@@ -1070,8 +1769,7 @@ export function NewDesignCheckoutForm({
                 height={40}
               />
             </span>
-           
-          </div> {errors.phone && (
+            {errors.phone && (
               <div
                 id="phone-error"
                 className="text-2xl mt-2 error-message"
@@ -1080,6 +1778,7 @@ export function NewDesignCheckoutForm({
                 {errors.phone}
               </div>
             )}
+          </div>
         </div>
       </div>
 
@@ -1089,7 +1788,7 @@ export function NewDesignCheckoutForm({
           Payment
         </h3>
         <p className="flex gap-2 mb-10 items-center font-medium text-[1.94rem] text-[#6d6d6d] hidden md:block">
-          All transactions are secure and encrypted 
+          All transactions are secure and encrypted
           <Image
             className="w-6 inline-block -mt-3"
             src="/assets/images/lock.svg"
@@ -1106,10 +1805,10 @@ export function NewDesignCheckoutForm({
             width={16}
             height={16}
           />
-          Secure & Encrypted 
+          Secure & Encrypted
         </p>
-        <div className="">
-          <div className="floating-label-group relative ">
+        <div className="space-y-8">
+          <div className="floating-label-group relative">
             {/* CollectJS mount point for card number */}
             <div
               id="card-number-field"
@@ -1119,7 +1818,7 @@ export function NewDesignCheckoutForm({
               aria-required="true"
               aria-invalid={!!errors.cardNumber}
               aria-describedby={errors.cardNumber ? "card-number-error" : undefined}
-              className={`collectjs-field collectjs-card-number w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cardNumber ? 'input-error' : ''} ${!errors.cardNumber && fieldValidationState.ccnumber ? 'border-green-500' : ''}`}
+              className={`collectjs-field collectjs-card-number ${errors.cardNumber ? 'input-error' : ''} ${!errors.cardNumber && fieldValidationState.ccnumber ? 'border-green-500' : ''}`}
             >
               {collectJSInitializing && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10">
@@ -1130,7 +1829,11 @@ export function NewDesignCheckoutForm({
             <label htmlFor="card-number-field" className="floating-label bg-transparent">
               Card Number
             </label>
-           
+            {errors.cardNumber && (
+              <div id="card-number-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
+                {errors.cardNumber}
+              </div>
+            )}
             <div className="absolute top-1/2 right-4 -translate-y-1/2 flex gap-2 z-10 pointer-events-none">
               <Image
                 className="h-14 opacity-90"
@@ -1155,12 +1858,7 @@ export function NewDesignCheckoutForm({
               />
             </div>
           </div>
-           {errors.cardNumber && (
-              <div id="card-number-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
-                {errors.cardNumber}
-              </div>
-            )}
-          <div className="sm:flex justify-between gap-7 sm:space-y-0">
+          <div className="sm:flex justify-between gap-7 space-y-8 sm:space-y-0">
             <div className="floating-label-group w-full lg:mb-0">
               {/* CollectJS mount point for expiry */}
               <div 
@@ -1171,7 +1869,7 @@ export function NewDesignCheckoutForm({
                 aria-required="true"
                 aria-invalid={!!errors.expiry}
                 aria-describedby={errors.expiry ? "expiry-error" : undefined}
-                className={`collectjs-field w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''} ${!errors.expiry && fieldValidationState.ccexp ? 'border-green-500' : ''}`}
+                className={`relative w-full border-2 border-[#CDCDCD] px-9 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''} ${!errors.expiry && fieldValidationState.ccexp ? 'border-green-500' : ''}`}
               >
                 {collectJSInitializing && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
@@ -1181,12 +1879,12 @@ export function NewDesignCheckoutForm({
               </div>
               <label htmlFor="card-expiry-field" className="floating-label bg-transparent">
                 Expiration Date{' '}(MM/YYYY)
-              </label>{errors.expiry && (
+              </label>
+              {errors.expiry && (
                 <div id="expiry-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
                   {errors.expiry}
                 </div>
               )}
-              
             </div>
             <div className="floating-label-group relative w-full lg:mb-0">
               {/* CollectJS mount point for CVV */}
@@ -1198,7 +1896,7 @@ export function NewDesignCheckoutForm({
                 aria-required="true"
                 aria-invalid={!!errors.cvv}
                 aria-describedby={errors.cvv ? "cvv-error" : undefined}
-                className={`collectjs-field collectjs-cvv w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''} ${!errors.cvv && fieldValidationState.cvv ? 'border-green-500' : ''}`}
+                className={`relative w-full border-2 border-[#CDCDCD] pl-9 pr-17 py-7 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''} ${!errors.cvv && fieldValidationState.cvv ? 'border-green-500' : ''}`}
               >
                 {collectJSInitializing && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
@@ -1209,7 +1907,11 @@ export function NewDesignCheckoutForm({
               <label htmlFor="card-cvv-field" className="floating-label bg-transparent">
                 Security Code
               </label>
-             
+              {errors.cvv && (
+                <div id="cvv-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
+                  {errors.cvv}
+                </div>
+              )}
               <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2">
                 <Image
                   src="/assets/images/info.svg"
@@ -1217,12 +1919,8 @@ export function NewDesignCheckoutForm({
                   width={40}
                   height={40}
                 />
-              </span>{errors.cvv && (
-                <div id="cvv-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
-                  {errors.cvv}
-                </div>
-              )}
-            </div> 
+              </span>
+            </div>
           </div>
           <div className="floating-label-group">
             <input
@@ -1242,13 +1940,13 @@ export function NewDesignCheckoutForm({
             <label htmlFor="nameOnCard" className="floating-label bg-transparent">
               Name On Card
             </label>
-            
-          </div>
-{errors.nameOnCard && (
+            {errors.nameOnCard && (
               <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
                 {errors.nameOnCard}
               </div>
             )}
+          </div>
+
           <div>
             <label className="flex items-center gap-4 cursor-pointer select-none">
               <input
@@ -1306,7 +2004,7 @@ export function NewDesignCheckoutForm({
                   </div>
                 )}
               </div>
-              <div className="sm:flex justify-between gap-4 sm:space-y-0">
+              <div className="sm:flex justify-between gap-4 space-y-8 sm:space-y-0">
                 <div className="floating-label-group w-full">
                   <input
                     type="text"
@@ -1381,7 +2079,7 @@ export function NewDesignCheckoutForm({
                   aria-required="true"
                   defaultValue=""
                 >
-                  <option value="" disabled></option>
+                  <option value="" disabled selected></option>
                   <option value="us">United States</option>
                   <option value="ca">Canada</option>
                   <option value="uk">United Kingdom</option>

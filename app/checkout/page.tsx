@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { NewDesignCheckoutForm } from '@/components/NewDesignCheckoutForm'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { ValidationError, createUserFriendlyValidationErrors } from '@/src/lib/validation/form-validation'
 
 // Order data for the form
 const order = {
@@ -21,12 +22,6 @@ const order = {
   ]
 }
 
-interface ValidationError {
-  field: string
-  message: string
-  userFriendlyMessage: string
-  suggestions: string[]
-}
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -65,46 +60,6 @@ export default function CheckoutPage() {
   }, [searchParams])
 
   const startPaymentStatusPolling = useCallback((sessionId: string) => {
-    console.log('🎉 Payment successful!', result)
-
-    if (result.success && result.transactionId) {
-      console.log('✅ Payment completed successfully!')
-
-      // Store transaction details for success page
-      sessionStorage.setItem('transaction_result', JSON.stringify({
-        transactionId: result.transactionId,
-        authCode: result.authCode,
-        responseCode: result.responseCode,
-        amount: result.amount,
-        timestamp: result.timestamp,
-        vaultId: result.vaultId,
-        sessionId: result.sessionId
-      }))
-
-      // Check if we have a session for upsells
-      if (result.sessionId && result.vaultId) {
-        console.log('🎯 Redirecting to upsell with session:', result.sessionId)
-        // Store session for upsell flow
-        sessionStorage.setItem('checkout_session', result.sessionId)
-        sessionStorage.setItem('main_transaction', result.transactionId)
-
-        // Redirect to first upsell page
-        setTimeout(() => {
-          router.push(`/upsell/1?session=${result.sessionId}&transaction=${result.transactionId}`)
-        }, 1500)
-      } else {
-        // No upsell flow, go directly to thank you
-        console.log('🎯 No vault ID, skipping upsells, going to thank you')
-        setTimeout(() => {
-          router.push(`/thankyou?session=${result.sessionId || 'direct'}&transaction=${result.transactionId}`)
-        }, 1500)
-      }
-    } else if (result.success && result.sessionId) {
-      // Handle the old flow with session polling
-      console.log('✅ Success! Starting payment processing...')
-      sessionStorage.setItem('checkout_session', result.sessionId)
-      startPaymentStatusPolling(result.sessionId)
-    }
     console.log('🔄 Starting payment status polling for session:', sessionId)
 
     setSessionId(sessionId)
@@ -190,24 +145,10 @@ export default function CheckoutPage() {
     if (result.success && result.transactionId) {
       console.log('✅ Payment completed successfully!')
 
-      // Store transaction details for success page
-      sessionStorage.setItem('transaction_result', JSON.stringify({
-        transactionId: result.transactionId,
-        authCode: result.authCode,
-        responseCode: result.responseCode,
-        amount: result.amount,
-        timestamp: result.timestamp,
-        vaultId: result.vaultId,
-        sessionId: result.sessionId
-      }))
-
       // Check if we have a session for upsells
       if (result.sessionId && result.vaultId) {
         console.log('🎯 Redirecting to upsell with session:', result.sessionId)
-        // Store session for upsell flow
-        sessionStorage.setItem('checkout_session', result.sessionId)
-        sessionStorage.setItem('main_transaction', result.transactionId)
-
+        
         // Redirect to first upsell page
         setTimeout(() => {
           router.push(`/upsell/1?session=${result.sessionId}&transaction=${result.transactionId}`)
@@ -222,152 +163,10 @@ export default function CheckoutPage() {
     } else if (result.success && result.sessionId) {
       // Handle the old flow with session polling
       console.log('✅ Success! Starting payment processing...')
-      sessionStorage.setItem('checkout_session', result.sessionId)
       startPaymentStatusPolling(result.sessionId)
     }
   }, [router, startPaymentStatusPolling])
 
-  const createUserFriendlyValidationErrors = useCallback((errors: Record<string, string> | string): ValidationError[] => {
-    if (typeof errors === 'string') {
-      // Handle generic error messages
-      if (errors.toLowerCase().includes('card number')) {
-        return [{
-          field: 'card',
-          message: errors,
-          userFriendlyMessage: 'There\'s an issue with your card number',
-          suggestions: ['Please check that your card number is entered correctly', 'Make sure you\'ve entered all 16 digits', 'Try using a different card if the problem persists']
-        }]
-      } else if (errors.toLowerCase().includes('expir')) {
-        return [{
-          field: 'expiry',
-          message: errors,
-          userFriendlyMessage: 'Your card expiration date has an issue',
-          suggestions: ['Please check the expiration date on your card', 'Make sure to enter it in MM/YY format', 'Ensure your card hasn\'t expired']
-        }]
-      } else if (errors.toLowerCase().includes('cvv') || errors.toLowerCase().includes('security')) {
-        return [{
-          field: 'cvv',
-          message: errors,
-          userFriendlyMessage: 'There\'s an issue with your security code',
-          suggestions: ['Please check the 3-digit CVV code on the back of your card', 'For American Express, use the 4-digit code on the front']
-        }]
-      } else {
-        return [{
-          field: 'general',
-          message: errors,
-          userFriendlyMessage: 'We encountered an issue processing your payment',
-          suggestions: ['Please check all your information and try again', 'Make sure your card has sufficient funds', 'Contact your bank if the issue persists']
-        }]
-      }
-    }
-
-    // Handle structured validation errors
-    const validationErrors: ValidationError[] = []
-    Object.entries(errors).forEach(([field, message]) => {
-      let userFriendlyMessage = ''
-      let suggestions: string[] = []
-
-      // Clean up field name first (remove "customer info." prefix)
-      const cleanedField = field.toLowerCase()
-        .replace('customer info.', '')
-        .replace('customerinfo.', '')
-        .replace('customer.', '')
-      
-      switch (cleanedField) {
-        case 'firstname':
-        case 'first_name':
-        case 'first name':
-          userFriendlyMessage = 'Please enter your first name'
-          suggestions = ['First name is required for shipping and billing']
-          break
-        case 'lastname':
-        case 'last_name':
-        case 'last name':
-          userFriendlyMessage = 'Please enter your last name'
-          suggestions = ['Last name is required for shipping and billing']
-          break
-        case 'email':
-        case 'email address':
-          userFriendlyMessage = 'Please enter a valid email address'
-          suggestions = ['We need your email to send order confirmations', 'Make sure to include @ and a valid domain (e.g., example.com)']
-          break
-        case 'phone':
-        case 'phone number':
-        case 'phonenumber':
-          userFriendlyMessage = 'Please enter a valid phone number'
-          suggestions = ['Phone number is required for delivery updates', 'Include area code (e.g., 555-123-4567)']
-          break
-        case 'billingaddress':
-        case 'billing address':
-        case 'address':
-        case 'street address':
-          userFriendlyMessage = 'Please enter your billing address'
-          suggestions = ['We need your billing address for payment verification', 'Enter your complete street address including apartment/suite numbers']
-          break
-        case 'billingcity':
-        case 'billing city':
-        case 'city':
-          userFriendlyMessage = 'Please enter your city'
-          suggestions = ['City is required for billing and shipping']
-          break
-        case 'billingstate':
-        case 'billing state':
-        case 'state':
-          userFriendlyMessage = 'Please select your state'
-          suggestions = ['State is required for tax calculation and shipping']
-          break
-        case 'billingzipcode':
-        case 'billing zip code':
-        case 'billing zip':
-        case 'zipcode':
-        case 'zip code':
-        case 'zip':
-        case 'postal code':
-        case 'postalcode':
-          userFriendlyMessage = 'Please enter a valid ZIP code'
-          suggestions = ['ZIP code is required for billing verification', 'Use 5-digit format (e.g., 90210) or ZIP+4 (e.g., 90210-1234)']
-          break
-        case 'payment_token':
-          userFriendlyMessage = 'Payment information is incomplete'
-          suggestions = ['Please fill in all credit card fields', 'Make sure card number, expiration, and CVV are entered', 'Try refreshing the page if card fields aren\'t working']
-          break
-        case 'card':
-        case 'ccnumber':
-          userFriendlyMessage = 'There\'s an issue with your card number'
-          suggestions = ['Please check that your card number is entered correctly', 'Make sure you\'ve entered all 16 digits', 'Remove any spaces or dashes']
-          break
-        default:
-          // Clean up field names that come from API like "customer info.email"
-          let cleanFieldName = field
-          
-          // Remove "customer info." prefix if present
-          if (field.includes('customer info.')) {
-            cleanFieldName = field.replace('customer info.', '')
-          }
-          
-          // Handle dot notation (e.g., "zip code" from "zip.code")
-          cleanFieldName = cleanFieldName.replace(/\./g, ' ')
-          
-          // Capitalize first letter of each word
-          cleanFieldName = cleanFieldName
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-            .join(' ')
-          
-          userFriendlyMessage = `Please check your ${cleanFieldName}`
-          suggestions = ['Please verify this information and try again']
-      }
-
-      validationErrors.push({
-        field,
-        message,
-        userFriendlyMessage,
-        suggestions
-      })
-    })
-
-    return validationErrors
-  }, [])
 
   const handlePaymentError = useCallback((errorMessage: string, errors?: Record<string, string>, sessionId?: string) => {
     console.error('Payment failed:', errorMessage)
@@ -389,12 +188,7 @@ export default function CheckoutPage() {
         // Show a brief notification before proceeding
         setSystemBannerMessage('Payment already processed. Proceeding to next step...')
 
-        // Store the REFID and session for reference
-        sessionStorage.setItem('duplicate_refid', refid)
-        if (sessionId) {
-          sessionStorage.setItem('checkout_session', sessionId)
-          sessionStorage.setItem('main_transaction', refid)
-        }
+        // Note: Session will be updated by the payment processing system
 
         // Auto-proceed after a brief delay
         setTimeout(() => {
@@ -403,15 +197,8 @@ export default function CheckoutPage() {
             console.log('🎯 Redirecting to upsell with duplicate session:', sessionId)
             router.push(`/upsell/1?session=${sessionId}&transaction=${refid}`)
           } else {
-            // Fallback to stored session or thank you page
-            const storedSession = sessionStorage.getItem('checkout_session')
-            const storedTransaction = sessionStorage.getItem('main_transaction')
-
-            if (storedSession) {
-              router.push(`/upsell/1?session=${storedSession}&transaction=${storedTransaction || refid}`)
-            } else {
-              router.push(`/thankyou?transaction=${refid}`)
-            }
+            // Fallback to thank you page without session
+            router.push(`/thankyou?transaction=${refid}`)
           }
         }, 2000)
       } else {
@@ -441,7 +228,7 @@ export default function CheckoutPage() {
         setTimeout(() => setSystemBannerMessage(null), 10000)
       }
     }
-  }, [router, createUserFriendlyValidationErrors])
+  }, [router])
 
   // Countdown timer implementation - matching design
   useEffect(() => {

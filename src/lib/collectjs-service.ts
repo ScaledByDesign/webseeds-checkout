@@ -115,7 +115,12 @@ export class CollectJSService {
   private isConfigured = false;
   private loadingPromise: Promise<void> | null = null;
   private validationState: FieldValidationState = {};
-  
+
+  // Retry logic state
+  private retryCount = 0;
+  private maxRetries = 3;
+  private retryTimeout: NodeJS.Timeout | null = null;
+
   // Callbacks
   private onTokenCallback?: (result: TokenResult) => void;
   private onValidationCallback?: (field: string, status: string, message: string) => void;
@@ -190,7 +195,10 @@ export class CollectJSService {
 
     // Update configuration
     if (options.fieldSelectors) {
-      this.config.fieldSelectors = { ...this.config.fieldSelectors, ...options.fieldSelectors };
+      this.config.fieldSelectors = {
+        ...this.config.fieldSelectors,
+        ...options.fieldSelectors
+      } as Required<CollectJSServiceConfig['fieldSelectors']>;
     }
     if (options.customStyles) {
       this.config.customStyles = { ...this.config.customStyles, ...options.customStyles };
@@ -207,8 +215,8 @@ export class CollectJSService {
       await this.loadScript();
     }
 
-    // Configure CollectJS
-    this.configureCollectJS();
+    // Configure CollectJS and wait for fields to be ready
+    await this.configureCollectJS();
 
     console.log('✅ CollectJS Service: Initialization complete');
   }
@@ -266,6 +274,22 @@ export class CollectJSService {
 
       script.onload = () => {
         console.log('✅ CollectJS script loaded successfully');
+
+        // Override console.error temporarily to suppress PaymentRequestAbstraction error
+        const originalError = console.error;
+        console.error = (...args: any[]) => {
+          // Filter out PaymentRequestAbstraction errors
+          if (args[0] && typeof args[0] === 'string' && args[0].includes('PaymentRequestAbstraction')) {
+            return; // Suppress this specific error
+          }
+          originalError.apply(console, args);
+        };
+
+        // Restore original console.error after 1 second
+        setTimeout(() => {
+          console.error = originalError;
+        }, 1000);
+
         this.isLoaded = true;
         resolve();
       };
@@ -285,76 +309,88 @@ export class CollectJSService {
   /**
    * Configure CollectJS with consolidated settings
    */
-  private configureCollectJS(): void {
-    if (!window.CollectJS) {
-      throw new Error('CollectJS not available');
-    }
+  private configureCollectJS(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!window.CollectJS) {
+        reject(new Error('CollectJS not available'));
+        return;
+      }
 
-    console.log('⚙️ Configuring CollectJS with consolidated settings...');
-    console.log('🔑 Using tokenization key:', this.config.tokenizationKey?.substring(0, 10) + '...');
-    console.log('📍 Field selectors:', this.config.fieldSelectors);
+      console.log('⚙️ Configuring CollectJS with consolidated settings...');
+      console.log('🔑 Using tokenization key:', this.config.tokenizationKey?.substring(0, 10) + '...');
+      console.log('📍 Field selectors:', this.config.fieldSelectors);
 
-    const config: CollectJSConfig = {
-      variant: 'inline',
-      styleSniffer: true,
-      tokenizationKey: this.config.tokenizationKey!,
-      customCss: this.config.customStyles?.base,
-      focusCss: this.config.customStyles?.focus,
-      invalidCss: this.config.customStyles?.invalid,
-      validCss: this.config.customStyles?.valid,
-      placeholderCss: this.config.customStyles?.placeholder,
-      fields: {
-        ccnumber: {
-          selector: this.config.fieldSelectors!.cardNumber!,
-          title: 'Card Number',
-          placeholder: ' ' // Empty placeholder to work with floating labels
+      const config: CollectJSConfig = {
+        variant: 'inline',
+        styleSniffer: true,
+        tokenizationKey: this.config.tokenizationKey!,
+        fields: {
+          ccnumber: {
+            selector: this.config.fieldSelectors!.cardNumber!,
+            title: 'Card Number',
+            placeholder: ' ' // Empty placeholder to work with floating labels
+          },
+          ccexp: {
+            selector: this.config.fieldSelectors!.expiry!,
+            title: 'Expiry Date',
+            placeholder: ' ' // Empty placeholder to work with floating labels
+          },
+          cvv: {
+            display: 'show',
+            selector: this.config.fieldSelectors!.cvv!,
+            title: 'CVV',
+            placeholder: ' ' // Empty placeholder to work with floating labels
+          }
         },
-        ccexp: {
-          selector: this.config.fieldSelectors!.expiry!,
-          title: 'Expiry Date',
-          placeholder: ' ' // Empty placeholder to work with floating labels
+        fieldsAvailableCallback: () => {
+          console.log('🎯 CollectJS fields are ready');
+          this.isConfigured = true;
+          if (this.onReadyCallback) {
+            this.onReadyCallback();
+          }
+          // Resolve the promise when fields are ready
+          resolve();
         },
-        cvv: {
-          display: 'show',
-          selector: this.config.fieldSelectors!.cvv!,
-          title: 'CVV',
-          placeholder: ' ' // Empty placeholder to work with floating labels
+        callback: (response: CollectJSResponse) => {
+          console.log('💳 CollectJS tokenization response:', response);
+          this.handleTokenResponse(response);
+        },
+        validationCallback: (field: string, status: string, message: string) => {
+          console.log(`🔍 CollectJS validation [${field}]:`, { status, message });
+          this.handleValidation(field, status, message);
+        },
+        timeoutCallback: () => {
+          console.error('⏱️ CollectJS tokenization timeout');
+          const error = 'Payment processing timed out. Please try again.';
+          if (this.onErrorCallback) {
+            this.onErrorCallback(error);
+          }
         }
-      },
-      fieldsAvailableCallback: () => {
-        console.log('🎯 CollectJS fields are ready');
-        this.isConfigured = true;
-        if (this.onReadyCallback) {
-          this.onReadyCallback();
-        }
-      },
-      callback: (response: CollectJSResponse) => {
-        console.log('💳 CollectJS tokenization response:', response);
-        this.handleTokenResponse(response);
-      },
-      validationCallback: (field: string, status: string, message: string) => {
-        console.log(`🔍 Field validation [${field}]:`, { status, message });
-        this.handleValidation(field, status, message);
-      },
-      timeoutCallback: () => {
-        console.error('⏱️ CollectJS tokenization timeout');
-        const error = 'Payment processing timed out. Please try again.';
+      };
+
+      try {
+        window.CollectJS.configure(config);
+        console.log('✅ CollectJS configured successfully');
+        
+        // Set a timeout in case fieldsAvailableCallback doesn't fire
+        setTimeout(() => {
+          if (!this.isConfigured) {
+            console.warn('⚠️ fieldsAvailableCallback timeout - forcing ready state');
+            this.isConfigured = true;
+            if (this.onReadyCallback) {
+              this.onReadyCallback();
+            }
+            resolve();
+          }
+        }, 3000);
+      } catch (error) {
+        console.error('❌ Error configuring CollectJS:', error);
         if (this.onErrorCallback) {
-          this.onErrorCallback(error);
+          this.onErrorCallback('Failed to configure payment system');
         }
+        reject(error);
       }
-    };
-
-    try {
-      window.CollectJS.configure(config);
-      console.log('✅ CollectJS configured successfully');
-    } catch (error) {
-      console.error('❌ Error configuring CollectJS:', error);
-      if (this.onErrorCallback) {
-        this.onErrorCallback('Failed to configure payment system');
-      }
-      throw error;
-    }
+    });
   }
 
   /**
@@ -429,10 +465,11 @@ export class CollectJSService {
   }
 
   /**
-   * Handle field validation
+   * Handle field validation with enhanced user-friendly messages
    */
   private handleValidation(field: string, status: string, message: string): void {
-    // Map CollectJS field names to common names
+    // CollectJS sends the original field names (ccnumber, ccexp, cvv)
+    // We need to map them to the names expected by the form component
     const fieldMap: { [key: string]: string } = {
       'ccnumber': 'cardNumber',
       'ccexp': 'expiry',
@@ -440,17 +477,49 @@ export class CollectJSService {
     };
 
     const mappedField = fieldMap[field] || field;
-    
+
+    // Provide more user-friendly error messages
+    let enhancedMessage = message;
+    console.log(`🔍 Processing validation: field=${field}, status=${status}, message="${message}"`);
+
+    if (status === 'invalid' || status === 'blank') {
+      if (field === 'ccnumber') {
+        console.log(`💳 Card number validation: status=${status}, message="${message}"`);
+        if (message.includes('invalid')) {
+          enhancedMessage = 'Please enter a valid card number';
+        } else if (status === 'blank') {
+          enhancedMessage = 'Card number is required';
+        }
+      } else if (field === 'ccexp') {
+        if (message.includes('past') || message.includes('expired')) {
+          enhancedMessage = 'Card has expired. Please use a different card';
+        } else if (message.includes('invalid')) {
+          enhancedMessage = 'Please enter a valid expiration date (MM/YY)';
+        } else if (status === 'blank') {
+          enhancedMessage = 'Expiration date is required';
+        }
+      } else if (field === 'cvv') {
+        if (message.includes('invalid')) {
+          enhancedMessage = 'Please enter the 3 or 4-digit security code from your card';
+        } else if (status === 'blank') {
+          enhancedMessage = 'Security code is required';
+        }
+      }
+    }
+
     // Update validation state
     this.validationState[mappedField] = {
       isValid: status === 'valid',
       isTouched: true,
-      error: status === 'invalid' || status === 'blank' ? message || `Invalid ${mappedField}` : ''
+      error: status === 'invalid' || status === 'blank' ? enhancedMessage : ''
     };
 
-    // Call external validation callback
+    // Call external validation callback with enhanced message
+    console.log(`🔄 Service calling form callback: ${mappedField} -> ${status} -> "${enhancedMessage}"`);
     if (this.onValidationCallback) {
-      this.onValidationCallback(mappedField, status, message);
+      this.onValidationCallback(mappedField, status, enhancedMessage);
+    } else {
+      console.warn('⚠️ No validation callback registered');
     }
   }
 
@@ -521,6 +590,34 @@ export class CollectJSService {
   }
 
   /**
+   * Check if card fields have been touched (user has interacted with them)
+   */
+  public areFieldsTouched(): boolean {
+    return Object.values(this.validationState).some(field => field.isTouched);
+  }
+
+  /**
+   * Check if all touched fields are valid
+   */
+  public areFieldsValid(): boolean {
+    const touchedFields = Object.values(this.validationState).filter(field => field.isTouched);
+    return touchedFields.length > 0 && touchedFields.every(field => field.isValid);
+  }
+
+  /**
+   * Get field errors for display
+   */
+  public getFieldErrors(): Record<string, string> {
+    const errors: Record<string, string> = {};
+    Object.entries(this.validationState).forEach(([field, state]) => {
+      if (state.error) {
+        errors[field] = state.error;
+      }
+    });
+    return errors;
+  }
+
+  /**
    * Check if service is ready for use
    */
   public isReady(): boolean {
@@ -531,7 +628,10 @@ export class CollectJSService {
    * Update field selectors (useful for different components)
    */
   public updateFieldSelectors(selectors: Partial<CollectJSServiceConfig['fieldSelectors']>): void {
-    this.config.fieldSelectors = { ...this.config.fieldSelectors, ...selectors };
+    this.config.fieldSelectors = {
+      ...this.config.fieldSelectors,
+      ...selectors
+    } as Required<CollectJSServiceConfig['fieldSelectors']>;
     // Note: Requires reconfiguration to take effect
   }
 
@@ -549,15 +649,52 @@ export class CollectJSService {
     console.log('🔄 Resetting CollectJS service state');
     this.isConfigured = false;
     this.validationState = {};
+    this.retryCount = 0;
+
+    // Clear retry timeout
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
+
     this.onTokenCallback = undefined;
     this.onValidationCallback = undefined;
     this.onReadyCallback = undefined;
     this.onErrorCallback = undefined;
-    
+
     try {
       this.clearFields();
     } catch (error) {
       // Ignore cleanup errors
+    }
+  }
+
+  /**
+   * Retry initialization with exponential backoff
+   */
+  private retryInitialization(): void {
+    if (this.retryCount < this.maxRetries && !this.isConfigured) {
+      this.retryCount++;
+      console.log(`🔄 Retrying CollectJS initialization (attempt ${this.retryCount}/${this.maxRetries})`);
+
+      // Exponential backoff: 2s, 4s, 8s
+      const delay = Math.pow(2, this.retryCount) * 1000;
+      this.retryTimeout = setTimeout(() => {
+        if (!this.isConfigured && window.CollectJS) {
+          try {
+            this.configureCollectJS();
+          } catch (error) {
+            console.error(`❌ Retry ${this.retryCount} failed:`, error);
+            if (this.retryCount >= this.maxRetries) {
+              if (this.onErrorCallback) {
+                this.onErrorCallback('Payment system failed to initialize after multiple attempts. Please refresh the page.');
+              }
+            } else {
+              this.retryInitialization();
+            }
+          }
+        }
+      }, delay);
     }
   }
 
