@@ -201,3 +201,29 @@ export const SUCCESS_MESSAGES = {
   SESSION_VALID: 'Session is valid',
   ORDER_COMPLETE: 'Order completed successfully'
 } as const
+
+// =============================================================================
+// COLLECTJS VALIDATION EXPORTS
+// =============================================================================
+
+export {
+  // CollectJS validation functions
+  getCollectJSErrorMessage,
+  validateCollectJSFields,
+  createCollectJSValidationHandler,
+  CollectJSValidationUtils,
+
+  // CollectJS types
+  type CollectJSFieldStatus,
+  type CollectJSFieldName,
+  type CollectJSFieldState,
+  type CollectJSValidationState,
+
+  // Field mapping
+  COLLECTJS_FIELD_MAP
+} from './collectjs-validation'
+
+export {
+  // Enhanced form validation with CollectJS
+  validateCheckoutFormWithCollectJS
+} from './form-validation'

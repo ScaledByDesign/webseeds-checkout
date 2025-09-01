@@ -5,6 +5,12 @@ import Image from 'next/image'
 import { FloatingLabelSelect } from './FloatingLabelInput'
 import { validateCheckoutForm, type FormValidationResult } from '@/src/lib/validation/form-validation'
 import { getCollectJSService } from '@/src/lib/collectjs-service'
+import {
+  createCollectJSValidationHandler,
+  validateCollectJSFields,
+  CollectJSValidationUtils,
+  type CollectJSValidationState
+} from '@/src/lib/validation'
 
 // Google Places type declaration
 declare global {
@@ -35,6 +41,7 @@ interface FormData {
   billingCity?: string
   billingState?: string
   billingZip?: string
+  billingCountry?: string
 }
 
 interface FormErrors {
@@ -75,12 +82,10 @@ export function NewDesignCheckoutForm({
   const [fieldsValid, setFieldsValid] = useState(false)
   const [cardFieldsTouched, setCardFieldsTouched] = useState(false)
   
-  // Track individual field validation states
-  const [fieldValidationState, setFieldValidationState] = useState({
-    ccnumber: false,
-    ccexp: false,
-    cvv: false
-  })
+  // Enhanced CollectJS validation state using new validation system
+  const [fieldValidationState, setFieldValidationState] = useState<CollectJSValidationState>(
+    CollectJSValidationUtils.createInitialState()
+  )
   
 
   // Removed floating states - using pure CSS approach like the design
@@ -118,89 +123,95 @@ export function NewDesignCheckoutForm({
             expiry: '#card-expiry-field',
             cvv: '#card-cvv-field'
           },
-          onToken: (result) => {
+          onToken: async (result) => {
             console.log('🎯 Token generated:', result)
             if (result.success && result.token) {
-              // Process payment with the token
-              const paymentData = {
-                ...formData,
-                paymentToken: result.token
+              try {
+                // Process payment with the token via API call
+                console.log('💳 Processing payment with token via API...')
+
+                // Structure data to match API schema (like original form)
+                console.log('🔍 Debug - formData:', formData)
+                console.log('🔍 Debug - orderRef.current:', orderRef.current)
+
+                const normalizedEmail = formData.email.trim().toLowerCase()
+                const normalizedName = formData.nameOnCard.trim()
+                const normalizedPhone = formData.phone.replace(/\D/g, '') // Remove all non-digits
+                const normalizedZip = formData.zip.replace(/\D/g, '') // Remove all non-digits
+
+                const apiPayload = {
+                  customerInfo: {
+                    email: normalizedEmail,
+                    firstName: normalizedName.split(' ')[0] || 'Customer',
+                    lastName: normalizedName.split(' ').slice(1).join(' ') || normalizedName.split(' ')[0] || 'Customer',
+                    phone: normalizedPhone,
+                    address: formData.address.trim(),
+                    city: formData.city.trim(),
+                    state: formData.state.trim().toUpperCase(),
+                    zipCode: normalizedZip,
+                    country: formData.country.trim().toUpperCase(),
+                  },
+                  paymentToken: result.token,
+                  products: (orderRef.current?.items || []).map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity ?? 1,
+                  })),
+                  billingInfo: formData.useSameAddress ? undefined : {
+                    address: formData.billingAddress?.trim() || formData.address.trim(),
+                    city: formData.billingCity?.trim() || formData.city.trim(),
+                    state: (formData.billingState?.trim() || formData.state.trim()).toUpperCase(),
+                    zipCode: formData.billingZip?.replace(/\D/g, '') || normalizedZip,
+                    country: (formData.billingCountry || formData.country).trim().toUpperCase(),
+                  },
+                }
+
+                console.log('📤 STRUCTURED API PAYLOAD:', apiPayload)
+                console.log('🌐 Making API call to:', apiEndpointRef.current)
+
+                // Make API call to process payment
+                const response = await fetch(apiEndpointRef.current, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(apiPayload)
+                })
+
+                console.log('📡 API Response status:', response.status, response.statusText)
+
+                if (!response.ok) {
+                  throw new Error(`API call failed: ${response.status} ${response.statusText}`)
+                }
+
+                const apiResult = await response.json()
+                console.log('📋 API Response data:', apiResult)
+
+                if (apiResult.success) {
+                  console.log('✅ Payment processed successfully via API')
+                  onPaymentSuccessRef.current(apiResult)
+                } else {
+                  console.error('❌ API payment processing failed:', apiResult)
+                  onPaymentErrorRef.current(apiResult.message || 'Payment processing failed.', apiResult.errors, apiResult.sessionId)
+                }
+              } catch (error) {
+                console.error('❌ Payment API call failed:', error)
+                onPaymentErrorRef.current('Failed to process payment. Please try again.')
               }
-              console.log('💳 Processing payment with token...')
-              onPaymentSuccessRef.current(paymentData)
             } else {
               console.error('❌ Token generation failed:', result.error)
               onPaymentErrorRef.current(result.error || 'Payment token generation failed')
             }
             setLoading(false)
           },
-          onValidation: (field, status, message) => {
-            console.log(`📝 Form received validation: ${field} - ${status} - "${message}"`)
-
-            // Special debugging for card number with test card
-            if (field === 'cardNumber' && message) {
-              console.log(`💳 Card number validation details:`, {
-                field,
-                status,
-                message,
-                isTestCard: message.includes('4111') || status === 'valid'
-              })
-            }
-
-            // Track that user has interacted with card fields
-            if (!cardFieldsTouched) {
-              setCardFieldsTouched(true)
-              console.log('🎯 Card fields touched for first time')
-            }
-
-            // Update field validation states
-            console.log(`🔄 Updating field errors: ${field} -> status: ${status}, shouldShowError: ${status === 'invalid' || status === 'blank'}`)
-
-            if (field === 'cardNumber') {
-              const shouldShowError = (status === 'invalid' || status === 'blank')
-              const errorMessage = shouldShowError ? (message || 'Invalid card number') : ''
-              console.log(`💳 Card number error update: "${errorMessage}"`)
-              setErrors(prev => ({
-                ...prev,
-                cardNumber: errorMessage
-              }))
-            } else if (field === 'expiry') {
-              setErrors(prev => ({
-                ...prev,
-                expiry: (status === 'invalid' || status === 'blank') ? message || 'Invalid expiry date' : ''
-              }))
-            } else if (field === 'cvv') {
-              setErrors(prev => ({
-                ...prev,
-                cvv: (status === 'invalid' || status === 'blank') ? message || 'Invalid CVV' : ''
-              }))
-            }
-
-            // Update individual field validation states
-            setFieldValidationState(prev => {
-              // The service already maps ccnumber->cardNumber, ccexp->expiry, cvv->cvv
-              // So we need to map back to the legacy field names for the state
-              const fieldMap: Record<string, string> = {
-                'cardNumber': 'ccnumber',
-                'expiry': 'ccexp',
-                'cvv': 'cvv'
-              }
-
-              const legacyFieldName = fieldMap[field] || field
-              const newState = {
-                ...prev,
-                [legacyFieldName]: status === 'valid'
-              }
-
-              // Check if ALL fields are valid
-              const allFieldsValid = newState.ccnumber && newState.ccexp && newState.cvv
-              setFieldsValid(allFieldsValid)
-
-              console.log(`📊 Field validation update - ${field}: ${status}, All fields valid: ${allFieldsValid}`)
-
-              return newState
-            })
-          },
+          onValidation: createCollectJSValidationHandler(
+            setErrors,
+            setFieldValidationState,
+            setFieldsValid,
+            setCardFieldsTouched,
+            cardFieldsTouched
+          ),
           onReady: () => {
             console.log('✅ CollectJS service ready for tokenization')
             setCollectJSLoaded(true)
@@ -219,12 +230,9 @@ export function NewDesignCheckoutForm({
           (window as any).debugCollectJS = () => {
             console.log('🔍 CollectJS Debug Info:');
             console.log('  Service ready:', collectJSService.isReady());
-            console.log('  Fields touched:', collectJSService.areFieldsTouched());
-            console.log('  Fields valid:', collectJSService.areFieldsValid());
-            console.log('  Field errors:', collectJSService.getFieldErrors());
-            console.log('  Validation state:', collectJSService.getValidationState());
             console.log('  Local state - cardFieldsTouched:', cardFieldsTouched);
             console.log('  Local state - fieldsValid:', fieldsValid);
+            console.log('  Local state - fieldValidationState:', fieldValidationState);
             console.log('  Local state - errors:', errors);
             console.log('  window.CollectJS:', !!window.CollectJS);
             console.log('  CollectJS iframes:', {
@@ -234,24 +242,7 @@ export function NewDesignCheckoutForm({
             });
           };
 
-          // Add manual test function
-          (window as any).testCollectJS = () => {
-            console.log('🧪 Testing CollectJS manually...');
-            if (window.CollectJS) {
-              try {
-                console.log('  Attempting to start payment request...');
-                window.CollectJS.startPaymentRequest();
-              } catch (error) {
-                console.error('  Error starting payment request:', error);
-              }
-            } else {
-              console.error('  CollectJS not available');
-            }
-          };
-
-          console.log('🛠️ Debug functions available:');
-          console.log('  - window.debugCollectJS() - Show current state');
-          console.log('  - window.testCollectJS() - Test manual tokenization');
+          console.log('🛠️ Debug function available: window.debugCollectJS()');
         }
       } catch (error) {
         console.error('❌ Failed to initialize CollectJS service:', error)
@@ -583,6 +574,84 @@ export function NewDesignCheckoutForm({
     }
   }
 
+  // Specialized handler for phone input - only allow numbers and common separators
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    // Allow only digits, spaces, hyphens, parentheses, and plus sign
+    const filteredValue = value.replace(/[^\d\s\-\(\)\+]/g, '')
+    console.log(`📞 handlePhoneChange: ${name} = "${filteredValue}" (filtered from "${value}")`)
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: filteredValue
+    }))
+
+    // Manage has-value class for floating labels
+    const parent = e.target.closest('.floating-label-group')
+    if (parent) {
+      if (filteredValue.trim()) {
+        parent.classList.add('has-value')
+      } else {
+        parent.classList.remove('has-value')
+      }
+    }
+
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+  }
+
+  // Specialized handler for ZIP input - filter based on country
+  const handleZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    let filteredValue = value
+
+    // Filter based on country
+    if (formData.country === 'us') {
+      // US ZIP: only digits and hyphen
+      filteredValue = value.replace(/[^\d\-]/g, '')
+      // Limit to 5+4 format (12345-1234)
+      if (filteredValue.length > 10) {
+        filteredValue = filteredValue.substring(0, 10)
+      }
+    } else {
+      // International: allow alphanumeric, spaces, and hyphens
+      filteredValue = value.replace(/[^A-Za-z0-9\s\-]/g, '')
+      // Limit to reasonable length
+      if (filteredValue.length > 10) {
+        filteredValue = filteredValue.substring(0, 10)
+      }
+    }
+
+    console.log(`📮 handleZipChange: ${name} = "${filteredValue}" (filtered from "${value}", country: ${formData.country})`)
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: filteredValue
+    }))
+
+    // Manage has-value class for floating labels
+    const parent = e.target.closest('.floating-label-group')
+    if (parent) {
+      if (filteredValue.trim()) {
+        parent.classList.add('has-value')
+      } else {
+        parent.classList.remove('has-value')
+      }
+    }
+
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -598,6 +667,7 @@ export function NewDesignCheckoutForm({
         city: (document.querySelector('input[name="city"]') as HTMLInputElement)?.value || formData.city,
         state: (document.querySelector('input#state') as HTMLInputElement)?.value || formData.state,
         zip: (document.querySelector('input[name="zip"]') as HTMLInputElement)?.value || formData.zip,
+        country: (document.querySelector('select[name="country"]') as HTMLSelectElement)?.value || formData.country,
       }
     }
 
@@ -607,11 +677,17 @@ export function NewDesignCheckoutForm({
     // Validate using DOM values as fallback - ORDER: Top to Bottom as displayed
     const newErrors: FormErrors = {}
     
-    // 1. Contact section
+    // 1. Contact section - Email validation
     if (!currentValues.email.trim()) {
       newErrors.email = 'Email is required'
+    } else {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(currentValues.email.trim())) {
+        newErrors.email = 'Please enter a valid email address'
+      }
     }
-    
+
     // 2. Shipping section (in order of appearance)
     if (!currentValues.address.trim()) {
       newErrors.address = 'Address is required'
@@ -623,67 +699,98 @@ export function NewDesignCheckoutForm({
     if (!currentValues.state.trim()) {
       newErrors.state = 'State is required'
     }
+
+    // ZIP code validation - international vs US
     if (!currentValues.zip.trim()) {
       newErrors.zip = 'ZIP code is required'
+    } else {
+      const zipValue = currentValues.zip.trim()
+      if (currentValues.country === 'us') {
+        // US ZIP code: 5 digits or 5+4 format (12345 or 12345-1234)
+        const usZipRegex = /^\d{5}(-\d{4})?$/
+        if (!usZipRegex.test(zipValue)) {
+          newErrors.zip = 'Please enter a valid US ZIP code (e.g., 12345 or 12345-1234)'
+        }
+      } else {
+        // International postal codes: allow alphanumeric and common separators
+        const intlZipRegex = /^[A-Za-z0-9\s\-]{3,10}$/
+        if (!intlZipRegex.test(zipValue)) {
+          newErrors.zip = 'Please enter a valid postal code'
+        }
+      }
     }
-    // Country is handled separately (it's a select with default value)
+
+    // Phone number validation - numbers only
     if (!currentValues.phone.trim()) {
       newErrors.phone = 'Phone is required'
+    } else {
+      // Remove all non-digit characters for validation
+      const phoneDigits = currentValues.phone.replace(/\D/g, '')
+      if (phoneDigits.length < 10) {
+        newErrors.phone = 'Please enter a valid phone number (at least 10 digits)'
+      } else if (phoneDigits.length > 15) {
+        newErrors.phone = 'Phone number is too long (maximum 15 digits)'
+      }
     }
     
     // 3. Payment section (last)
     if (!currentValues.nameOnCard.trim()) {
       newErrors.nameOnCard = 'Name on card is required'
     }
-    
-    // 4. CollectJS Card Validation - CRITICAL for payment processing
+
+    // 4. Billing address validation (if separate billing is used)
+    if (!formData.useSameAddress) {
+      // Get billing values from DOM
+      const billingAddress = (document.querySelector('input[name="billingAddress"]') as HTMLInputElement)?.value || formData.billingAddress || ''
+      const billingCity = (document.querySelector('input[name="billingCity"]') as HTMLInputElement)?.value || formData.billingCity || ''
+      const billingState = (document.querySelector('input[name="billingState"]') as HTMLInputElement)?.value || formData.billingState || ''
+      const billingZip = (document.querySelector('input[name="billingZip"]') as HTMLInputElement)?.value || formData.billingZip || ''
+      const billingCountry = (document.querySelector('select[name="billingCountry"]') as HTMLSelectElement)?.value || formData.billingCountry || formData.country
+
+      if (!billingAddress.trim()) {
+        newErrors.billingAddress = 'Billing address is required'
+      }
+      if (!billingCity.trim()) {
+        newErrors.billingCity = 'Billing city is required'
+      }
+      if (!billingState.trim()) {
+        newErrors.billingState = 'Billing state is required'
+      }
+      if (!billingZip.trim()) {
+        newErrors.billingZip = 'Billing ZIP code is required'
+      } else {
+        // Apply same ZIP validation logic as shipping, but use billing country
+        if (billingCountry === 'us') {
+          const usZipRegex = /^\d{5}(-\d{4})?$/
+          if (!usZipRegex.test(billingZip.trim())) {
+            newErrors.billingZip = 'Please enter a valid US ZIP code (e.g., 12345 or 12345-1234)'
+          }
+        } else {
+          const intlZipRegex = /^[A-Za-z0-9\s\-]{3,10}$/
+          if (!intlZipRegex.test(billingZip.trim())) {
+            newErrors.billingZip = 'Please enter a valid postal code'
+          }
+        }
+      }
+      if (!billingCountry.trim()) {
+        newErrors.billingCountry = 'Billing country is required'
+      }
+    }
+
+    // 5. CollectJS Card Validation - CRITICAL for payment processing
     if (collectJSLoaded && collectJSService.isReady()) {
-      // Get individual field validation states
-      const validationState = collectJSService.getValidationState()
-      const serviceFieldErrors = collectJSService.getFieldErrors()
+      // Use the new simplified validation system
+      const collectJSErrors = validateCollectJSFields(fieldValidationState, cardFieldsTouched)
 
-      console.log('🔍 Service validation state:', {
-        validationState,
-        errors: serviceFieldErrors
-      })
+      // Merge CollectJS validation errors
+      Object.assign(newErrors, collectJSErrors)
 
-      // Debug: Check if CollectJS is actually working
       console.log('🔧 CollectJS Debug Info:')
-      console.log('  - window.CollectJS exists:', !!window.CollectJS)
       console.log('  - Service isReady:', collectJSService.isReady())
-      console.log('  - collectJSLoaded:', collectJSLoaded)
-      console.log('  - Card iframes present:', {
-        cardNumber: !!document.querySelector('#card-number-field iframe'),
-        expiry: !!document.querySelector('#card-expiry-field iframe'),
-        cvv: !!document.querySelector('#card-cvv-field iframe')
-      })
-
-      // Check each field individually - required for form submission
-      const cardNumberField = validationState.cardNumber
-      const expiryField = validationState.expiry
-      const cvvField = validationState.cvv
-
-      // Card Number validation
-      if (!cardNumberField || !cardNumberField.isTouched) {
-        newErrors.cardNumber = 'Please enter your card number'
-      } else if (!cardNumberField.isValid) {
-        newErrors.cardNumber = serviceFieldErrors.cardNumber || 'Please enter a valid card number'
-      }
-
-      // Expiry validation
-      if (!expiryField || !expiryField.isTouched) {
-        newErrors.expiry = 'Please enter the expiration date (MM/YY)'
-      } else if (!expiryField.isValid) {
-        newErrors.expiry = serviceFieldErrors.expiry || 'Please enter a valid expiration date'
-      }
-
-      // CVV validation
-      if (!cvvField || !cvvField.isTouched) {
-        newErrors.cvv = 'Please enter the 3 or 4 digit security code'
-      } else if (!cvvField.isValid) {
-        newErrors.cvv = serviceFieldErrors.cvv || 'Please enter a valid security code'
-      }
-
+      console.log('  - cardFieldsTouched:', cardFieldsTouched)
+      console.log('  - fieldsValid:', fieldsValid)
+      console.log('  - fieldValidationState:', fieldValidationState)
+      console.log('  - collectJSErrors:', collectJSErrors)
     } else if (!collectJSLoaded) {
       newErrors.payment = 'Payment system is still loading. Please wait...'
     }
@@ -736,17 +843,13 @@ export function NewDesignCheckoutForm({
 
         // Check if CollectJS fields are valid before starting
         console.log('🔍 CollectJS field validation status:')
-        console.log(`  📝 Card fields touched (local): ${cardFieldsTouched ? '✅' : '❌'}`)
-        console.log(`  📝 Card fields touched (service): ${collectJSService.areFieldsTouched() ? '✅' : '❌'}`)
-        console.log(`  ✔️ Fields valid (local): ${fieldsValid ? '✅' : '❌'}`)
-        console.log(`  ✔️ Fields valid (service): ${collectJSService.areFieldsValid() ? '✅' : '❌'}`)
+        console.log(`  📝 Card fields touched: ${cardFieldsTouched ? '✅' : '❌'}`)
+        console.log(`  ✔️ Fields valid: ${fieldsValid ? '✅' : '❌'}`)
+        console.log(`  📊 Field validation state:`, fieldValidationState)
 
-        // Use service validation state as primary source of truth
-        const serviceFieldsTouched = collectJSService.areFieldsTouched()
-        const serviceFieldsValid = collectJSService.areFieldsValid()
-
+        // Use local validation state as primary source of truth
         // Check if user has entered card information
-        if (!serviceFieldsTouched) {
+        if (!cardFieldsTouched) {
           console.warn('⚠️ No card information entered')
           // Set inline errors for empty fields
           setErrors(prev => ({
@@ -769,19 +872,16 @@ export function NewDesignCheckoutForm({
         }
         
         // Check if entered card information is valid
-        if (!serviceFieldsValid) {
+        if (!fieldsValid) {
           console.warn('⚠️ Card information is invalid')
+          console.log('🔍 Field validation state:', fieldValidationState)
 
-          // Get specific field errors from the service
-          const fieldErrors = collectJSService.getFieldErrors()
-          console.log('🔍 Service field errors:', fieldErrors)
-
-          // Set inline errors for invalid fields
+          // Set inline errors for invalid fields based on local validation state
           setErrors(prev => ({
             ...prev,
-            cardNumber: fieldErrors.cardNumber || prev.cardNumber || 'Please check your card number',
-            expiry: fieldErrors.expiry || prev.expiry || 'Please check the expiration date',
-            cvv: fieldErrors.cvv || prev.cvv || 'Please check the security code'
+            cardNumber: !fieldValidationState.ccnumber ? (prev.cardNumber || 'Please check your card number') : prev.cardNumber,
+            expiry: !fieldValidationState.ccexp ? (prev.expiry || 'Please check the expiration date') : prev.expiry,
+            cvv: !fieldValidationState.cvv ? (prev.cvv || 'Please check the security code') : prev.cvv
           }))
           
           // Focus first error field
@@ -795,8 +895,89 @@ export function NewDesignCheckoutForm({
           return
         }
 
-        // Use CollectJS service to start payment request
-        await collectJSService.startPaymentRequest()
+        // Use CollectJS service to start payment request with custom callback
+        await collectJSService.startPaymentRequest(async (result) => {
+          console.log('🎯 Token generated via custom callback:', result)
+          if (result.success && result.token) {
+            try {
+              // Process payment with the token via API call
+              console.log('💳 Processing payment with token via API...')
+
+              // Structure data to match API schema (like original form)
+              console.log('🔍 Debug - formData:', formData)
+              console.log('🔍 Debug - orderRef.current:', orderRef.current)
+
+              const normalizedEmail = formData.email.trim().toLowerCase()
+              const normalizedName = formData.nameOnCard.trim()
+              const normalizedPhone = formData.phone.replace(/\D/g, '') // Remove all non-digits
+              const normalizedZip = formData.zip.replace(/\D/g, '') // Remove all non-digits
+
+              const apiPayload = {
+                customerInfo: {
+                  email: normalizedEmail,
+                  firstName: normalizedName.split(' ')[0] || 'Customer',
+                  lastName: normalizedName.split(' ').slice(1).join(' ') || normalizedName.split(' ')[0] || 'Customer',
+                  phone: normalizedPhone,
+                  address: formData.address.trim(),
+                  city: formData.city.trim(),
+                  state: formData.state.trim().toUpperCase(),
+                  zipCode: normalizedZip,
+                  country: formData.country.trim().toUpperCase(),
+                },
+                paymentToken: result.token,
+                products: (orderRef.current?.items || []).map((item: any) => ({
+                  id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  quantity: item.quantity ?? 1,
+                })),
+                billingInfo: formData.useSameAddress ? undefined : {
+                  address: formData.billingAddress?.trim() || formData.address.trim(),
+                  city: formData.billingCity?.trim() || formData.city.trim(),
+                  state: (formData.billingState?.trim() || formData.state.trim()).toUpperCase(),
+                  zipCode: formData.billingZip?.replace(/\D/g, '') || normalizedZip,
+                  country: (formData.billingCountry || formData.country).trim().toUpperCase(),
+                },
+              }
+
+              console.log('📤 STRUCTURED API PAYLOAD:', apiPayload)
+              console.log('🌐 Making API call to:', apiEndpointRef.current)
+
+              // Make API call to process payment
+              const response = await fetch(apiEndpointRef.current, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(apiPayload)
+              })
+
+              console.log('📡 API Response status:', response.status, response.statusText)
+
+              if (!response.ok) {
+                throw new Error(`API call failed: ${response.status} ${response.statusText}`)
+              }
+
+              const apiResult = await response.json()
+              console.log('📋 API Response data:', apiResult)
+
+              if (apiResult.success) {
+                console.log('✅ Payment processed successfully via API')
+                onPaymentSuccessRef.current(apiResult)
+              } else {
+                console.error('❌ API payment processing failed:', apiResult)
+                onPaymentErrorRef.current(apiResult.message || 'Payment processing failed.', apiResult.errors, apiResult.sessionId)
+              }
+            } catch (error) {
+              console.error('❌ Payment API call failed:', error)
+              onPaymentErrorRef.current('Failed to process payment. Please try again.')
+            }
+          } else {
+            console.error('❌ Token generation failed:', result.error)
+            onPaymentErrorRef.current(result.error || 'Payment token generation failed')
+          }
+          setLoading(false)
+        })
         console.log('✅ CollectJS service payment request initiated')
 
       } else {
@@ -1002,7 +1183,7 @@ export function NewDesignCheckoutForm({
                   aria-required="true"
                   inputMode="numeric"
                   value={formData.zip}
-                  onChange={handleInputChange}
+                  onChange={handleZipChange}
                   onFocus={handleInputFocus}
                   onBlur={handleInputBlur}
                 />
@@ -1031,6 +1212,7 @@ export function NewDesignCheckoutForm({
             onChange={handleInputChange}
             autoComplete="country"
             error={errors.country}
+            isValid={!errors.country && !!formData.country && formData.country !== ''}
           >
             <option value="" disabled></option>
             <option value="us">United States</option>
@@ -1054,7 +1236,7 @@ export function NewDesignCheckoutForm({
               aria-required="true"
               inputMode="tel"
               value={formData.phone}
-              onChange={handleInputChange}
+              onChange={handlePhoneChange}
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
             />
@@ -1161,70 +1343,88 @@ export function NewDesignCheckoutForm({
               </div>
             )}
           <div className="sm:flex justify-between gap-7 sm:space-y-0">
-            <div className="floating-label-group w-full lg:mb-0">
-              {/* CollectJS mount point for expiry */}
-              <div 
-                id="card-expiry-field" 
-                data-autocomplete="cc-exp"
-                role="textbox"
-                aria-label="Expiration Date MM/YYYY"
-                aria-required="true"
-                aria-invalid={!!errors.expiry}
-                aria-describedby={errors.expiry ? "expiry-error" : undefined}
-                className={`collectjs-field w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''} ${!errors.expiry && fieldValidationState.ccexp ? 'border-green-500' : ''}`}
-              >
-                {collectJSInitializing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+            <div className="w-full">
+              <div className="floating-label-group relative">
+                {/* CollectJS mount point for expiry */}
+                <div
+                  id="card-expiry-field"
+                  data-autocomplete="cc-exp"
+                  role="textbox"
+                  aria-label="Expiration Date MM/YY format"
+                  aria-required="true"
+                  aria-invalid={!!errors.expiry}
+                  aria-describedby={errors.expiry ? "expiry-error" : "expiry-hint"}
+                  className={`collectjs-field w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.expiry ? 'input-error' : ''} ${!errors.expiry && fieldValidationState.ccexp ? 'border-green-500' : ''}`}
+                >
+                  {collectJSInitializing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                    </div>
+                  )}
+                
+                </div>
+                <label htmlFor="card-expiry-field" className="floating-label bg-transparent">
+                  Expiration Date (MM/YY)
+                </label>
+            
+
+              </div>{errors.expiry && (
+                  <div
+                    id="expiry-error"
+                    className="text-2xl mt-2 error-message"
+                    style={{ color: '#dc2626' }}
+                    role="alert"
+                  >
+                    {errors.expiry}
                   </div>
                 )}
-              </div>
-              <label htmlFor="card-expiry-field" className="floating-label bg-transparent">
-                Expiration Date{' '}(MM/YYYY)
-              </label>{errors.expiry && (
-                <div id="expiry-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
-                  {errors.expiry}
-                </div>
-              )}
-              
             </div>
-            <div className="floating-label-group relative w-full lg:mb-0">
-              {/* CollectJS mount point for CVV */}
-              <div 
-                id="card-cvv-field" 
-                data-autocomplete="cc-csc"
-                role="textbox"
-                aria-label="Security Code CVV"
-                aria-required="true"
-                aria-invalid={!!errors.cvv}
-                aria-describedby={errors.cvv ? "cvv-error" : undefined}
-                className={`collectjs-field collectjs-cvv w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''} ${!errors.cvv && fieldValidationState.cvv ? 'border-green-500' : ''}`}
-              >
-                {collectJSInitializing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+            <div className="w-full">
+              <div className="floating-label-group relative">
+                {/* CollectJS mount point for CVV */}
+                <div
+                  id="card-cvv-field"
+                  data-autocomplete="cc-csc"
+                  role="textbox"
+                  aria-label="Security Code CVV"
+                  aria-required="true"
+                  aria-invalid={!!errors.cvv}
+                  aria-describedby={errors.cvv ? "cvv-error" : undefined}
+                  className={`collectjs-field collectjs-cvv w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.cvv ? 'input-error' : ''} ${!errors.cvv && fieldValidationState.cvv ? 'border-green-500' : ''}`}
+                >
+                  {collectJSInitializing && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10 rounded-xl">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                    </div>
+                  )}
+                </div>
+                <label htmlFor="card-cvv-field" className="floating-label bg-transparent">
+                  Security Code
+                </label>
+
+                <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2 z-10 pointer-events-none">
+                  <Image
+                    src="/assets/images/info.svg"
+                    alt="Info"
+                    width={40}
+                    height={40}
+                  />
+                </span>
+
+              </div>{errors.cvv && (
+                  <div
+                    id="cvv-error"
+                    className="text-2xl mt-2 error-message"
+                    style={{ color: '#dc2626' }}
+                    role="alert"
+                  >
+                    {errors.cvv}
                   </div>
                 )}
-              </div>
-              <label htmlFor="card-cvv-field" className="floating-label bg-transparent">
-                Security Code
-              </label>
-             
-              <span className="absolute w-10 top-1/2 right-9 -translate-y-1/2 z-10 pointer-events-none">
-                <Image
-                  src="/assets/images/info.svg"
-                  alt="Info"
-                  width={40}
-                  height={40}
-                />
-              </span>{errors.cvv && (
-                <div id="cvv-error" className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }} role="alert">
-                  {errors.cvv}
-                </div>
-              )}
-            </div> 
+            </div>
           </div>
-          <div className="floating-label-group"style={{paddingTop:'1rem'}}>
+          <div  style={{paddingTop:'1rem'}}></div>
+          <div className="floating-label-group" >
             <input
               type="text"
               id="nameOnCard"
@@ -1253,8 +1453,8 @@ export function NewDesignCheckoutForm({
             <label className="flex items-center gap-4 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-9 h-9 accent-[#666666] cursor-pointer"
-                style={{ transform: 'scale(1.5)' }}
+                className="w-7 h-7 accent-[#666666] cursor-pointer"
+              
                 id="sameAddress"
                 checked={formData.useSameAddress}
                 onChange={(e) => {
@@ -1272,9 +1472,8 @@ export function NewDesignCheckoutForm({
                   }
                 }}
               />
-              <span className="text-[#373738] font-medium text-[2.5rem]">
-                Use shipping address as payment
-              </span>
+                <p className="flex items-center font-medium text-[1.94rem] text-[#6d6d6d] hidden md:block">
+          Use shipping address as payment&nbsp;</p>
             </label>
           </div>
 
@@ -1284,7 +1483,7 @@ export function NewDesignCheckoutForm({
               <h4 className="mb-8 text-[#373738] font-medium text-[2.25rem]">
                 Billing Address
               </h4>
-            <div className="space-y-8">
+            <div className="">
               <div className="floating-label-group">
                 <input
                   type="text"
@@ -1349,49 +1548,58 @@ export function NewDesignCheckoutForm({
                     </div>
                   )}
                 </div>
-                <div className="floating-label-group w-full">
-                  <input
-                    type="text"
-                    id="billing-zip"
-                    name="billingZip"
-                    className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.billingZip ? 'input-error' : ''}`}
-                    placeholder=" "
-                    pattern="[0-9]{5}"
-                    value={formData.billingZip || ''}
-                    onChange={handleInputChange}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                  />
-                  <label htmlFor="billing-zip" className="floating-label bg-transparent">
-                    Zip Code
-                  </label>
-                  {errors.billingZip && (
-                    <div className="text-2xl mt-2 error-message" style={{ color: '#dc2626' }}>
-                      {errors.billingZip}
-                    </div>
-                  )}
+                <div className="w-full">
+                  <div className="floating-label-group">
+                    <input
+                      type="text"
+                      id="billing-zip"
+                      name="billingZip"
+                      className={`w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] ${errors.billingZip ? 'input-error' : ''}`}
+                      placeholder=" "
+                      pattern="[0-9]{5}(-[0-9]{4})?"
+                      maxLength={10}
+                      required
+                      autoComplete="postal-code"
+                      aria-required="true"
+                      inputMode="numeric"
+                      value={formData.billingZip || ''}
+                      onChange={handleZipChange}
+                      onFocus={handleInputFocus}
+                      onBlur={handleInputBlur}
+                    />
+                    <label htmlFor="billing-zip" className="floating-label bg-transparent">
+                      Zip Code
+                    </label>
+
+                  </div>{errors.billingZip && (
+                      <div
+                        id="billing-zip-error"
+                        className="text-2xl mt-2 error-message"
+                        style={{ color: '#dc2626' }}
+                      >
+                        {errors.billingZip}
+                      </div>
+                    )}
                 </div>
               </div>
-              <div className="floating-label-group">
-                <select
-                  id="billing-country"
-                  className="w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] appearance-none bg-no-repeat form-select"
-                  required
-                  autoComplete="country"
-                  aria-required="true"
-                  defaultValue=""
-                >
-                  <option value="" disabled></option>
-                  <option value="us">United States</option>
-                  <option value="ca">Canada</option>
-                  <option value="uk">United Kingdom</option>
-                  <option value="au">Australia</option>
-                  <option value="nz">New Zealand</option>
-                </select>
-                <label htmlFor="billing-country" className="floating-label bg-transparent">
-                  Country
-                </label>
-              </div>
+              <FloatingLabelSelect
+                id="billing-country"
+                name="billingCountry"
+                label="Country"
+                required
+                value={formData.billingCountry || formData.country}
+                onChange={handleInputChange}
+                autoComplete="country"
+                error={errors.billingCountry}
+                isValid={!errors.billingCountry && !!(formData.billingCountry || formData.country) && (formData.billingCountry || formData.country) !== ''}
+              >
+                <option value="" disabled></option>
+                <option value="us">United States</option>
+                <option value="ca">Canada</option>
+                <option value="uk">United Kingdom</option>
+                <option value="au">Australia</option>
+                <option value="nz">New Zealand</option>
+              </FloatingLabelSelect>
             </div>
             </div>
           )}
@@ -1420,12 +1628,6 @@ export function NewDesignCheckoutForm({
         {!collectJSLoaded && (
           <p className="mt-4 text-center text-[1.8rem] text-gray-500">
             Loading secure payment system...
-          </p>
-        )}
-
-        {collectJSLoaded && !loading && (
-          <p className="mt-4 text-center text-[1.8rem] text-green-600">
-            ✓ Secure payment system ready
           </p>
         )}
       </div>

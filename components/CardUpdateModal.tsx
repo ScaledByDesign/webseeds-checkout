@@ -593,7 +593,7 @@ export default function CardUpdateModal({
             autoComplete="cc-exp"
             value={fallbackCardData.expiryDate}
             onChange={(e) => setFallbackCardData(prev => ({ ...prev, expiryDate: e.target.value }))}
-            placeholder="MM/YY"
+            placeholder="MM/YY format only"
           />
           <input
             type="text"
@@ -717,17 +717,17 @@ export default function CardUpdateModal({
 
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '6px' 
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '6px'
               }}>
                 Expiry Date
               </label>
-              <div 
-                id="update-card-expiry-field" 
+              <div
+                id="update-card-expiry-field"
                 style={{
                   minHeight: '60px',
                   width: '100%',
@@ -735,17 +735,37 @@ export default function CardUpdateModal({
                 }}
               >
                 {!collectJSReady && (
-                  <div style={{ 
+                  <div style={{
                     position: 'absolute',
                     top: '50%',
                     left: '36px',
                     transform: 'translateY(-50%)',
-                    color: '#9ca3af', 
+                    color: '#9ca3af',
                     fontSize: '18px',
-                    pointerEvents: 'none'
+                    pointerEvents: 'none',
+                    fontFamily: 'monospace'
+                  }}>MM/YY</div>
+                )}
+                {/* Format hint when field is ready but empty */}
+                {collectJSReady && !validFields.expiryDate && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: '12px',
+                    transform: 'translateY(-50%)',
+                    color: '#9ca3af',
+                    fontSize: '16px',
+                    pointerEvents: 'none',
+                    fontFamily: 'monospace'
                   }}>MM/YY</div>
                 )}
               </div>
+              {/* Format hint below field */}
+              {!fieldTouched.expiryDate && !fieldErrors.expiryDate && (
+                <p style={{ color: '#6b7280', fontSize: '11px', marginTop: '2px' }}>
+                  Use MM/YY format (e.g., 12/25)
+                </p>
+              )}
               {fieldTouched.expiryDate && fieldErrors.expiryDate && (
                 <p style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px' }}>
                   {fieldErrors.expiryDate}

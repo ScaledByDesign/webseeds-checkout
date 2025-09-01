@@ -21,6 +21,7 @@ interface FloatingLabelInputProps {
   'aria-required'?: boolean
   'aria-describedby'?: string
   error?: string
+  isValid?: boolean
   icon?: React.ReactNode
   rightIcon?: React.ReactNode
 }
@@ -45,6 +46,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
     'aria-required': ariaRequired,
     'aria-describedby': ariaDescribedby,
     error,
+    isValid = false,
     icon,
     rightIcon,
     ...props
@@ -72,11 +74,11 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
     }
 
     const baseInputClasses = `
-      w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl 
+      w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl
       sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]
       ${icon ? 'pl-9' : 'px-9'}
       ${rightIcon ? 'pr-17' : ''}
-      ${error ? 'border-red-500' : 'border-[#CDCDCD]'}
+      ${error ? 'border-red-500' : isValid ? 'border-green-500' : 'border-[#CDCDCD]'}
       ${className}
     `
 
@@ -159,6 +161,7 @@ interface FloatingLabelSelectProps {
   'aria-required'?: boolean
   'aria-describedby'?: string
   error?: string
+  isValid?: boolean
   children: React.ReactNode
 }
 
@@ -177,6 +180,7 @@ export const FloatingLabelSelect = forwardRef<HTMLSelectElement, FloatingLabelSe
     'aria-required': ariaRequired,
     'aria-describedby': ariaDescribedby,
     error,
+    isValid = false,
     children,
     ...props
   }, ref) => {
@@ -203,10 +207,10 @@ export const FloatingLabelSelect = forwardRef<HTMLSelectElement, FloatingLabelSe
     }
 
     const baseSelectClasses = `
-      w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl 
-      sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9] 
+      w-full border-2 border-[#CDCDCD] px-9 py-7 focus:outline-0 rounded-xl
+      sm:text-[1.94rem] text-[2.6rem] text-[#666666] leading-none bg-[#F9F9F9]
       appearance-none bg-no-repeat form-select
-      ${error ? 'border-red-500' : 'border-[#CDCDCD]'}
+      ${error ? 'border-red-500' : isValid ? 'border-green-500' : 'border-[#CDCDCD]'}
       ${className}
     `
 

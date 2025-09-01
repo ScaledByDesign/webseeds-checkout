@@ -8,6 +8,7 @@ import {
   type ValidationResult,
   type FieldValidationResult
 } from './schemas'
+import { validateCollectJSFields, type CollectJSValidationState } from './collectjs-validation'
 
 // =============================================================================
 // VALIDATION ERROR TYPES
@@ -283,6 +284,56 @@ function mapFieldToValidationError(field: string, message: string): ValidationEr
         suggestions: ['Please verify this information and try again']
       }
   }
+}
+
+// =============================================================================
+// COLLECTJS INTEGRATION
+// =============================================================================
+
+/**
+ * Enhanced checkout form validation with CollectJS support
+ * Combines standard form validation with CollectJS field validation
+ */
+export function validateCheckoutFormWithCollectJS(
+  data: any,
+  collectJSState?: {
+    loaded: boolean
+    fieldState: CollectJSValidationState
+    touched: boolean
+  }
+): FormValidationResult {
+  // Standard form validation
+  const standardValidation = validateCheckoutForm(data)
+
+  // Add CollectJS validation if available
+  if (collectJSState?.loaded) {
+    const collectJSErrors = validateCollectJSFields(
+      collectJSState.fieldState,
+      collectJSState.touched
+    )
+
+    // Merge errors
+    const allErrors = {
+      ...standardValidation.fieldErrors,
+      ...collectJSErrors
+    }
+
+    // Convert field errors to ValidationError objects
+    const validationErrors: ValidationError[] = Object.entries(allErrors).map(([field, message]) => ({
+      field,
+      message,
+      userFriendlyMessage: message,
+      suggestions: []
+    }))
+
+    return {
+      isValid: Object.keys(allErrors).length === 0,
+      errors: validationErrors,
+      fieldErrors: allErrors
+    }
+  }
+
+  return standardValidation
 }
 
 // =============================================================================

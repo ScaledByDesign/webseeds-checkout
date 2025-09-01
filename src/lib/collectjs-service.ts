@@ -333,7 +333,7 @@ export class CollectJSService {
           ccexp: {
             selector: this.config.fieldSelectors!.expiry!,
             title: 'Expiry Date',
-            placeholder: ' ' // Empty placeholder to work with floating labels
+            placeholder: 'MM/YY' // Clear format guidance
           },
           cvv: {
             display: 'show',
@@ -345,6 +345,7 @@ export class CollectJSService {
         fieldsAvailableCallback: () => {
           console.log('🎯 CollectJS fields are ready');
           this.isConfigured = true;
+
           if (this.onReadyCallback) {
             this.onReadyCallback();
           }
@@ -468,56 +469,12 @@ export class CollectJSService {
    * Handle field validation with enhanced user-friendly messages
    */
   private handleValidation(field: string, status: string, message: string): void {
-    // CollectJS sends the original field names (ccnumber, ccexp, cvv)
-    // We need to map them to the names expected by the form component
-    const fieldMap: { [key: string]: string } = {
-      'ccnumber': 'cardNumber',
-      'ccexp': 'expiry',
-      'cvv': 'cvv'
-    };
+    console.log(`🔍 CollectJS validation passthrough: ${field} -> ${status} -> "${message}"`);
 
-    const mappedField = fieldMap[field] || field;
-
-    // Provide more user-friendly error messages
-    let enhancedMessage = message;
-    console.log(`🔍 Processing validation: field=${field}, status=${status}, message="${message}"`);
-
-    if (status === 'invalid' || status === 'blank') {
-      if (field === 'ccnumber') {
-        console.log(`💳 Card number validation: status=${status}, message="${message}"`);
-        if (message.includes('invalid')) {
-          enhancedMessage = 'Please enter a valid card number';
-        } else if (status === 'blank') {
-          enhancedMessage = 'Card number is required';
-        }
-      } else if (field === 'ccexp') {
-        if (message.includes('past') || message.includes('expired')) {
-          enhancedMessage = 'Card has expired. Please use a different card';
-        } else if (message.includes('invalid')) {
-          enhancedMessage = 'Please enter a valid expiration date (MM/YY)';
-        } else if (status === 'blank') {
-          enhancedMessage = 'Expiration date is required';
-        }
-      } else if (field === 'cvv') {
-        if (message.includes('invalid')) {
-          enhancedMessage = 'Please enter the 3 or 4-digit security code from your card';
-        } else if (status === 'blank') {
-          enhancedMessage = 'Security code is required';
-        }
-      }
-    }
-
-    // Update validation state
-    this.validationState[mappedField] = {
-      isValid: status === 'valid',
-      isTouched: true,
-      error: status === 'invalid' || status === 'blank' ? enhancedMessage : ''
-    };
-
-    // Call external validation callback with enhanced message
-    console.log(`🔄 Service calling form callback: ${mappedField} -> ${status} -> "${enhancedMessage}"`);
+    // Simply pass validation directly to form callback - no service processing
+    // Let the form handle field mapping and error message enhancement
     if (this.onValidationCallback) {
-      this.onValidationCallback(mappedField, status, enhancedMessage);
+      this.onValidationCallback(field, status, message);
     } else {
       console.warn('⚠️ No validation callback registered');
     }
@@ -526,7 +483,7 @@ export class CollectJSService {
   /**
    * Start payment request (tokenization)
    */
-  public startPaymentRequest(): Promise<TokenResult> {
+  public startPaymentRequest(customCallback?: (result: TokenResult) => void): Promise<TokenResult> {
     return new Promise((resolve) => {
       if (!this.isConfigured) {
         resolve({
@@ -548,6 +505,12 @@ export class CollectJSService {
       const originalCallback = this.onTokenCallback;
       this.onTokenCallback = (result: TokenResult) => {
         this.onTokenCallback = originalCallback; // Restore original callback
+
+        // Call custom callback if provided
+        if (customCallback) {
+          customCallback(result);
+        }
+
         resolve(result);
       };
 
@@ -557,10 +520,17 @@ export class CollectJSService {
       } catch (error) {
         console.error('❌ Error starting payment request:', error);
         this.onTokenCallback = originalCallback; // Restore original callback
-        resolve({
+        const errorResult = {
           success: false,
           error: 'Failed to process payment information'
-        });
+        };
+
+        // Call custom callback with error if provided
+        if (customCallback) {
+          customCallback(errorResult);
+        }
+
+        resolve(errorResult);
       }
     });
   }
