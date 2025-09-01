@@ -328,18 +328,18 @@ export class CollectJSService {
           ccnumber: {
             selector: this.config.fieldSelectors!.cardNumber!,
             title: 'Card Number',
-            placeholder: ' ' // Empty placeholder to work with floating labels
+            placeholder: '' // Empty placeholder to work with floating labels
           },
           ccexp: {
             selector: this.config.fieldSelectors!.expiry!,
             title: 'Expiry Date',
-            placeholder: 'MM/YY' // Clear format guidance
+            placeholder: '' // Clear format guidance
           },
           cvv: {
             display: 'show',
             selector: this.config.fieldSelectors!.cvv!,
             title: 'CVV',
-            placeholder: ' ' // Empty placeholder to work with floating labels
+            placeholder: '' // Empty placeholder to work with floating labels
           }
         },
         fieldsAvailableCallback: () => {

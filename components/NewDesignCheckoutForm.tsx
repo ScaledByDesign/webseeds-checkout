@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { FloatingLabelSelect } from './FloatingLabelInput'
 import { validateCheckoutForm, type FormValidationResult } from '@/src/lib/validation/form-validation'
@@ -330,6 +330,143 @@ export function NewDesignCheckoutForm({
 
   // Note: Card validation and formatting is handled by CollectJS
   // No need for client-side card detection since CollectJS uses secure iframes
+
+  // Memoized form validation to prevent infinite loops
+  const isFormValid = useMemo(() => {
+    try {
+      // Required form fields validation
+      const requiredFieldsValid =
+        formData.email?.trim() !== '' &&
+        formData.nameOnCard?.trim() !== '' &&
+        formData.phone?.trim() !== '' &&
+        formData.address?.trim() !== '' &&
+        formData.city?.trim() !== '' &&
+        formData.state?.trim() !== '' &&
+        formData.zip?.trim() !== '' &&
+        formData.country?.trim() !== ''
+
+      // Email format validation
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email?.trim() || '')
+
+      // CollectJS fields validation - strict checking
+      const collectJSFieldsValid =
+        collectJSLoaded &&
+        collectJSService.isReady() &&
+        fieldValidationState.ccnumber === true &&
+        fieldValidationState.ccexp === true &&
+        fieldValidationState.cvv === true &&
+        // Additional safety check - ensure all fields are actually validated
+        typeof fieldValidationState.ccnumber === 'boolean' &&
+        typeof fieldValidationState.ccexp === 'boolean' &&
+        typeof fieldValidationState.cvv === 'boolean'
+        // Note: Removed cardFieldsTouched requirement for better UX with auto-fill
+
+      // Billing address validation - simplified logic
+      let billingFieldsValid = true
+
+      // Only validate billing fields if separate billing is enabled
+      if (!formData.useSameAddress) {
+        billingFieldsValid =
+          (formData.billingAddress?.trim() || '') !== '' &&
+          (formData.billingCity?.trim() || '') !== '' &&
+          (formData.billingState?.trim() || '') !== '' &&
+          (formData.billingZip?.trim() || '') !== '' &&
+          (formData.billingCountry?.trim() || formData.country?.trim()) !== ''
+      }
+
+      // Filter out irrelevant errors for validation
+      const relevantErrors = { ...errors }
+
+      // Remove billing errors if using same address
+      if (formData.useSameAddress) {
+        delete relevantErrors.billingAddress
+        delete relevantErrors.billingCity
+        delete relevantErrors.billingState
+        delete relevantErrors.billingZip
+        delete relevantErrors.billingCountry
+      }
+
+      // Remove CollectJS field errors if fields are valid
+      if (fieldValidationState.ccnumber === true) {
+        delete relevantErrors.cardNumber
+      }
+      if (fieldValidationState.ccexp === true) {
+        delete relevantErrors.expiry
+      }
+      if (fieldValidationState.cvv === true) {
+        delete relevantErrors.cvv
+      }
+
+      // No validation errors
+      const noErrors = Object.keys(relevantErrors).length === 0
+
+      const isValid = requiredFieldsValid && emailValid && collectJSFieldsValid && billingFieldsValid && noErrors
+
+      // Debug logging (only when validation state changes)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Form Validation Debug:', {
+          requiredFieldsValid,
+          emailValid,
+          collectJSFieldsValid,
+          billingFieldsValid,
+          useSameAddress: formData.useSameAddress,
+          noErrors,
+          errorCount: Object.keys(errors).length,
+          isValid,
+          // Detailed CollectJS breakdown
+          collectJSLoaded,
+          collectJSReady: collectJSService.isReady(),
+          cardFieldStates: {
+            ccnumber: fieldValidationState.ccnumber,
+            ccexp: fieldValidationState.ccexp,
+            cvv: fieldValidationState.cvv
+          },
+          cvvSpecificDebug: {
+            cvvState: fieldValidationState.cvv,
+            cvvType: typeof fieldValidationState.cvv,
+            cvvStrictCheck: fieldValidationState.cvv === true,
+            cvvTruthy: !!fieldValidationState.cvv
+          },
+          cardFieldsTouched,
+          allErrors: Object.keys(errors).length > 0 ? errors : 'none',
+          relevantErrors: Object.keys(relevantErrors).length > 0 ? relevantErrors : 'none'
+        })
+
+        // Additional focused debug for button state
+        if (requiredFieldsValid && emailValid && collectJSFieldsValid && billingFieldsValid && !noErrors) {
+          console.error('🚨 BUTTON DISABLED DUE TO ERRORS:', errors)
+        }
+        if (requiredFieldsValid && emailValid && collectJSFieldsValid && billingFieldsValid && noErrors) {
+          console.log('✅ ALL VALIDATION PASSED - BUTTON SHOULD BE ENABLED!')
+        }
+      }
+
+      return isValid
+    } catch (error) {
+      console.warn('Form validation error:', error)
+      return false
+    }
+  }, [
+    formData.email,
+    formData.nameOnCard,
+    formData.phone,
+    formData.address,
+    formData.city,
+    formData.state,
+    formData.zip,
+    formData.country,
+    formData.useSameAddress,
+    formData.billingAddress,
+    formData.billingCity,
+    formData.billingState,
+    formData.billingZip,
+    formData.billingCountry,
+    collectJSLoaded,
+    fieldValidationState.ccnumber,
+    fieldValidationState.ccexp,
+    fieldValidationState.cvv,
+    errors
+  ])
 
   // Generate random realistic test data
   const generateRandomTestData = () => {
@@ -955,7 +1092,80 @@ export function NewDesignCheckoutForm({
               console.log('📡 API Response status:', response.status, response.statusText)
 
               if (!response.ok) {
-                throw new Error(`API call failed: ${response.status} ${response.statusText}`)
+                let errorMessage = 'Payment processing failed. Please try again.'
+
+                try {
+                  const errorData = await response.json()
+                  console.error('❌ Payment API call failed:', errorData)
+
+                  // Handle duplicate orders as successful (redirect to upsell)
+                  if (errorData.message?.toLowerCase().includes('duplicate') ||
+                      errorData.error?.toLowerCase().includes('duplicate') ||
+                      errorData.message?.includes('already processed')) {
+                    console.log('✅ Duplicate order detected - treating as successful')
+                    const duplicateResult = {
+                      success: true,
+                      message: 'Order already processed',
+                      transactionId: 'duplicate-' + Date.now(), // Fake transaction ID to trigger direct redirect
+                      vaultId: 'duplicate-vault', // Fake vault ID to trigger direct redirect
+                      orderId: errorData.orderId || 'duplicate',
+                      isDuplicate: true
+                      // Note: No sessionId to avoid triggering payment status polling
+                    }
+                    onPaymentSuccessRef.current(duplicateResult)
+                    return // Exit early, don't throw error
+                  }
+
+                  // Provide user-friendly error messages based on API response
+                  if (response.status === 400) {
+                    if (errorData.message?.includes('card')) {
+                      errorMessage = 'There was an issue with your card information. Please check your card details and try again.'
+                    } else if (errorData.message?.includes('address')) {
+                      errorMessage = 'Please verify your billing address information and try again.'
+                    } else if (errorData.message?.includes('zip') || errorData.message?.includes('postal')) {
+                      errorMessage = 'Please check your ZIP/postal code and try again.'
+                    } else if (errorData.message?.includes('cvv') || errorData.message?.includes('security')) {
+                      errorMessage = 'Please check your card security code (CVV) and try again.'
+                    } else if (errorData.message?.includes('expir')) {
+                      errorMessage = 'Please check your card expiration date and try again.'
+                    } else {
+                      errorMessage = errorData.message || 'Please check your payment information and try again.'
+                    }
+                  } else if (response.status === 402) {
+                    errorMessage = 'Your card was declined. Please try a different payment method.'
+                  } else if (response.status === 429) {
+                    errorMessage = 'Too many attempts. Please wait a moment and try again.'
+                  } else if (response.status >= 500) {
+                    errorMessage = 'Our payment system is temporarily unavailable. Please try again in a few minutes.'
+                  }
+                } catch (parseError) {
+                  // If we can't parse the error response, check for duplicate in text response
+                  const errorText = await response.text()
+                  console.error('❌ Could not parse error response:', parseError)
+
+                  // Check for duplicate order in text response
+                  if (errorText.includes('duplicate') || errorText.includes('already processed')) {
+                    console.log('✅ Duplicate order detected in text response - treating as successful')
+                    const duplicateResult = {
+                      success: true,
+                      message: 'Order already processed',
+                      orderId: 'duplicate',
+                      isDuplicate: true
+                    }
+                    onPaymentSuccessRef.current(duplicateResult)
+                    return // Exit early, don't throw error
+                  }
+
+                  if (response.status === 400) {
+                    errorMessage = 'Please check your payment information and try again.'
+                  } else if (response.status === 402) {
+                    errorMessage = 'Your card was declined. Please try a different payment method.'
+                  } else if (response.status >= 500) {
+                    errorMessage = 'Our payment system is temporarily unavailable. Please try again in a few minutes.'
+                  }
+                }
+
+                throw new Error(errorMessage)
               }
 
               const apiResult = await response.json()
@@ -970,7 +1180,14 @@ export function NewDesignCheckoutForm({
               }
             } catch (error) {
               console.error('❌ Payment API call failed:', error)
-              onPaymentErrorRef.current('Failed to process payment. Please try again.')
+
+              // Use the enhanced error message from our API error handling
+              let userMessage = 'Failed to process payment. Please try again.'
+              if (error instanceof Error) {
+                userMessage = error.message
+              }
+
+              onPaymentErrorRef.current(userMessage)
             }
           } else {
             console.error('❌ Token generation failed:', result.error)
@@ -985,7 +1202,21 @@ export function NewDesignCheckoutForm({
       }
     } catch (error) {
       console.error('❌ Payment submission error:', error)
-      onPaymentErrorRef.current('Payment processing failed. Please try again.')
+
+      // Provide user-friendly error messages
+      let userMessage = 'Payment processing failed. Please try again.'
+
+      if (error instanceof Error) {
+        if (error.message.includes('CollectJS service not ready')) {
+          userMessage = 'Payment system is still loading. Please wait a moment and try again.'
+        } else if (error.message.includes('validation')) {
+          userMessage = 'Please check your payment information and try again.'
+        } else {
+          userMessage = error.message
+        }
+      }
+
+      onPaymentErrorRef.current(userMessage)
       setLoading(false)
     }
   }
@@ -1610,7 +1841,7 @@ export function NewDesignCheckoutForm({
       <div className="mt-25">
         <button
           type="submit"
-          disabled={loading || !collectJSLoaded}
+          disabled={loading || !collectJSLoaded || !isFormValid}
           className="py-12 w-full rounded-full bg-[#F6C657] text-center font-bold text-[3.7rem] text-[#373737] leading-none disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Place Your Order - Total $294"
         >
@@ -1628,6 +1859,33 @@ export function NewDesignCheckoutForm({
         {!collectJSLoaded && (
           <p className="mt-4 text-center text-[1.8rem] text-gray-500">
             Loading secure payment system...
+          </p>
+        )}
+
+        {collectJSLoaded && !loading && !isFormValid && (
+          <div className="mt-4 text-center">
+            <p className="text-[1.6rem] text-red-600">
+              Please complete all required fields to continue
+            </p>
+            {process.env.NODE_ENV === 'development' && (
+              <details className="mt-2 text-[1.2rem] text-gray-400">
+                <summary className="cursor-pointer">Debug Info</summary>
+                <div className="mt-1 text-left max-w-md mx-auto">
+                  <p>Required Fields: {formData.email?.trim() && formData.nameOnCard?.trim() && formData.phone?.trim() && formData.address?.trim() && formData.city?.trim() && formData.state?.trim() && formData.zip?.trim() && formData.country?.trim() ? '✅' : '❌'}</p>
+                  <p>Email Valid: {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email?.trim() || '') ? '✅' : '❌'}</p>
+                  <p>CollectJS Ready: {collectJSLoaded && collectJSService.isReady() ? '✅' : '❌'}</p>
+                  <p>Card Fields: {fieldValidationState.ccnumber === true && fieldValidationState.ccexp === true && fieldValidationState.cvv === true && cardFieldsTouched ? '✅' : '❌'}</p>
+                  <p>Billing: {formData.useSameAddress ? '✅ (using same)' : (formData.billingAddress?.trim() && formData.billingCity?.trim() && formData.billingState?.trim() && formData.billingZip?.trim() ? '✅' : '❌')}</p>
+                  <p>No Errors: {Object.keys(errors).length === 0 ? '✅' : `❌ (${Object.keys(errors).length})`}</p>
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+
+        {collectJSLoaded && !loading && isFormValid && (
+          <p className="mt-4 text-center text-[1.6rem] text-green-600">
+            ✓ Ready to place your order
           </p>
         )}
       </div>
